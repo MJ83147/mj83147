@@ -479,13 +479,13 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
     padding: 12px 16px;
-    gap: 8px;
+    gap: 10px;
     overflow: hidden;
+    height: 100%;
   }
 
-  .globe-top-controls {
+  .globe-controls-row {
     display: flex;
     gap: 8px;
     align-items: flex-end;
@@ -493,12 +493,12 @@
     flex-shrink: 0;
   }
 
-  .globe-top-controls .field-group { flex: 1; }
+  .globe-controls-row .field-group { flex: 1; min-width: 0; }
 
   /* mode toggle */
   .mode-toggle {
     display: flex;
-    border: 1px solid var(--rule);
+    border: 2px solid var(--sepia-dark);
     overflow: hidden;
     flex-shrink: 0;
   }
@@ -511,7 +511,7 @@
     padding: 7px 12px;
     cursor: pointer;
     border: none;
-    background: transparent;
+    background: var(--cream-dark);
     color: var(--ink-light);
     transition: all 0.2s;
     white-space: nowrap;
@@ -520,27 +520,20 @@
   .mode-btn.active {
     background: var(--sepia-dark);
     color: var(--cream);
+    font-weight: bold;
   }
 
-  .mode-divider { width: 1px; background: var(--rule); }
+  .mode-divider { width: 2px; background: var(--sepia-dark); }
 
   #globe-svg {
+    flex: 1;
     width: 100%;
-    max-width: 340px;
+    min-height: 0;
     cursor: grab;
-    flex-shrink: 0;
+    display: block;
   }
 
   #globe-svg:active { cursor: grabbing; }
-
-  .globe-bottom-controls {
-    display: flex;
-    gap: 8px;
-    align-items: flex-end;
-    width: 100%;
-    flex-shrink: 0;
-    flex-wrap: wrap;
-  }
 
   .field-group { display: flex; flex-direction: column; gap: 4px; }
 
@@ -769,30 +762,16 @@
   <!-- CENTRE: GLOBE -->
   <div class="globe-centre">
 
-    <!-- top row: city search + mode toggle -->
-    <div class="globe-top-controls">
+    <!-- single controls row -->
+    <div class="globe-controls-row">
       <div class="field-group">
         <div class="field-label">Starting city</div>
         <div class="autocomplete-wrap">
-          <input class="field-input" id="city-input" type="text" placeholder="e.g. London, Tokyo, New York…" autocomplete="off" oninput="filterCities(this.value)" />
+          <input class="field-input" id="city-input" type="text" placeholder="e.g. London, Tokyo…" autocomplete="off" oninput="filterCities(this.value)" />
           <div class="autocomplete-list" id="city-list" style="display:none"></div>
         </div>
       </div>
-      <div class="field-group">
-        <div class="field-label">Mode</div>
-        <div class="mode-toggle">
-          <button class="mode-btn active" id="btn-current" onclick="setMode('current')">Collected</button>
-          <div class="mode-divider"></div>
-          <button class="mode-btn" id="btn-potential" onclick="setMode('potential')">Full Potential</button>
-        </div>
-      </div>
-    </div>
-
-    <svg id="globe-svg" viewBox="0 0 500 500"></svg>
-
-    <!-- bottom row: direction + trace -->
-    <div class="globe-bottom-controls">
-      <div class="field-group">
+      <div class="field-group" style="flex:0 0 auto;">
         <div class="field-label">Direction</div>
         <select class="field-select" id="bearing-select">
           <option value="0">North</option>
@@ -805,12 +784,24 @@
           <option value="315">North-West</option>
         </select>
       </div>
-      <div style="display:flex;align-items:flex-end;">
+      <div class="field-group" style="flex:0 0 auto;">
+        <div class="field-label">Mode</div>
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="btn-current" onclick="setMode('current')">Collected</button>
+          <div class="mode-divider"></div>
+          <button class="mode-btn" id="btn-potential" onclick="setMode('potential')">Full Potential</button>
+        </div>
+      </div>
+      <div class="field-group" style="flex:0 0 auto;">
+        <div class="field-label">&nbsp;</div>
         <button class="btn-trace" onclick="traceRope()">Trace Rope</button>
       </div>
-      <div class="rope-result" id="rope-result" style="flex:1;min-width:0;">
-        <div class="rr-empty">Choose a city and direction, then trace the rope.</div>
-      </div>
+    </div>
+
+    <svg id="globe-svg" viewBox="0 0 500 500"></svg>
+
+    <div class="rope-result" id="rope-result" style="width:100%;flex-shrink:0;">
+      <div class="rr-empty">Choose a city and direction, then trace the rope.</div>
     </div>
 
   </div>
