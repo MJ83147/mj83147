@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Torn Rope Project</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Playfair+Display:wght@400;700;900&family=Crimson+Pro:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream:      #f2ead8;
+    --cream-dark: #e8ddc4;
+    --cream-deep: #ddd0b0;
+    --ink:        #1c1408;
+    --ink-mid:    #3d2e12;
+    --ink-light:  #7a6040;
+    --ink-faint:  #b8a880;
+    --sepia:      #8a6030;
+    --sepia-dark: #5c3e18;
+    --sepia-light:#c49a58;
+    --rule:       rgba(92,62,24,0.2);
+    --rule-light: rgba(92,62,24,0.1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'Crimson Pro', serif;
+    font-weight: 300;
+    display: flex;
+    flex-direction: column;
+    /* aged paper texture via SVG noise */
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E"),
+      linear-gradient(160deg, #f5edd8 0%, #ede0c0 50%, #f0e8d2 100%);
+  }
+
+  /* fine ruled lines across background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 23px,
+      rgba(92,62,24,0.04) 23px,
+      rgba(92,62,24,0.04) 24px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* corner ornaments */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    border: 8px solid transparent;
+    border-image: none;
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .mono { font-family: 'Share Tech Mono', monospace; }
+  .serif { font-family: 'Playfair Display', serif; }
+
+  /* ─── HEADER ─── */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 10px 24px 8px;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  header::before {
+    content: '';
+    position: absolute;
+    bottom: -3px; left: 0; right: 0;
+    height: 1px;
+    background: var(--rule-light);
+  }
+
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-size: 20px;
+    color: var(--ink);
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .logo-rule {
+    width: 1px;
+    height: 16px;
+    background: var(--rule);
+    align-self: center;
+  }
+
+  .logo-sub {
+    font-family: 'Crimson Pro', serif;
+    font-weight: 300;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ink-light);
+    letter-spacing: 0.05em;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .live-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-light);
+    letter-spacing: 0.1em;
+    border: 1px solid var(--rule);
+    padding: 4px 10px;
+    background: rgba(92,62,24,0.04);
+  }
+
+  .live-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--sepia);
+    animation: livepulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes livepulse {
+    0%,100% { opacity: 1; }
+    50%      { opacity: 0.3; }
+  }
+
+  .ticker { animation: blink 1.2s step-end infinite; display: inline-block; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* ─── STATS ROW ─── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid var(--rule);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+  }
+
+  .stat {
+    padding: 10px 18px;
+    border-right: 1px solid var(--rule);
+    position: relative;
+  }
+
+  .stat:last-child { border-right: none; }
+
+  .stat-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .stat-value {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 22px;
+    color: var(--ink);
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+
+  .stat-sub {
+    font-size: 10px;
+    color: var(--ink-light);
+    margin-top: 1px;
+    font-style: italic;
+  }
+
+  /* ─── MAIN BODY ─── */
+  .body-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 240px 1fr 240px;
+    min-height: 0;
+    position: relative;
+    z-index: 5;
+  }
+
+  /* ─── SIDE PANELS ─── */
+  .side-panel {
+    border-right: 1px solid var(--rule);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 14px 16px;
+    gap: 10px;
+  }
+
+  .side-panel.right {
+    border-right: none;
+    border-left: 1px solid var(--rule);
+  }
+
+  .panel-heading {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--ink-mid);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .panel-heading::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule-light);
+  }
+
+  /* ─── MILESTONES ─── */
+  .ms-current {
+    background: rgba(92,62,24,0.05);
+    border: 1px solid var(--rule);
+    padding: 10px 12px;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .ms-current::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--sepia);
+  }
+
+  .ms-current-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.2em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .ms-current-name {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--ink);
+    line-height: 1.2;
+    margin-bottom: 2px;
+  }
+
+  .ms-current-dist {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--ink-light);
+    margin-bottom: 8px;
+  }
+
+  .progress-track {
+    height: 3px;
+    background: var(--cream-deep);
+    position: relative;
+    margin-bottom: 4px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--sepia);
+    position: relative;
+  }
+
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    right: -3px; top: -3px;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--sepia);
+    border: 1.5px solid var(--cream);
+    box-shadow: 0 0 0 1px var(--sepia);
+  }
+
+  .progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    color: var(--ink-faint);
+    margin-top: 6px;
+  }
+
+  .progress-labels .pct { color: var(--sepia); }
+
+  /* timeline */
+  .ms-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule) transparent;
+  }
+
+  .ms-item {
+    display: flex;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--rule-light);
+    align-items: flex-start;
+    position: relative;
+  }
+
+  .ms-item:last-child { border-bottom: none; }
+
+  .ms-connector {
+    position: absolute;
+    left: 5px; top: 20px; bottom: -7px;
+    width: 1px;
+    background: var(--rule-light);
+  }
+
+  .ms-dot {
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    border: 1px solid var(--ink-faint);
+    background: var(--cream);
+    flex-shrink: 0;
+    margin-top: 3px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .ms-item.reached .ms-dot {
+    border-color: var(--sepia);
+    background: var(--sepia);
+  }
+
+  .ms-item.reached .ms-dot::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    border-radius: 50%;
+    background: var(--cream);
+  }
+
+  .ms-item.is-current .ms-dot {
+    border-color: var(--sepia-dark);
+    background: var(--cream);
+    box-shadow: 0 0 0 2px rgba(92,62,24,0.15);
+    animation: mspulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes mspulse {
+    0%,100% { box-shadow: 0 0 0 2px rgba(92,62,24,0.15); }
+    50%      { box-shadow: 0 0 0 4px rgba(92,62,24,0.06); }
+  }
+
+  .ms-content {}
+
+  .ms-name {
+    font-family: 'Crimson Pro', serif;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--ink-light);
+    line-height: 1.3;
+  }
+
+  .ms-item.reached .ms-name { color: var(--ink-mid); font-weight: 500; }
+  .ms-item.is-current .ms-name { color: var(--ink); font-weight: 500; }
+
+  .ms-meta {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    color: var(--ink-faint);
+    margin-top: 1px;
+    display: flex;
+    gap: 8px;
+  }
+
+  .ms-meta .date { color: var(--sepia-light); }
+  .ms-meta .curr { color: var(--sepia-dark); font-style: italic; font-family: 'Crimson Pro', serif; font-size: 9px; }
+
+  /* ─── LEADERBOARD ─── */
+  .lb-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule) transparent;
+  }
+
+  .lb-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--rule-light);
+  }
+
+  .lb-item:last-child { border-bottom: none; }
+
+  .lb-rank {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--ink-faint);
+    width: 16px;
+    flex-shrink: 0;
+    text-align: right;
+    font-style: italic;
+  }
+
+  .lb-rank.i { color: var(--sepia-dark); }
+  .lb-rank.ii { color: var(--ink-mid); }
+  .lb-rank.iii { color: var(--ink-light); }
+
+  .lb-name {
+    font-family: 'Crimson Pro', serif;
+    font-size: 13px;
+    color: var(--ink-light);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .lb-name.me {
+    color: var(--sepia-dark);
+    font-weight: 500;
+  }
+
+  .lb-bar-wrap {
+    width: 40px; height: 2px;
+    background: var(--cream-deep);
+    flex-shrink: 0;
+  }
+
+  .lb-bar { height: 100%; background: var(--sepia); }
+
+  .lb-count {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-mid);
+    min-width: 36px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ─── GLOBE CENTRE ─── */
+  .globe-centre {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 12px 16px;
+    gap: 10px;
+    overflow: hidden;
+  }
+
+  /* mode toggle */
+  .mode-toggle {
+    display: flex;
+    border: 1px solid var(--rule);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .mode-btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 5px 12px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--ink-faint);
+    transition: all 0.2s;
+  }
+
+  .mode-btn.active {
+    background: var(--sepia-dark);
+    color: var(--cream);
+  }
+
+  .mode-divider { width: 1px; background: var(--rule); }
+
+  .mode-note {
+    font-family: 'Crimson Pro', serif;
+    font-size: 11px;
+    font-style: italic;
+    color: var(--ink-light);
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  #globe-svg {
+    flex: 1;
+    width: 100%;
+    max-width: 100%;
+    cursor: grab;
+    min-height: 0;
+  }
+
+  #globe-svg:active { cursor: grabbing; }
+
+  /* globe controls row */
+  .globe-controls {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .field-group { display: flex; flex-direction: column; gap: 4px; }
+
+  .field-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.15em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+
+  .field-input {
+    background: rgba(92,62,24,0.04);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    font-family: 'Crimson Pro', serif;
+    font-size: 13px;
+    padding: 5px 10px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 160px;
+  }
+
+  .field-input:focus { border-color: var(--sepia); }
+
+  .field-select {
+    background: rgba(92,62,24,0.04);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 5px 10px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    width: 120px;
+  }
+
+  .btn-trace {
+    background: var(--sepia-dark);
+    border: 1px solid var(--sepia-dark);
+    color: var(--cream);
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    padding: 6px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-style: italic;
+  }
+
+  .btn-trace:hover { background: var(--sepia); border-color: var(--sepia); }
+
+  /* result panel */
+  .rope-result {
+    background: rgba(92,62,24,0.04);
+    border: 1px solid var(--rule);
+    padding: 10px 14px;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .rr-mode {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px;
+    letter-spacing: 0.18em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .rr-from {
+    font-size: 11px;
+    font-style: italic;
+    color: var(--ink-light);
+    margin-bottom: 2px;
+  }
+
+  .rr-dest {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--ink);
+    line-height: 1.2;
+  }
+
+  .rr-stats-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--ink-faint);
+    flex-wrap: wrap;
+  }
+
+  .rr-stats-row strong { color: var(--sepia-dark); }
+
+  .rr-empty {
+    font-size: 12px;
+    font-style: italic;
+    color: var(--ink-faint);
+  }
+
+  /* autocomplete */
+  .autocomplete-wrap { position: relative; }
+
+  .autocomplete-list {
+    position: absolute;
+    bottom: 100%; left: 0; right: 0;
+    background: var(--cream);
+    border: 1px solid var(--rule);
+    border-bottom: none;
+    z-index: 200;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+
+  .autocomplete-item {
+    padding: 6px 10px;
+    font-family: 'Crimson Pro', serif;
+    font-size: 13px;
+    color: var(--ink-mid);
+    cursor: pointer;
+    border-bottom: 1px solid var(--rule-light);
+  }
+
+  .autocomplete-item:hover { background: rgba(92,62,24,0.06); }
+
+  /* decorative corner marks */
+  .corner-mark {
+    position: fixed;
+    width: 20px; height: 20px;
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0.3;
+  }
+
+  .corner-mark.tl { top: 6px; left: 6px; border-top: 1px solid var(--sepia-dark); border-left: 1px solid var(--sepia-dark); }
+  .corner-mark.tr { top: 6px; right: 6px; border-top: 1px solid var(--sepia-dark); border-right: 1px solid var(--sepia-dark); }
+  .corner-mark.bl { bottom: 6px; left: 6px; border-bottom: 1px solid var(--sepia-dark); border-left: 1px solid var(--sepia-dark); }
+  .corner-mark.br { bottom: 6px; right: 6px; border-bottom: 1px solid var(--sepia-dark); border-right: 1px solid var(--sepia-dark); }
+
+  /* mobile */
+  @media (max-width: 800px) {
+    html, body { overflow: auto; height: auto; }
+    .body-grid { grid-template-columns: 1fr; }
+    .side-panel { border-right: none; border-bottom: 1px solid var(--rule); min-height: 300px; }
+    .side-panel.right { border-left: none; border-bottom: 1px solid var(--rule); }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- corner ornaments -->
+<div class="corner-mark tl"></div>
+<div class="corner-mark tr"></div>
+<div class="corner-mark bl"></div>
+<div class="corner-mark br"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    Torn Rope Project
+    <div class="logo-rule"></div>
+    <span class="logo-sub">Community Length Tracker</span>
+  </div>
+  <div class="header-right">
+    <div class="live-pill">
+      <div class="live-dot"></div>
+      <span id="live-count">14,382</span> ropes &nbsp;·&nbsp; <span id="live-time">just now</span><span class="ticker">_</span>
+    </div>
+  </div>
+</header>
+
+<!-- STATS ROW -->
+<div class="stats-row">
+  <div class="stat">
+    <div class="stat-label">Total Length</div>
+    <div class="stat-value">143.82<span style="font-size:13px;font-weight:400"> km</span></div>
+    <div class="stat-sub">143,820 metres of rope</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Ropes Received</div>
+    <div class="stat-value">14,382</div>
+    <div class="stat-sub">10 m per rope item</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Contributors</div>
+    <div class="stat-value">847</div>
+    <div class="stat-sub">unique Torn citizens</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Max Possible</div>
+    <div class="stat-value" style="color:var(--sepia)">27,773<span style="font-size:13px;font-weight:400"> km</span></div>
+    <div class="stat-sub">if every Torn rope was sent</div>
+  </div>
+</div>
+
+<!-- BODY GRID -->
+<div class="body-grid">
+
+  <!-- LEFT: MILESTONES -->
+  <div class="side-panel">
+    <div class="panel-heading">Milestones</div>
+
+    <div class="ms-current">
+      <div class="ms-current-label">Current target</div>
+      <div class="ms-current-name">Width of Belgium</div>
+      <div class="ms-current-dist">280 km · 28,000 ropes needed</div>
+      <div class="progress-track">
+        <div class="progress-fill" style="width:51.4%"></div>
+      </div>
+      <div class="progress-labels">
+        <span>143.82 km</span>
+        <span class="pct">51.4%</span>
+      </div>
+    </div>
+
+    <div class="ms-scroll" id="milestone-list"></div>
+  </div>
+
+  <!-- CENTRE: GLOBE -->
+  <div class="globe-centre">
+
+    <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;width:100%;justify-content:center;">
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="btn-current" onclick="setMode('current')">Collected</button>
+        <div class="mode-divider"></div>
+        <button class="mode-btn" id="btn-potential" onclick="setMode('potential')">Full Potential</button>
+      </div>
+      <div class="mode-note" id="mode-note">143.82 km traced</div>
+    </div>
+
+    <svg id="globe-svg" viewBox="0 0 500 500"></svg>
+
+    <div class="globe-controls">
+      <div class="field-group">
+        <div class="field-label">Starting city</div>
+        <div class="autocomplete-wrap">
+          <input class="field-input" id="city-input" type="text" placeholder="e.g. London" autocomplete="off" oninput="filterCities(this.value)" />
+          <div class="autocomplete-list" id="city-list" style="display:none"></div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Direction</div>
+        <select class="field-select" id="bearing-select">
+          <option value="0">North</option>
+          <option value="45">North-East</option>
+          <option value="90" selected>East</option>
+          <option value="135">South-East</option>
+          <option value="180">South</option>
+          <option value="225">South-West</option>
+          <option value="270">West</option>
+          <option value="315">North-West</option>
+        </select>
+      </div>
+      <button class="btn-trace" onclick="traceRope()">Trace</button>
+    </div>
+
+    <div class="rope-result" id="rope-result">
+      <div class="rr-empty">Choose a city and direction, then trace the rope.</div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: LEADERBOARD -->
+  <div class="side-panel right">
+    <div class="panel-heading">Contributors</div>
+    <div class="lb-scroll" id="lb-list"></div>
+  </div>
+
+</div>
+
+<script>
+const TOTAL_ROPES  = 14382;
+const TOTAL_KM     = TOTAL_ROPES * 10 / 1000;
+const GAME_ROPES   = 2777340;
+const POTENTIAL_KM = GAME_ROPES * 10 / 1000;
+
+let traceMode = 'current';
+
+const milestones = [
+  { name: "Width of Belgium",              km: 280   },
+  { name: "Length of the Thames",          km: 346   },
+  { name: "Length of New Zealand",         km: 1600  },
+  { name: "Width of Australia",            km: 4000  },
+  { name: "Length of the Nile",            km: 6650  },
+  { name: "Length of the Amazon",          km: 6992  },
+  { name: "Trans-Siberian Railway",        km: 9289  },
+  { name: "Width of Africa",               km: 7400  },
+  { name: "Length of the Great Wall",      km: 21196 },
+  { name: "Max: if all Torn ropes sent",   km: 27773 },
+];
+
+const leaderboard = [
+  { name: "RopeKing_88",  ropes: 1420 },
+  { name: "Systoned",     ropes: 980,  me: true },
+  { name: "CordMaster",   ropes: 750  },
+  { name: "KnotLord",     ropes: 620  },
+  { name: "FrayedEnds",   ropes: 590  },
+  { name: "HempHero",     ropes: 480  },
+  { name: "TwistedFiber", ropes: 410  },
+  { name: "SpliceMaster", ropes: 380  },
+  { name: "RiggerX",      ropes: 320  },
+  { name: "TaughtLine",   ropes: 290  },
+  { name: "BightRunner",  ropes: 270  },
+  { name: "CleatHitch",   ropes: 240  },
+  { name: "FiberOptic",   ropes: 210  },
+  { name: "LoopHole",     ropes: 190  },
+  { name: "TwineTime",    ropes: 170  },
+];
+
+const cities = [
+  { name: "London, UK",           lat: 51.5074,  lon: -0.1278   },
+  { name: "Edinburgh, UK",        lat: 55.9533,  lon: -3.1883   },
+  { name: "Paris, France",        lat: 48.8566,  lon: 2.3522    },
+  { name: "Berlin, Germany",      lat: 52.5200,  lon: 13.4050   },
+  { name: "Madrid, Spain",        lat: 40.4168,  lon: -3.7038   },
+  { name: "Rome, Italy",          lat: 41.9028,  lon: 12.4964   },
+  { name: "Moscow, Russia",       lat: 55.7558,  lon: 37.6173   },
+  { name: "Istanbul, Turkey",     lat: 41.0082,  lon: 28.9784   },
+  { name: "Cairo, Egypt",         lat: 30.0444,  lon: 31.2357   },
+  { name: "Lagos, Nigeria",       lat: 6.5244,   lon: 3.3792    },
+  { name: "Nairobi, Kenya",       lat: -1.2921,  lon: 36.8219   },
+  { name: "Cape Town, SA",        lat: -33.9249, lon: 18.4241   },
+  { name: "Dubai, UAE",           lat: 25.2048,  lon: 55.2708   },
+  { name: "Mumbai, India",        lat: 19.0760,  lon: 72.8777   },
+  { name: "Delhi, India",         lat: 28.7041,  lon: 77.1025   },
+  { name: "Bangkok, Thailand",    lat: 13.7563,  lon: 100.5018  },
+  { name: "Singapore",            lat: 1.3521,   lon: 103.8198  },
+  { name: "Shanghai, China",      lat: 31.2304,  lon: 121.4737  },
+  { name: "Beijing, China",       lat: 39.9042,  lon: 116.4074  },
+  { name: "Tokyo, Japan",         lat: 35.6762,  lon: 139.6503  },
+  { name: "Seoul, South Korea",   lat: 37.5665,  lon: 126.9780  },
+  { name: "Sydney, Australia",    lat: -33.8688, lon: 151.2093  },
+  { name: "Melbourne, Australia", lat: -37.8136, lon: 144.9631  },
+  { name: "New York, USA",        lat: 40.7128,  lon: -74.0060  },
+  { name: "Los Angeles, USA",     lat: 34.0522,  lon: -118.2437 },
+  { name: "Chicago, USA",         lat: 41.8781,  lon: -87.6298  },
+  { name: "Toronto, Canada",      lat: 43.6532,  lon: -79.3832  },
+  { name: "Mexico City",          lat: 19.4326,  lon: -99.1332  },
+  { name: "Sao Paulo, Brazil",    lat: -23.5505, lon: -46.6333  },
+  { name: "Buenos Aires",         lat: -34.6037, lon: -58.3816  },
+  { name: "Reykjavik, Iceland",   lat: 64.1466,  lon: -21.9426  },
+  { name: "Karachi, Pakistan",    lat: 24.8607,  lon: 67.0011   },
+  { name: "Dhaka, Bangladesh",    lat: 23.8103,  lon: 90.4125   },
+  { name: "Riyadh, Saudi Arabia", lat: 24.6877,  lon: 46.7219   },
+  { name: "Anchorage, USA",       lat: 61.2181,  lon: -149.9003 },
+  { name: "Ulaanbaatar, Mongolia",lat: 47.8864,  lon: 106.9057  },
+  { name: "Jakarta, Indonesia",   lat: -6.2088,  lon: 106.8456  },
+  { name: "Osaka, Japan",         lat: 34.6937,  lon: 135.5023  },
+  { name: "Kolkata, India",       lat: 22.5726,  lon: 88.3639   },
+  { name: "Almaty, Kazakhstan",   lat: 43.2220,  lon: 76.8512   },
+];
+
+function buildMilestones() {
+  const list = document.getElementById('milestone-list');
+  let lastReached = -1;
+  milestones.forEach((m, i) => { if (TOTAL_KM >= m.km) lastReached = i; });
+  const currentIdx = lastReached + 1;
+
+  milestones.forEach((m, i) => {
+    const reached   = i <= lastReached;
+    const isCurrent = i === currentIdx;
+    const div = document.createElement('div');
+    div.className = 'ms-item' + (reached ? ' reached' : '') + (isCurrent ? ' is-current' : '');
+    const line = i < milestones.length - 1 ? '<div class="ms-connector"></div>' : '';
+    const kmLabel = m.km >= 1000 ? (m.km/1000).toFixed(1)+'k km' : m.km+' km';
+    div.innerHTML = `
+      ${line}
+      <div class="ms-dot"></div>
+      <div class="ms-content">
+        <div class="ms-name">${m.name}</div>
+        <div class="ms-meta">
+          <span>${kmLabel}</span>
+          ${reached    ? `<span class="date">wk ${i+2}</span>` : ''}
+          ${isCurrent  ? '<span class="curr">current</span>' : ''}
+        </div>
+      </div>`;
+    list.appendChild(div);
+  });
+
+  setTimeout(() => {
+    const el = list.querySelector('.is-current');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 600);
+}
+
+function buildLeaderboard() {
+  const c = document.getElementById('lb-list');
+  const max = leaderboard[0].ropes;
+  const rankLabels = ['i','ii','iii'];
+  leaderboard.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'lb-item';
+    const barW = Math.round((p.ropes / max) * 100);
+    div.innerHTML = `
+      <div class="lb-rank ${rankLabels[i]||''}">${i+1}</div>
+      <div class="lb-name ${p.me?'me':''}">${p.name}</div>
+      <div class="lb-bar-wrap"><div class="lb-bar" style="width:${barW}%"></div></div>
+      <div class="lb-count">${p.ropes.toLocaleString()}</div>`;
+    c.appendChild(div);
+  });
+}
+
+function setMode(mode) {
+  traceMode = mode;
+  document.getElementById('btn-current').classList.toggle('active', mode==='current');
+  document.getElementById('btn-potential').classList.toggle('active', mode==='potential');
+  const note = mode === 'current'
+    ? `${TOTAL_KM.toFixed(2)} km traced`
+    : `${Math.round(POTENTIAL_KM).toLocaleString()} km traced`;
+  document.getElementById('mode-note').textContent = note;
+}
+
+// ─── GLOBE ──────────────────────────────────────────────────
+let projection, svgEl, pathGen, landDatum;
+let selectedCity = cities[0];
+
+function initGlobe() {
+  const S = 500;
+  svgEl = d3.select('#globe-svg');
+
+  projection = d3.geoOrthographic()
+    .scale(220).translate([S/2, S/2])
+    .clipAngle(90).rotate([0, -20]);
+
+  pathGen = d3.geoPath().projection(projection);
+
+  // ocean - aged vellum blue
+  svgEl.append('circle').attr('cx',S/2).attr('cy',S/2).attr('r',220)
+    .attr('fill','#d4dde8').attr('stroke','rgba(92,62,24,0.15)').attr('stroke-width',1);
+
+  // graticule
+  svgEl.append('path').datum(d3.geoGraticule()())
+    .attr('class','grat').attr('d', pathGen)
+    .attr('fill','none').attr('stroke','rgba(92,62,24,0.1)').attr('stroke-width',0.4);
+
+  // equator
+  const eq = {type:'LineString', coordinates: Array.from({length:361},(_,i)=>[i-180,0])};
+  svgEl.append('path').datum(eq)
+    .attr('class','equator').attr('d', pathGen)
+    .attr('fill','none').attr('stroke','rgba(92,62,24,0.2)').attr('stroke-width',0.7);
+
+  fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+    .then(r => r.json())
+    .then(world => {
+      landDatum = window.topojson
+        ? topojson.feature(world, world.objects.land)
+        : fallbackLand(world);
+
+      // land - aged parchment
+      svgEl.append('path').datum(landDatum)
+        .attr('class','land').attr('d', pathGen)
+        .attr('fill','#e8ddc0').attr('stroke','rgba(92,62,24,0.3)').attr('stroke-width',0.5);
+
+      // drag
+      let drag0=null, rot0=null;
+      const el = document.getElementById('globe-svg');
+      el.addEventListener('mousedown', e=>{ drag0=[e.clientX,e.clientY]; rot0=[...projection.rotate()]; });
+      el.addEventListener('mousemove', e=>{
+        if (!drag0) return;
+        projection.rotate([rot0[0]+(e.clientX-drag0[0])*0.35, rot0[1]-(e.clientY-drag0[1])*0.35]);
+        redraw();
+      });
+      el.addEventListener('mouseup',    ()=>{ drag0=null; });
+      el.addEventListener('mouseleave', ()=>{ drag0=null; });
+
+      drawOriginDot(cities[0]);
+    })
+    .catch(() => {
+      svgEl.append('text').attr('x',250).attr('y',256).attr('text-anchor','middle')
+        .attr('fill','rgba(92,62,24,0.3)').attr('font-size','11px')
+        .attr('font-family','Crimson Pro,serif').attr('font-style','italic')
+        .text('drag to rotate the globe');
+    });
+}
+
+function fallbackLand(topology) {
+  const arcs=topology.arcs, sc=topology.transform.scale, tr=topology.transform.translate;
+  function dec(arc){let x=0,y=0; return arc.map(([dx,dy])=>{x+=dx;y+=dy; return[x*sc[0]+tr[0],y*sc[1]+tr[1]];});}
+  const features = topology.objects.land.geometries.map(g=>{
+    const ring = r=>r.flatMap(i=>{const a=i>=0?arcs[i]:arcs[~i].slice().reverse(); return dec(a);});
+    if(g.type==='Polygon')      return{type:'Feature',geometry:{type:'Polygon',      coordinates:g.arcs.map(r=>r.flatMap(i=>{const a=i>=0?arcs[i]:arcs[~i].slice().reverse();return dec(a);}))}};
+    if(g.type==='MultiPolygon') return{type:'Feature',geometry:{type:'MultiPolygon', coordinates:g.arcs.map(p=>p.map(r=>r.flatMap(i=>{const a=i>=0?arcs[i]:arcs[~i].slice().reverse();return dec(a);})))}};
+    return null;
+  }).filter(Boolean);
+  return {type:'FeatureCollection',features};
+}
+
+function redraw() {
+  svgEl.selectAll('.grat').attr('d', pathGen(d3.geoGraticule()()));
+  svgEl.selectAll('.equator').attr('d', function(){ return pathGen(d3.select(this).datum()); });
+  if (landDatum) svgEl.selectAll('.land').attr('d', pathGen(landDatum));
+  svgEl.selectAll('.arc-path').attr('d', function(){ return pathGen(d3.select(this).datum()); });
+  reposDot('.origin-dot');
+  reposDot('.end-dot');
+}
+
+function reposDot(cls) {
+  svgEl.selectAll(cls).each(function(){
+    const d = d3.select(this).datum();
+    if (!d) return;
+    const p = projection([d.lon, d.lat]);
+    d3.select(this).attr('opacity', p?1:0);
+    if (p) d3.select(this).attr('cx',p[0]).attr('cy',p[1]);
+  });
+}
+
+function drawOriginDot(city) {
+  svgEl.selectAll('.origin-dot').remove();
+  const p = projection([city.lon, city.lat]);
+  if (!p) return;
+  svgEl.append('circle').datum(city)
+    .attr('class','origin-dot')
+    .attr('cx',p[0]).attr('cy',p[1]).attr('r',5)
+    .attr('fill','#5c3e18').attr('stroke','#f2ead8').attr('stroke-width',1.5);
+}
+
+function destinationPoint(lat, lon, bearing, distKm) {
+  const R=6371, d=distKm/R, b=(bearing*Math.PI)/180;
+  const phi1=(lat*Math.PI)/180, lam1=(lon*Math.PI)/180;
+  const phi2=Math.asin(Math.sin(phi1)*Math.cos(d)+Math.cos(phi1)*Math.sin(d)*Math.cos(b));
+  const lam2=lam1+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(phi1),Math.cos(d)-Math.sin(phi1)*Math.sin(phi2));
+  return {lat:(phi2*180)/Math.PI, lon:((lam2*180)/Math.PI+540)%360-180};
+}
+
+function nearestCity(lat, lon) {
+  return cities.reduce((best,c)=>{
+    const d=Math.hypot(c.lat-lat,c.lon-lon);
+    return d<best.d?{c,d}:best;
+  },{c:cities[0],d:Infinity}).c;
+}
+
+function traceRope() {
+  const bearing = parseInt(document.getElementById('bearing-select').value);
+  const distKm  = traceMode==='current' ? TOTAL_KM : POTENTIAL_KM;
+  const dest    = destinationPoint(selectedCity.lat, selectedCity.lon, bearing, distKm);
+  const nearest = nearestCity(dest.lat, dest.lon);
+
+  svgEl.selectAll('.arc-path,.end-dot').remove();
+
+  const midLon = (selectedCity.lon+dest.lon)/2;
+  const midLat = (selectedCity.lat+dest.lat)/2;
+  projection.rotate([-midLon, -midLat*0.6]);
+  redraw();
+
+  svgEl.append('path')
+    .datum({type:'LineString',coordinates:[[selectedCity.lon,selectedCity.lat],[dest.lon,dest.lat]]})
+    .attr('class','arc-path').attr('d',pathGen)
+    .attr('fill','none').attr('stroke','#5c3e18').attr('stroke-width',1.8)
+    .attr('stroke-dasharray','5 3').attr('opacity',0.8);
+
+  const ep = projection([dest.lon, dest.lat]);
+  if (ep) {
+    svgEl.append('circle').datum({lon:dest.lon,lat:dest.lat})
+      .attr('class','end-dot')
+      .attr('cx',ep[0]).attr('cy',ep[1]).attr('r',5)
+      .attr('fill',traceMode==='potential'?'#8a6030':'#5c3e18')
+      .attr('stroke','#f2ead8').attr('stroke-width',1.5).attr('opacity',0.9);
+  }
+
+  drawOriginDot(selectedCity);
+
+  const dirNames={0:'North',45:'NE',90:'East',135:'SE',180:'South',225:'SW',270:'West',315:'NW'};
+  document.getElementById('rope-result').innerHTML = `
+    <div class="rr-mode">${traceMode==='current'?'Collected distance':'Full potential'}</div>
+    <div class="rr-from">From ${selectedCity.name}, heading ${dirNames[bearing]}</div>
+    <div class="rr-dest">${nearest.name}</div>
+    <div class="rr-stats-row">
+      <span><strong>${Math.round(distKm).toLocaleString()} km</strong></span>
+      <span><strong>${((distKm/40075)*100).toFixed(1)}%</strong> of Earth</span>
+      <span><strong>${(traceMode==='current'?TOTAL_ROPES:GAME_ROPES).toLocaleString()}</strong> ropes</span>
+    </div>`;
+}
+
+function filterCities(val) {
+  const list = document.getElementById('city-list');
+  if (!val||val.length<2){list.style.display='none';return;}
+  const matches = cities.filter(c=>c.name.toLowerCase().includes(val.toLowerCase())).slice(0,7);
+  if (!matches.length){list.style.display='none';return;}
+  list.innerHTML='';
+  matches.forEach(c=>{
+    const div=document.createElement('div');
+    div.className='autocomplete-item';
+    div.textContent=c.name;
+    div.onclick=()=>{
+      selectedCity=c;
+      document.getElementById('city-input').value=c.name;
+      list.style.display='none';
+      drawOriginDot(c);
+    };
+    list.appendChild(div);
+  });
+  list.style.display='block';
+}
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.autocomplete-wrap'))
+    document.getElementById('city-list').style.display='none';
+});
+
+const topoScript=document.createElement('script');
+topoScript.src='https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js';
+topoScript.onload=initGlobe;
+document.head.appendChild(topoScript);
+
+buildMilestones();
+buildLeaderboard();
+
+let fakeCount=TOTAL_ROPES;
+setInterval(()=>{
+  if(Math.random()>0.65){
+    fakeCount+=Math.floor(Math.random()*3)+1;
+    document.getElementById('live-count').textContent=fakeCount.toLocaleString();
+    document.getElementById('live-time').textContent='just now';
+  } else {
+    document.getElementById('live-time').textContent=Math.floor(Math.random()*4)+1+'m ago';
+  }
+},5000);
+</script>
+</body>
+</html>
