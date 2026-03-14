@@ -1064,6 +1064,14 @@ function drawOriginDot(city) {
     .attr('fill','#5c3e18').attr('stroke','#f2ead8').attr('stroke-width',1.5);
 }
 
+function haversineDist(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
 function destinationPoint(lat, lon, bearing, distKm) {
   const R=6371, d=distKm/R, b=(bearing*Math.PI)/180;
   const phi1=(lat*Math.PI)/180, lam1=(lon*Math.PI)/180;
@@ -1074,7 +1082,7 @@ function destinationPoint(lat, lon, bearing, distKm) {
 
 function nearestCity(lat, lon) {
   return cities.reduce((best,c)=>{
-    const d=Math.hypot(c.lat-lat,c.lon-lon);
+    const d = haversineDist(lat, lon, c.lat, c.lon);
     return d<best.d?{c,d}:best;
   },{c:cities[0],d:Infinity}).c;
 }
@@ -1087,9 +1095,8 @@ function traceRope() {
 
   svgEl.selectAll('.arc-path,.end-dot').remove();
 
-  const midLon = (selectedCity.lon+dest.lon)/2;
-  const midLat = (selectedCity.lat+dest.lat)/2;
-  projection.rotate([-midLon, -midLat*0.6]);
+  // rotate to show the destination clearly
+  projection.rotate([-dest.lon, -dest.lat * 0.5]);
   redraw();
 
   svgEl.append('path')
