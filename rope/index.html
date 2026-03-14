@@ -173,9 +173,9 @@
 
   .stat-label {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 8px;
-    letter-spacing: 0.2em;
-    color: var(--ink-faint);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--ink-mid);
     text-transform: uppercase;
     margin-bottom: 3px;
   }
@@ -183,16 +183,16 @@
   .stat-value {
     font-family: 'Playfair Display', serif;
     font-weight: 700;
-    font-size: 22px;
+    font-size: 26px;
     color: var(--ink);
     line-height: 1;
     letter-spacing: -0.01em;
   }
 
   .stat-sub {
-    font-size: 10px;
+    font-size: 12px;
     color: var(--ink-light);
-    margin-top: 1px;
+    margin-top: 2px;
     font-style: italic;
   }
 
@@ -200,7 +200,7 @@
   .body-grid {
     flex: 1;
     display: grid;
-    grid-template-columns: 240px 1fr 240px;
+    grid-template-columns: 300px 1fr 300px;
     min-height: 0;
     position: relative;
     z-index: 5;
@@ -224,11 +224,11 @@
   .panel-heading {
     font-family: 'Playfair Display', serif;
     font-weight: 700;
-    font-size: 11px;
-    color: var(--ink-mid);
-    letter-spacing: 0.15em;
+    font-size: 14px;
+    color: var(--ink);
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    padding-bottom: 8px;
+    padding-bottom: 10px;
     border-bottom: 1px solid var(--rule);
     display: flex;
     align-items: center;
@@ -262,27 +262,27 @@
 
   .ms-current-label {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 8px;
+    font-size: 10px;
     letter-spacing: 0.2em;
-    color: var(--ink-faint);
+    color: var(--ink-mid);
     text-transform: uppercase;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
   }
 
   .ms-current-name {
     font-family: 'Playfair Display', serif;
     font-weight: 700;
-    font-size: 13px;
+    font-size: 17px;
     color: var(--ink);
     line-height: 1.2;
-    margin-bottom: 2px;
+    margin-bottom: 3px;
   }
 
   .ms-current-dist {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 9px;
-    color: var(--ink-light);
-    margin-bottom: 8px;
+    font-size: 11px;
+    color: var(--ink-mid);
+    margin-bottom: 10px;
   }
 
   .progress-track {
@@ -313,8 +313,8 @@
     display: flex;
     justify-content: space-between;
     font-family: 'Share Tech Mono', monospace;
-    font-size: 8px;
-    color: var(--ink-faint);
+    font-size: 10px;
+    color: var(--ink-mid);
     margin-top: 6px;
   }
 
@@ -387,26 +387,26 @@
 
   .ms-name {
     font-family: 'Crimson Pro', serif;
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 400;
-    color: var(--ink-light);
+    color: var(--ink-mid);
     line-height: 1.3;
   }
 
-  .ms-item.reached .ms-name { color: var(--ink-mid); font-weight: 500; }
-  .ms-item.is-current .ms-name { color: var(--ink); font-weight: 500; }
+  .ms-item.reached .ms-name { color: var(--ink); font-weight: 500; }
+  .ms-item.is-current .ms-name { color: var(--ink); font-weight: 600; }
 
   .ms-meta {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 8px;
-    color: var(--ink-faint);
-    margin-top: 1px;
+    font-size: 10px;
+    color: var(--ink-light);
+    margin-top: 2px;
     display: flex;
     gap: 8px;
   }
 
-  .ms-meta .date { color: var(--sepia-light); }
-  .ms-meta .curr { color: var(--sepia-dark); font-style: italic; font-family: 'Crimson Pro', serif; font-size: 9px; }
+  .ms-meta .date { color: var(--sepia); }
+  .ms-meta .curr { color: var(--sepia-dark); font-style: italic; font-family: 'Crimson Pro', serif; font-size: 11px; }
 
   /* ─── LEADERBOARD ─── */
   .lb-scroll {
@@ -430,9 +430,9 @@
   .lb-rank {
     font-family: 'Playfair Display', serif;
     font-weight: 700;
-    font-size: 11px;
-    color: var(--ink-faint);
-    width: 16px;
+    font-size: 13px;
+    color: var(--ink-light);
+    width: 20px;
     flex-shrink: 0;
     text-align: right;
     font-style: italic;
@@ -444,8 +444,8 @@
 
   .lb-name {
     font-family: 'Crimson Pro', serif;
-    font-size: 13px;
-    color: var(--ink-light);
+    font-size: 16px;
+    color: var(--ink-mid);
     flex: 1;
     white-space: nowrap;
     overflow: hidden;
@@ -454,11 +454,11 @@
 
   .lb-name.me {
     color: var(--sepia-dark);
-    font-weight: 500;
+    font-weight: 600;
   }
 
   .lb-bar-wrap {
-    width: 40px; height: 2px;
+    width: 48px; height: 3px;
     background: var(--cream-deep);
     flex-shrink: 0;
   }
@@ -467,9 +467,9 @@
 
   .lb-count {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    color: var(--ink-mid);
-    min-width: 36px;
+    font-size: 12px;
+    color: var(--ink);
+    min-width: 40px;
     text-align: right;
     flex-shrink: 0;
   }
@@ -481,9 +481,19 @@
     align-items: center;
     justify-content: flex-start;
     padding: 12px 16px;
-    gap: 10px;
+    gap: 8px;
     overflow: hidden;
   }
+
+  .globe-top-controls {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .globe-top-controls .field-group { flex: 1; }
 
   /* mode toggle */
   .mode-toggle {
@@ -495,15 +505,16 @@
 
   .mode-btn {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 0.12em;
+    font-size: 10px;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    padding: 5px 12px;
+    padding: 7px 12px;
     cursor: pointer;
     border: none;
     background: transparent;
-    color: var(--ink-faint);
+    color: var(--ink-light);
     transition: all 0.2s;
+    white-space: nowrap;
   }
 
   .mode-btn.active {
@@ -513,43 +524,31 @@
 
   .mode-divider { width: 1px; background: var(--rule); }
 
-  .mode-note {
-    font-family: 'Crimson Pro', serif;
-    font-size: 11px;
-    font-style: italic;
-    color: var(--ink-light);
-    text-align: center;
-    flex-shrink: 0;
-  }
-
   #globe-svg {
-    flex: 1;
     width: 100%;
-    max-width: 100%;
+    max-width: 340px;
     cursor: grab;
-    min-height: 0;
+    flex-shrink: 0;
   }
 
   #globe-svg:active { cursor: grabbing; }
 
-  /* globe controls row */
-  .globe-controls {
+  .globe-bottom-controls {
     display: flex;
     gap: 8px;
     align-items: flex-end;
+    width: 100%;
     flex-shrink: 0;
     flex-wrap: wrap;
-    justify-content: center;
-    width: 100%;
   }
 
   .field-group { display: flex; flex-direction: column; gap: 4px; }
 
   .field-label {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 8px;
+    font-size: 10px;
     letter-spacing: 0.15em;
-    color: var(--ink-faint);
+    color: var(--ink-mid);
     text-transform: uppercase;
   }
 
@@ -558,11 +557,11 @@
     border: 1px solid var(--rule);
     color: var(--ink);
     font-family: 'Crimson Pro', serif;
-    font-size: 13px;
-    padding: 5px 10px;
+    font-size: 15px;
+    padding: 6px 10px;
     outline: none;
     transition: border-color 0.2s;
-    width: 160px;
+    width: 100%;
   }
 
   .field-input:focus { border-color: var(--sepia); }
@@ -572,12 +571,12 @@
     border: 1px solid var(--rule);
     color: var(--ink);
     font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    padding: 5px 10px;
+    font-size: 11px;
+    padding: 6px 10px;
     outline: none;
     cursor: pointer;
     appearance: none;
-    width: 120px;
+    width: 130px;
   }
 
   .btn-trace {
@@ -586,12 +585,13 @@
     color: var(--cream);
     font-family: 'Playfair Display', serif;
     font-weight: 700;
-    font-size: 12px;
+    font-size: 14px;
     letter-spacing: 0.05em;
-    padding: 6px 16px;
+    padding: 7px 18px;
     cursor: pointer;
     transition: all 0.2s;
     font-style: italic;
+    white-space: nowrap;
   }
 
   .btn-trace:hover { background: var(--sepia); border-color: var(--sepia); }
@@ -607,24 +607,24 @@
 
   .rr-mode {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 8px;
-    letter-spacing: 0.18em;
-    color: var(--ink-faint);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--ink-mid);
     text-transform: uppercase;
     margin-bottom: 3px;
   }
 
   .rr-from {
-    font-size: 11px;
+    font-size: 13px;
     font-style: italic;
-    color: var(--ink-light);
+    color: var(--ink-mid);
     margin-bottom: 2px;
   }
 
   .rr-dest {
     font-family: 'Playfair Display', serif;
     font-weight: 700;
-    font-size: 16px;
+    font-size: 20px;
     color: var(--ink);
     line-height: 1.2;
   }
@@ -634,17 +634,17 @@
     gap: 16px;
     margin-top: 6px;
     font-family: 'Share Tech Mono', monospace;
-    font-size: 9px;
-    color: var(--ink-faint);
+    font-size: 11px;
+    color: var(--ink-light);
     flex-wrap: wrap;
   }
 
   .rr-stats-row strong { color: var(--sepia-dark); }
 
   .rr-empty {
-    font-size: 12px;
+    font-size: 13px;
     font-style: italic;
-    color: var(--ink-faint);
+    color: var(--ink-mid);
   }
 
   /* autocomplete */
@@ -769,25 +769,29 @@
   <!-- CENTRE: GLOBE -->
   <div class="globe-centre">
 
-    <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;width:100%;justify-content:center;">
-      <div class="mode-toggle">
-        <button class="mode-btn active" id="btn-current" onclick="setMode('current')">Collected</button>
-        <div class="mode-divider"></div>
-        <button class="mode-btn" id="btn-potential" onclick="setMode('potential')">Full Potential</button>
+    <!-- top row: city search + mode toggle -->
+    <div class="globe-top-controls">
+      <div class="field-group">
+        <div class="field-label">Starting city</div>
+        <div class="autocomplete-wrap">
+          <input class="field-input" id="city-input" type="text" placeholder="e.g. London, Tokyo, New York…" autocomplete="off" oninput="filterCities(this.value)" />
+          <div class="autocomplete-list" id="city-list" style="display:none"></div>
+        </div>
       </div>
-      <div class="mode-note" id="mode-note">143.82 km traced</div>
+      <div class="field-group">
+        <div class="field-label">Mode</div>
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="btn-current" onclick="setMode('current')">Collected</button>
+          <div class="mode-divider"></div>
+          <button class="mode-btn" id="btn-potential" onclick="setMode('potential')">Full Potential</button>
+        </div>
+      </div>
     </div>
 
     <svg id="globe-svg" viewBox="0 0 500 500"></svg>
 
-    <div class="globe-controls">
-      <div class="field-group">
-        <div class="field-label">Starting city</div>
-        <div class="autocomplete-wrap">
-          <input class="field-input" id="city-input" type="text" placeholder="e.g. London" autocomplete="off" oninput="filterCities(this.value)" />
-          <div class="autocomplete-list" id="city-list" style="display:none"></div>
-        </div>
-      </div>
+    <!-- bottom row: direction + trace -->
+    <div class="globe-bottom-controls">
       <div class="field-group">
         <div class="field-label">Direction</div>
         <select class="field-select" id="bearing-select">
@@ -801,11 +805,12 @@
           <option value="315">North-West</option>
         </select>
       </div>
-      <button class="btn-trace" onclick="traceRope()">Trace</button>
-    </div>
-
-    <div class="rope-result" id="rope-result">
-      <div class="rr-empty">Choose a city and direction, then trace the rope.</div>
+      <div style="display:flex;align-items:flex-end;">
+        <button class="btn-trace" onclick="traceRope()">Trace Rope</button>
+      </div>
+      <div class="rope-result" id="rope-result" style="flex:1;min-width:0;">
+        <div class="rr-empty">Choose a city and direction, then trace the rope.</div>
+      </div>
     </div>
 
   </div>
