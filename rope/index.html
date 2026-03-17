@@ -716,17 +716,17 @@
 <div class="stats-row">
   <div class="stat">
     <div class="stat-label">Total Length</div>
-    <div class="stat-value">143.82<span style="font-size:13px;font-weight:400"> km</span></div>
+    <div class="stat-value" id="stat-length">143.82<span style="font-size:13px;font-weight:400"> km</span></div>
     <div class="stat-sub">143,820 metres of rope</div>
   </div>
   <div class="stat">
     <div class="stat-label">Ropes Received</div>
-    <div class="stat-value">14,382</div>
+    <div class="stat-value" id="stat-ropes">14,382</div>
     <div class="stat-sub">10 m per rope item</div>
   </div>
   <div class="stat">
     <div class="stat-label">Contributors</div>
-    <div class="stat-value">847</div>
+    <div class="stat-value" id="stat-contributors">847</div>
     <div class="stat-sub">unique Torn citizens</div>
   </div>
   <div class="stat">
@@ -745,14 +745,14 @@
 
     <div class="ms-current">
       <div class="ms-current-label">Current target</div>
-      <div class="ms-current-name">Width of Belgium</div>
-      <div class="ms-current-dist">280 km · 28,000 ropes needed</div>
+      <div class="ms-current-name" id="ms-current-name">Width of Belgium</div>
+      <div class="ms-current-dist" id="ms-current-dist">280 km · 28,000 ropes needed</div>
       <div class="progress-track">
-        <div class="progress-fill" style="width:51.4%"></div>
+        <div class="progress-fill" id="ms-progress-fill" style="width:51.4%"></div>
       </div>
       <div class="progress-labels">
-        <span>143.82 km</span>
-        <span class="pct">51.4%</span>
+        <span id="ms-progress-left">143.82 km</span>
+        <span class="pct" id="ms-progress-right">51.4%</span>
       </div>
     </div>
 
@@ -815,27 +815,24 @@
 </div>
 
 <script>
-const TOTAL_ROPES  = 14382;
-const TOTAL_KM     = TOTAL_ROPES * 10 / 1000;
+// ── Live data config ─────────────────────────────────────────
+// Paste the URL from "Rope Project > 3. Get Frontend URL" here.
+const SUMMARY_CSV_URL = "https://docs.google.com/spreadsheets/d/1JL_ypdvKBl6XA2IRHnRPZYG21BfTJdJWc61rQuWNFQ8/export?format=csv&gid=1701398289";
+
+// ── Game constants ───────────────────────────────────────────
 const GAME_ROPES   = 2777340;
 const POTENTIAL_KM = GAME_ROPES * 10 / 1000;
 
+// ── Live data (populated from CSV if URL is set) ─────────────
+let TOTAL_ROPES  = 14382;
+let TOTAL_KM     = TOTAL_ROPES * 10 / 1000;
+let CONTRIBUTORS = 847;
+let LAST_UPDATED = null;
+
 let traceMode = 'current';
 
-const milestones = [
-  { name: "Width of Belgium",              km: 280   },
-  { name: "Length of the Thames",          km: 346   },
-  { name: "Length of New Zealand",         km: 1600  },
-  { name: "Width of Australia",            km: 4000  },
-  { name: "Length of the Nile",            km: 6650  },
-  { name: "Length of the Amazon",          km: 6992  },
-  { name: "Trans-Siberian Railway",        km: 9289  },
-  { name: "Width of Africa",               km: 7400  },
-  { name: "Length of the Great Wall",      km: 21196 },
-  { name: "Max: if all Torn ropes sent",   km: 27773 },
-];
-
-const leaderboard = [
+// ── Dummy leaderboard (replaced by live data) ────────────────
+let leaderboard = [
   { name: "RopeKing_88",  ropes: 1420 },
   { name: "Systoned",     ropes: 980,  me: true },
   { name: "CordMaster",   ropes: 750  },
@@ -851,6 +848,114 @@ const leaderboard = [
   { name: "FiberOptic",   ropes: 210  },
   { name: "LoopHole",     ropes: 190  },
   { name: "TwineTime",    ropes: 170  },
+];
+
+// ── Fetch and parse live CSV ─────────────────────────────────
+async function loadLiveData() {
+  if (!SUMMARY_CSV_URL) return;
+
+  try {
+    // Google Sheets export URLs redirect — need to follow redirects
+    const res = await fetch(SUMMARY_CSV_URL, { redirect: 'follow' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+
+    // Parse CSV — handle quoted fields
+    function parseCSVRow(row) {
+      const result = [];
+      let cur = '', inQuote = false;
+      for (let i = 0; i < row.length; i++) {
+        if (row[i] === '"') { inQuote = !inQuote; }
+        else if (row[i] === ',' && !inQuote) { result.push(cur.trim()); cur = ''; }
+        else { cur += row[i]; }
+      }
+      result.push(cur.trim());
+      return result;
+    }
+
+    const rows = text.trim().split("\n").map(parseCSVRow);
+
+    const summary = {};
+    let lbStart = -1;
+    for (let i = 0; i < rows.length; i++) {
+      if (rows[i][0] === "rank") { lbStart = i + 1; break; }
+      if (rows[i][0]) summary[rows[i][0]] = rows[i][1];
+    }
+
+    if (summary.total_ropes)         TOTAL_ROPES  = parseInt(summary.total_ropes);
+    if (summary.total_km)            TOTAL_KM     = parseFloat(summary.total_km);
+    if (summary.unique_contributors) CONTRIBUTORS = parseInt(summary.unique_contributors);
+    if (summary.last_updated)        LAST_UPDATED = summary.last_updated;
+
+    if (lbStart > -1) {
+      leaderboard = rows.slice(lbStart)
+        .filter(r => r[0] && r[1])
+        .map(r => ({ name: r[1], ropes: parseInt(r[2]) }));
+    }
+
+    updateStats();
+    document.getElementById('lb-list').innerHTML = '';
+    buildLeaderboard();
+    updateCurrentMilestone();
+
+  } catch (e) {
+    console.warn("Could not load live data, using dummy values:", e);
+  }
+}
+
+// ── Update stat cards with current data ─────────────────────
+function updateStats() {
+  const kmStr = TOTAL_KM >= 1000
+    ? (TOTAL_KM/1000).toFixed(2) + 'k'
+    : TOTAL_KM.toFixed(2);
+
+  document.getElementById('stat-length').innerHTML =
+    `${kmStr}<span style="font-size:13px;font-weight:400"> km</span>`;
+  document.getElementById('stat-ropes').textContent =
+    TOTAL_ROPES.toLocaleString();
+  document.getElementById('stat-contributors').textContent =
+    CONTRIBUTORS.toLocaleString();
+  document.getElementById('live-count').textContent =
+    TOTAL_ROPES.toLocaleString();
+  if (LAST_UPDATED) {
+    const d = new Date(LAST_UPDATED);
+    document.getElementById('live-time').textContent =
+      d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+}
+
+// ── Update current milestone block ──────────────────────────
+function updateCurrentMilestone() {
+  let lastReached = -1;
+  milestones.forEach((m, i) => { if (TOTAL_KM >= m.km) lastReached = i; });
+  const target = milestones[lastReached + 1];
+  if (!target) return;
+
+  const pct = Math.min(100, (TOTAL_KM / target.km * 100)).toFixed(1);
+  const remaining = (target.km - TOTAL_KM).toFixed(1);
+  const kmLabel = target.km >= 1000 ? (target.km/1000).toFixed(1)+'k km' : target.km+' km';
+
+  document.getElementById('ms-current-name').textContent = target.name;
+  document.getElementById('ms-current-dist').textContent =
+    `${kmLabel} total · ${Math.ceil(target.km / 10 * 100).toLocaleString()} ropes needed`;
+  document.getElementById('ms-progress-fill').style.width = pct + '%';
+  document.getElementById('ms-progress-left').textContent =
+    `${TOTAL_KM.toFixed(2)} km`;
+  document.getElementById('ms-progress-right').textContent =
+    `${pct}%`;
+}
+
+const milestones = [
+  { name: "Width of Belgium",             km: 280   },
+  { name: "Length of the Thames",         km: 346   },
+  { name: "Length of New Zealand",        km: 1600  },
+  { name: "Width of Australia",           km: 4000  },
+  { name: "Length of the Nile",           km: 6650  },
+  { name: "Length of the Amazon",         km: 6992  },
+  { name: "Width of Africa",              km: 7400  },
+  { name: "Trans-Siberian Railway",       km: 9289  },
+  { name: "Length of the Great Wall",     km: 21196 },
+  { name: "Max: all Torn ropes sent",     km: 27773 },
 ];
 
 const cities = [
@@ -1157,17 +1262,7 @@ document.head.appendChild(topoScript);
 
 buildMilestones();
 buildLeaderboard();
-
-let fakeCount=TOTAL_ROPES;
-setInterval(()=>{
-  if(Math.random()>0.65){
-    fakeCount+=Math.floor(Math.random()*3)+1;
-    document.getElementById('live-count').textContent=fakeCount.toLocaleString();
-    document.getElementById('live-time').textContent='just now';
-  } else {
-    document.getElementById('live-time').textContent=Math.floor(Math.random()*4)+1+'m ago';
-  }
-},5000);
+loadLiveData(); // fetches CSV if SUMMARY_CSV_URL is set, otherwise uses dummy data
 </script>
 </body>
 </html>
