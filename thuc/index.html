@@ -1,0 +1,1593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>THUC Poker Tournament</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1115;
+      --surface: #1a1d24;
+      --surface-2: #22262e;
+      --surface-3: #282c35;
+      --border: #2e333d;
+      --border-light: #3a404d;
+      --text: #e2e4e9;
+      --text-muted: #8b8f99;
+      --text-dim: #555963;
+      --accent: #e8a832;
+      --accent-dim: #c48a1a;
+      --accent-glow: rgba(232, 168, 50, 0.08);
+      --red: #d94848;
+      --green: #3dba6a;
+      --green-dim: #2d9452;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-body: 'DM Sans', sans-serif;
+
+      --match-w: 210px;
+      --round-gap: 56px;
+      --connector-color: #2e333d;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: auto;
+    }
+
+    /* --- HEADER --- */
+    .header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 100;
+    }
+
+    .header h1 {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-rules {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 4px;
+      border: 1px solid var(--border-light);
+      background: var(--surface-2);
+      color: var(--text-muted);
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .btn-rules:hover {
+      border-color: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .status-badge {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-setup { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+    .status-active { background: rgba(61, 186, 106, 0.12); color: var(--green); border: 1px solid var(--green-dim); }
+    .status-complete { background: rgba(232, 168, 50, 0.12); color: var(--accent); border: 1px solid var(--accent-dim); }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .refresh-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    /* --- PRIZE STRIP --- */
+    .prize-strip {
+      display: flex;
+      align-items: stretch;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .prize-pool-total {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 12px 28px;
+      border-right: 1px solid var(--border);
+      background: var(--accent-glow);
+      min-width: 180px;
+    }
+
+    .prize-pool-label {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .prize-pool-amount {
+      font-family: var(--font-mono);
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+
+    .prize-pool-sub {
+      font-family: var(--font-body);
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-top: 1px;
+    }
+
+    .prize-places {
+      display: flex;
+      align-items: stretch;
+      flex: 1;
+    }
+
+    .prize-place {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 12px 28px;
+      border-right: 1px solid var(--border);
+      flex: 1;
+    }
+
+    .prize-place:last-child { border-right: none; }
+
+    .prize-place-rank {
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+
+    .prize-place-rank.gold { color: var(--accent); }
+    .prize-place-rank.silver { color: #a0a8b8; }
+    .prize-place-rank.bronze { color: #b87333; }
+
+    .prize-place-amount {
+      font-family: var(--font-mono);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .prize-place-pct {
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 1px;
+    }
+
+    .prize-info {
+      display: flex;
+      align-items: stretch;
+    }
+
+    .prize-info-item {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 12px 28px;
+      border-left: 1px solid var(--border);
+    }
+
+    .prize-info-label {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      margin-bottom: 2px;
+    }
+
+    .prize-info-value {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .prize-info-value.clickable {
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .prize-info-value.clickable:hover {
+      color: var(--accent);
+    }
+
+    .prize-info-value .donor-link {
+      border-bottom: 1px dashed var(--border-light);
+      padding-bottom: 1px;
+    }
+
+    .prize-info-value.clickable:hover .donor-link {
+      border-bottom-color: var(--accent);
+    }
+
+    /* --- CHAMPION BANNER --- */
+    .champion-banner {
+      padding: 32px;
+      text-align: center;
+      background: rgba(232, 168, 50, 0.05);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .champion-banner.hidden { display: none; }
+
+    .champion-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .champion-name {
+      font-family: var(--font-mono);
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -1px;
+    }
+
+    /* --- BRACKET CONTAINER --- */
+    .bracket-wrapper {
+      padding: 32px;
+      overflow-x: auto;
+    }
+
+    .bracket-section { margin-bottom: 56px; }
+    .bracket-section:last-child { margin-bottom: 0; }
+
+    .bracket-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-dim);
+      margin-bottom: 20px;
+      padding-left: 4px;
+    }
+
+    /* --- BRACKET ROUNDS --- */
+    .bracket-rounds {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      position: relative;
+    }
+
+    .bracket-round {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      min-width: var(--match-w);
+      position: relative;
+      padding-right: var(--round-gap);
+    }
+
+    .bracket-round:last-child { padding-right: 0; }
+
+    .round-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      text-align: center;
+      margin-bottom: 12px;
+      position: absolute;
+      top: -20px;
+      left: 0;
+      width: var(--match-w);
+    }
+
+    /* --- MATCH CARD --- */
+    .match {
+      width: var(--match-w);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      overflow: hidden;
+      margin: 8px 0;
+      position: relative;
+    }
+
+    .match.match-ready { border-color: var(--accent-dim); box-shadow: 0 0 0 1px var(--accent-dim); }
+    .match.match-complete { border-color: var(--border); }
+
+    .match-id-label {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 600;
+      color: var(--text-dim);
+      padding: 4px 8px 0;
+      text-align: right;
+    }
+
+    .match-slot {
+      display: flex;
+      align-items: center;
+      padding: 4px 8px;
+      gap: 6px;
+      min-height: 28px;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+
+    .match-slot:last-child { border-bottom: none; }
+    .match-slot.is-winner { background: rgba(61, 186, 106, 0.08); }
+    .match-slot.is-loser { opacity: 0.4; }
+
+    .match-slot-name {
+      font-size: 12px;
+      font-weight: 600;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .match-slot-name.bye { color: var(--text-dim); font-style: italic; }
+    .match-slot-name.tbd { color: var(--text-dim); font-style: italic; }
+    .match-slot-name a { color: inherit; text-decoration: none; }
+    .match-slot-name a:hover { color: var(--accent); }
+
+    .winner-indicator {
+      width: 6px;
+      height: 6px;
+      background: var(--green);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* --- SVG CONNECTORS --- */
+    .connector-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .connector-svg line { stroke: var(--connector-color); stroke-width: 1.5; }
+
+    /* --- EMPTY STATE --- */
+    .empty-state {
+      text-align: center;
+      padding: 80px 32px;
+      color: var(--text-dim);
+    }
+
+    .empty-state p { font-size: 15px; margin-bottom: 8px; }
+    .empty-state .sub { font-family: var(--font-mono); font-size: 12px; }
+
+    /* --- MODAL (shared between rules and donors) --- */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      width: 100%;
+      max-width: 620px;
+      max-height: 85vh;
+      overflow-y: auto;
+      transform: translateY(12px);
+      transition: transform 0.2s;
+    }
+
+    .modal-overlay.open .modal { transform: translateY(0); }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      z-index: 1;
+    }
+
+    .modal-header h2 {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface-2);
+      color: var(--text-muted);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .modal-close:hover { border-color: var(--border-light); color: var(--text); }
+
+    .modal-body { padding: 24px; }
+
+    .modal-section { margin-bottom: 24px; }
+    .modal-section:last-child { margin-bottom: 0; }
+
+    .modal-section-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent-dim);
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-body p {
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .modal-body p:last-child { margin-bottom: 0; }
+    .modal-body strong { color: var(--text); font-weight: 600; }
+
+    .rule-item {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    .rule-item:last-child { margin-bottom: 0; }
+
+    .rule-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-dim);
+      min-width: 20px;
+      padding-top: 2px;
+    }
+
+    .rule-text strong { color: var(--text); }
+
+    .modal-warning {
+      background: rgba(217, 72, 72, 0.08);
+      border: 1px solid rgba(217, 72, 72, 0.2);
+      border-radius: 4px;
+      padding: 12px 14px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--red);
+      margin-top: 12px;
+    }
+
+    .modal-highlight {
+      background: var(--accent-glow);
+      border: 1px solid rgba(232, 168, 50, 0.15);
+      border-radius: 4px;
+      padding: 12px 14px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    .modal-highlight strong { color: var(--accent); }
+
+    /* --- DONOR LIST IN MODAL --- */
+    .donor-list-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .donor-list-item:last-child { border-bottom: none; }
+
+    .donor-list-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .donor-list-amount {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .donor-total-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0 0;
+      margin-top: 4px;
+    }
+
+    .donor-total-label {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    .donor-total-amount {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .donor-empty {
+      font-size: 13px;
+      color: var(--text-dim);
+      padding: 12px 0;
+      text-align: center;
+    }
+
+    /* --- PODIUM (inside modal) --- */
+    .podium {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 4px;
+      margin-bottom: 24px;
+    }
+
+    .podium-place {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 160px;
+    }
+
+    .podium-rank {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .podium-1st .podium-rank { color: var(--accent); }
+    .podium-2nd .podium-rank { color: #a0a8b8; }
+    .podium-3rd .podium-rank { color: #b87333; }
+
+    .podium-player-name {
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .podium-player-name a { color: inherit; text-decoration: none; }
+    .podium-player-name a:hover { color: var(--accent); }
+
+    .podium-prize {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .podium-1st .podium-prize { color: var(--accent); }
+    .podium-2nd .podium-prize { color: #a0a8b8; }
+    .podium-3rd .podium-prize { color: #b87333; }
+
+    .podium-bar {
+      width: 100%;
+      border-radius: 4px 4px 0 0;
+    }
+
+    .podium-1st .podium-bar {
+      height: 100px;
+      background: linear-gradient(180deg, rgba(232, 168, 50, 0.25) 0%, rgba(232, 168, 50, 0.06) 100%);
+      border: 1px solid rgba(232, 168, 50, 0.3);
+      border-bottom: none;
+    }
+
+    .podium-2nd .podium-bar {
+      height: 70px;
+      background: linear-gradient(180deg, rgba(160, 168, 184, 0.18) 0%, rgba(160, 168, 184, 0.04) 100%);
+      border: 1px solid rgba(160, 168, 184, 0.2);
+      border-bottom: none;
+    }
+
+    .podium-3rd .podium-bar {
+      height: 50px;
+      background: linear-gradient(180deg, rgba(184, 115, 51, 0.18) 0%, rgba(184, 115, 51, 0.04) 100%);
+      border: 1px solid rgba(184, 115, 51, 0.2);
+      border-bottom: none;
+    }
+
+    /* --- STANDINGS TABLE --- */
+    .standings-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .standings-table th {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .standings-table td {
+      font-size: 13px;
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .standings-table tr:last-child td { border-bottom: none; }
+
+    .standings-table td.st-rank {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-dim);
+      width: 40px;
+    }
+
+    .standings-table td.st-name {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .standings-table td.st-name a { color: inherit; text-decoration: none; }
+    .standings-table td.st-name a:hover { color: var(--accent); }
+
+    .st-prize-inline {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-left: 6px;
+    }
+
+    .st-status-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .st-status-champion {
+      background: rgba(232, 168, 50, 0.12);
+      color: var(--accent);
+      border: 1px solid var(--accent-dim);
+    }
+
+    .st-status-active {
+      background: rgba(61, 186, 106, 0.1);
+      color: var(--green);
+      border: 1px solid var(--green-dim);
+    }
+
+    .st-status-eliminated {
+      background: var(--surface-2);
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+
+    .st-row-1st td.st-rank { color: var(--accent); }
+    .st-row-2nd td.st-rank { color: #a0a8b8; }
+    .st-row-3rd td.st-rank { color: #b87333; }
+
+    /* --- FOOTER --- */
+    .site-footer {
+      padding: 20px 32px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .site-footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .site-footer a:hover {
+      color: var(--accent);
+    }
+
+    /* --- MOBILE --- */
+    @media (max-width: 768px) {
+      .header {
+        padding: 14px 16px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .header h1 { font-size: 15px; }
+      .header-right { gap: 8px; }
+      .btn-rules { font-size: 10px; padding: 5px 10px; }
+
+      .prize-strip { flex-direction: column; }
+
+      .prize-pool-total {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding: 14px 16px;
+        min-width: unset;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .prize-pool-amount { font-size: 18px; }
+
+      .prize-places { flex-direction: row; }
+
+      .prize-place {
+        padding: 10px 12px;
+        align-items: center;
+        text-align: center;
+        flex: 1;
+      }
+
+      .prize-place-amount { font-size: 13px; }
+
+      .prize-info {
+        flex-wrap: wrap;
+        border-top: 1px solid var(--border);
+      }
+
+      .prize-info-item {
+        padding: 10px 16px;
+        border-left: none;
+        border-right: 1px solid var(--border);
+      }
+
+      .prize-info-value { font-size: 14px; }
+
+      .champion-banner { padding: 20px 16px; }
+      .champion-name { font-size: 22px; }
+
+      .bracket-wrapper { padding: 16px; }
+      .bracket-section { margin-bottom: 32px; }
+      .bracket-title { font-size: 10px; margin-bottom: 12px; }
+
+      .connector-svg { display: none; }
+
+      .bracket-rounds { flex-direction: column; gap: 0; }
+
+      .bracket-round {
+        min-width: unset;
+        padding-right: 0;
+        margin-bottom: 4px;
+        justify-content: flex-start;
+      }
+
+      .round-label {
+        position: static;
+        width: 100%;
+        text-align: left;
+        margin-bottom: 8px;
+        margin-top: 16px;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .bracket-round:first-child .round-label { margin-top: 0; }
+
+      .match { width: 100%; margin: 4px 0; }
+      .match-slot { padding: 6px 10px; min-height: 32px; }
+      .match-slot-name { font-size: 13px; }
+      .match-id-label { font-size: 10px; padding: 5px 10px 0; }
+
+      .modal-overlay { padding: 12px; }
+      .modal { max-height: 90vh; }
+      .modal-header { padding: 16px; }
+      .modal-body { padding: 16px; }
+
+      .podium { gap: 3px; }
+      .podium-place { width: 100px; }
+      .podium-player-name { font-size: 12px; }
+      .podium-prize { font-size: 10px; }
+      .podium-1st .podium-bar { height: 70px; }
+      .podium-2nd .podium-bar { height: 50px; }
+      .podium-3rd .podium-bar { height: 35px; }
+
+      .standings-table td { font-size: 12px; padding: 8px 6px; }
+      .standings-table th { font-size: 9px; padding: 6px; }
+      .standings-table td.st-elim { display: none; }
+      .standings-table th.st-elim { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <h1> Torn Heads-Up Championship</h1>
+    <div class="header-right">
+      <button class="btn-rules" id="btnStandings">Standings</button>
+      <button class="btn-rules" id="btnRules">Rules</button>
+      <div class="live-dot" id="liveDot"></div>
+      <span class="refresh-label" id="refreshLabel">updating...</span>
+      <span class="status-badge status-setup" id="statusBadge">SETUP</span>
+    </div>
+  </header>
+
+  <div class="prize-strip">
+    <div class="prize-pool-total">
+      <div class="prize-pool-label">Prize Pool</div>
+      <div class="prize-pool-amount" id="prizeTotal">$0</div>
+      <div class="prize-pool-sub" id="prizePoolBreakdown">0 players</div>
+    </div>
+    <div class="prize-places">
+      <div class="prize-place">
+        <div class="prize-place-rank gold">1st Place</div>
+        <div class="prize-place-amount" id="prize1st">$0</div>
+        <div class="prize-place-pct">50%</div>
+      </div>
+      <div class="prize-place">
+        <div class="prize-place-rank silver">2nd Place</div>
+        <div class="prize-place-amount" id="prize2nd">$0</div>
+        <div class="prize-place-pct">30%</div>
+      </div>
+      <div class="prize-place">
+        <div class="prize-place-rank bronze">3rd Place</div>
+        <div class="prize-place-amount" id="prize3rd">$0</div>
+        <div class="prize-place-pct">20%</div>
+      </div>
+    </div>
+    <div class="prize-info">
+      <div class="prize-info-item">
+        <span class="prize-info-label">Players</span>
+        <span class="prize-info-value" id="infoPlayers">0</span>
+      </div>
+      <div class="prize-info-item">
+        <span class="prize-info-label">Donors</span>
+        <span class="prize-info-value clickable" id="infoDonors" title="View donor list"><span class="donor-link">0</span></span>
+      </div>
+      <div class="prize-info-item">
+        <span class="prize-info-label">Donated</span>
+        <span class="prize-info-value" id="infoDonationTotal">$0</span>
+      </div>
+      <div class="prize-info-item">
+        <span class="prize-info-label">Buy-in</span>
+        <span class="prize-info-value">$20M</span>
+      </div>
+      <div class="prize-info-item">
+        <span class="prize-info-label">Starts</span>
+        <span class="prize-info-value">March 1st</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="champion-banner hidden" id="championBanner">
+    <div class="champion-label">Tournament Champion</div>
+    <div class="champion-name" id="championName"></div>
+  </div>
+
+  <div class="bracket-wrapper" id="bracketWrapper">
+    <div class="empty-state">
+      <p>Waiting for tournament to begin</p>
+      <p class="sub">Bracket will appear here once generated</p>
+    </div>
+  </div>
+
+  <!-- RULES MODAL -->
+  <div class="modal-overlay" id="rulesModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Tournament Rules</h2>
+        <button class="modal-close" onclick="closeModal('rulesModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+
+        <div class="modal-section">
+          <div class="modal-section-title">Tournament Format</div>
+          <p>Heads-Up (1v1) Poker using Hold'em. Double Elimination format with Winners and Losers brackets, so one bad beat won't knock you out. Each match is played at a <strong>Duel at Dawn</strong> table with a $20M buy-in each side.</p>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section-title">Entry and Security Deposit</div>
+          <p><strong>Total entry: $40,000,000</strong> sent to the organiser with the message "THUC Tournament Entry".</p>
+          <p><strong>$20,000,000</strong> is your buy-in and goes directly to the prize pool.</p>
+          <p><strong>$20,000,000</strong> is a security deposit, held as a guarantee and fully refundable when you are eliminated from the tournament.</p>
+          <div class="modal-highlight">
+            <strong>Why the deposit?</strong> Since the match winner takes the loser's $20M on the poker table, the deposit ensures that if someone refuses to pay or leaves mid-game, the victim is fully compensated from the runner's deposit.
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section-title">Match Rules</div>
+          <div class="rule-item">
+            <span class="rule-num">01</span>
+            <span class="rule-text">The <strong>winner must return the $20M buy-in</strong> to the loser after the match.</span>
+          </div>
+          <div class="rule-item">
+            <span class="rule-num">02</span>
+            <span class="rule-text">Once the bracket is live, <strong>contact your opponent</strong> to set up the 1v1 table.</span>
+          </div>
+          <div class="rule-item">
+            <span class="rule-num">03</span>
+            <span class="rule-text"><strong>No mugging.</strong> Attacking your opponent during tournament matches is strictly prohibited. This includes organising mugs through other players.</span>
+          </div>
+          <div class="rule-item">
+            <span class="rule-num">04</span>
+            <span class="rule-text">You have <strong>48 hours</strong> to complete your match once the round starts.</span>
+          </div>
+          <div class="rule-item">
+            <span class="rule-num">05</span>
+            <span class="rule-text">The winner must <strong>send a screenshot of the Game Log</strong> or final result to the organiser.</span>
+          </div>
+          <div class="modal-warning">
+            Breaking any rule will result in disqualification with potential loss of deposit and a ban from future tournaments.
+          </div>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section-title">Prize Distribution</div>
+          <p>The prize pool consists of <strong>100% of all entry fees</strong> ($20M per player) plus any donations.</p>
+          <p>1st Place: <strong>50%</strong> / 2nd Place: <strong>30%</strong> / 3rd Place: <strong>20%</strong></p>
+          <p>Distribution may be adjusted based on participant count. More participants may mean more players finish in the money.</p>
+        </div>
+
+        <div class="modal-section">
+          <div class="modal-section-title">Donations</div>
+          <p>Donations of cash or items (to be auctioned or sold for the pot) are welcome and will grow the prize pool. All donors will be publicly thanked. If you want to donate to the organising team or volunteer to help organise, get in touch.</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- DONORS MODAL -->
+  <div class="modal-overlay" id="donorsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Donors</h2>
+        <button class="modal-close" onclick="closeModal('donorsModal')">&times;</button>
+      </div>
+      <div class="modal-body" id="donorsModalBody">
+        <div class="donor-empty">No donations yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STANDINGS MODAL -->
+  <div class="modal-overlay" id="standingsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Standings</h2>
+        <button class="modal-close" onclick="closeModal('standingsModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="podium">
+          <div class="podium-place podium-2nd">
+            <div class="podium-rank">2nd</div>
+            <div class="podium-player-name" id="podium2ndName">TBD</div>
+            <div class="podium-prize" id="podium2ndPrize"></div>
+            <div class="podium-bar"></div>
+          </div>
+          <div class="podium-place podium-1st">
+            <div class="podium-rank">1st</div>
+            <div class="podium-player-name" id="podium1stName">TBD</div>
+            <div class="podium-prize" id="podium1stPrize"></div>
+            <div class="podium-bar"></div>
+          </div>
+          <div class="podium-place podium-3rd">
+            <div class="podium-rank">3rd</div>
+            <div class="podium-player-name" id="podium3rdName">TBD</div>
+            <div class="podium-prize" id="podium3rdPrize"></div>
+            <div class="podium-bar"></div>
+          </div>
+        </div>
+
+        <table class="standings-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Player</th>
+              <th>Status</th>
+              <th class="st-elim">Eliminated By</th>
+            </tr>
+          </thead>
+          <tbody id="standingsBody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var API_URL = 'https://script.google.com/macros/s/AKfycbxZmswm0dTWACbHjqUfM0548nqR1ZIUkorU-ndtON1Vm9_O1_h_zSJFd7_e-yk77tCHLQ/exec';
+    var POLL_INTERVAL = 15000;
+    var pollTimer = null;
+    var state = null;
+    var isMobile = window.innerWidth <= 768;
+
+    // --- MODALS ---
+    function openModal(id) {
+      document.getElementById(id).classList.add('open');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    document.getElementById('btnRules').addEventListener('click', function() {
+      openModal('rulesModal');
+    });
+
+    document.getElementById('btnStandings').addEventListener('click', function() {
+      renderStandings();
+      openModal('standingsModal');
+    });
+
+    document.getElementById('infoDonors').addEventListener('click', function() {
+      renderDonorsModal();
+      openModal('donorsModal');
+    });
+
+    document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+      overlay.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('open');
+      });
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.open').forEach(function(m) {
+          m.classList.remove('open');
+        });
+      }
+    });
+
+    // --- INIT ---
+    document.addEventListener('DOMContentLoaded', function() {
+      fetchState();
+      pollTimer = setInterval(fetchState, POLL_INTERVAL);
+    });
+
+    // --- DATA ---
+    function fetchState() {
+      var label = document.getElementById('refreshLabel');
+      label.textContent = 'updating...';
+
+      fetch(API_URL + '?action=getState')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          state = data;
+          if (!state.donations) state.donations = [];
+          render();
+          label.textContent = 'live';
+        })
+        .catch(function() {
+          label.textContent = 'offline';
+        });
+    }
+
+    // --- RENDER ---
+    function render() {
+      renderPrizes();
+      renderStatus();
+      renderChampion();
+      if (state && state.matches && state.matches.length > 0) {
+        renderBracket();
+      }
+    }
+
+    function formatMoney(amount) {
+      if (!amount) return '$0';
+      if (amount >= 1000000000) return '$' + (amount / 1000000000).toFixed(1).replace(/\.0$/, '') + 'B';
+      if (amount >= 1000000) return '$' + (amount / 1000000).toFixed(0) + 'M';
+      if (amount >= 1000) return '$' + (amount / 1000).toFixed(0) + 'K';
+      return '$' + amount;
+    }
+
+    function getDonationTotal() {
+      var donations = (state && state.donations) ? state.donations : [];
+      var total = 0;
+      donations.forEach(function(d) { total += (d.amount || 0); });
+      return total;
+    }
+
+    function renderPrizes() {
+      var playerCount = (state && state.players) ? state.players.length : 0;
+      var donations = (state && state.donations) ? state.donations : [];
+      var buyIn = 20000000;
+      var playerPool = playerCount * buyIn;
+      var donationTotal = getDonationTotal();
+      var pool = playerPool + donationTotal;
+
+      document.getElementById('prizeTotal').textContent = formatMoney(pool);
+
+      // Breakdown sub-text
+      var breakdownParts = [];
+      breakdownParts.push(formatMoney(playerPool) + ' from buy-ins');
+      if (donationTotal > 0) {
+        breakdownParts.push(formatMoney(donationTotal) + ' donated');
+      }
+      document.getElementById('prizePoolBreakdown').textContent = breakdownParts.join(' + ');
+
+      document.getElementById('prize1st').textContent = formatMoney(Math.floor(pool * 0.5));
+      document.getElementById('prize2nd').textContent = formatMoney(Math.floor(pool * 0.3));
+      document.getElementById('prize3rd').textContent = formatMoney(Math.floor(pool * 0.2));
+
+      // Info items
+      document.getElementById('infoPlayers').textContent = playerCount;
+      document.getElementById('infoDonors').querySelector('.donor-link').textContent = donations.length;
+      document.getElementById('infoDonationTotal').textContent = formatMoney(donationTotal);
+    }
+
+    function renderStatus() {
+      var badge = document.getElementById('statusBadge');
+      var status = (state.settings && state.settings.tournament_status) || 'setup';
+      badge.textContent = status.toUpperCase();
+      badge.className = 'status-badge status-' + status;
+    }
+
+    function renderChampion() {
+      var banner = document.getElementById('championBanner');
+      var name = document.getElementById('championName');
+      if (state.settings.tournament_status === 'complete' && state.settings.champion) {
+        name.textContent = state.settings.champion;
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    function renderDonorsModal() {
+      var body = document.getElementById('donorsModalBody');
+      var donations = (state && state.donations) ? state.donations : [];
+
+      if (donations.length === 0) {
+        body.innerHTML = '<div class="donor-empty">No donations yet. Contributions of cash or items are welcome and grow the prize pool.</div>';
+        return;
+      }
+
+      var html = '';
+      var total = 0;
+
+      donations.forEach(function(d) {
+        total += (d.amount || 0);
+        html += '<div class="donor-list-item">';
+        html += '  <span class="donor-list-name">' + esc(d.donorName) + '</span>';
+        html += '  <span class="donor-list-amount">' + formatMoney(d.amount) + '</span>';
+        html += '</div>';
+      });
+
+      html += '<div class="donor-total-row">';
+      html += '  <span class="donor-total-label">Total Donated</span>';
+      html += '  <span class="donor-total-amount">' + formatMoney(total) + '</span>';
+      html += '</div>';
+
+      body.innerHTML = html;
+    }
+
+    function getPlacements() {
+      var result = { first: null, second: null, third: null };
+      if (!state || !state.matches) return result;
+
+      var gf1 = state.matches.find(function(m) { return m.matchId === 'GF-M1'; });
+      if (gf1 && gf1.status === 'complete' && gf1.winnerName) {
+        result.first = { name: gf1.winnerName, tornId: gf1.winnerTornID };
+        var secondName = (gf1.winnerName === gf1.player1Name) ? gf1.player2Name : gf1.player1Name;
+        var secondId = (gf1.winnerName === gf1.player1Name) ? gf1.player2TornID : gf1.player1TornID;
+        result.second = { name: secondName, tornId: secondId };
+      }
+
+      var lbMatches = state.matches.filter(function(m) { return m.bracket === 'losers'; });
+      if (lbMatches.length > 0) {
+        var lbFinal = lbMatches.reduce(function(best, m) {
+          if (m.round > best.round) return m;
+          if (m.round === best.round && m.match > best.match) return m;
+          return best;
+        }, lbMatches[0]);
+
+        if (lbFinal && lbFinal.status === 'complete' && lbFinal.winnerName) {
+          var thirdName = (lbFinal.winnerName === lbFinal.player1Name) ? lbFinal.player2Name : lbFinal.player1Name;
+          var thirdId = (lbFinal.winnerName === lbFinal.player1Name) ? lbFinal.player2TornID : lbFinal.player1TornID;
+          result.third = { name: thirdName, tornId: thirdId };
+        }
+      }
+
+      return result;
+    }
+
+    function getPool() {
+      var playerCount = (state && state.players) ? state.players.length : 0;
+      return (playerCount * 20000000) + getDonationTotal();
+    }
+
+    function profileLink(name, tornId) {
+      return '<a href="https://www.torn.com/profiles.php?XID=' + tornId + '" target="_blank" rel="noopener">' + esc(name) + '</a>';
+    }
+
+    function renderStandings() {
+      if (!state || !state.players) return;
+
+      var placements = getPlacements();
+      var pool = getPool();
+
+      function setPlace(pos, data, pct) {
+        var nameEl = document.getElementById('podium' + pos + 'Name');
+        var prizeEl = document.getElementById('podium' + pos + 'Prize');
+        if (data) {
+          nameEl.innerHTML = profileLink(data.name, data.tornId);
+          prizeEl.textContent = formatMoney(Math.floor(pool * pct));
+        } else {
+          nameEl.textContent = 'TBD';
+          prizeEl.textContent = '';
+        }
+      }
+
+      setPlace('1st', placements.first, 0.5);
+      setPlace('2nd', placements.second, 0.3);
+      setPlace('3rd', placements.third, 0.2);
+
+      var eliminations = [];
+      if (state.matches) {
+        state.matches.forEach(function(m) {
+          if (m.status !== 'complete' || !m.winnerName) return;
+          var loserName = (m.winnerName === m.player1Name) ? m.player2Name : m.player1Name;
+          var loserTornId = (m.winnerName === m.player1Name) ? m.player2TornID : m.player1TornID;
+          if (m.loserNextMatch === 'ELIMINATED') {
+            eliminations.push({
+              name: loserName, tornId: loserTornId,
+              round: m.round, bracket: m.bracket,
+              eliminatedBy: m.winnerName
+            });
+          }
+        });
+      }
+
+      eliminations.sort(function(a, b) { return b.round - a.round; });
+
+      var rows = [];
+      var rank = 1;
+
+      if (placements.first) {
+        rows.push({ rank: rank++, name: placements.first.name, tornId: placements.first.tornId, status: 'champion', eliminatedBy: '', prize: formatMoney(Math.floor(pool * 0.5)), rowClass: 'st-row-1st' });
+      }
+      if (placements.second) {
+        rows.push({ rank: rank++, name: placements.second.name, tornId: placements.second.tornId, status: 'eliminated', eliminatedBy: placements.first ? placements.first.name : '', prize: formatMoney(Math.floor(pool * 0.3)), rowClass: 'st-row-2nd' });
+      }
+      if (placements.third) {
+        var thirdElim = eliminations.find(function(e) { return e.name === placements.third.name; });
+        rows.push({ rank: rank++, name: placements.third.name, tornId: placements.third.tornId, status: 'eliminated', eliminatedBy: thirdElim ? thirdElim.eliminatedBy : '', prize: formatMoney(Math.floor(pool * 0.2)), rowClass: 'st-row-3rd' });
+        eliminations = eliminations.filter(function(e) { return e.name !== placements.third.name; });
+      }
+
+      var placedNames = rows.map(function(r) { return r.name; });
+      eliminations.forEach(function(e) {
+        if (placedNames.indexOf(e.name) !== -1) return;
+        rows.push({ rank: rank++, name: e.name, tornId: e.tornId, status: 'eliminated', eliminatedBy: e.eliminatedBy, prize: '', rowClass: '' });
+      });
+
+      var allPlacedNames = rows.map(function(r) { return r.name; });
+      state.players.forEach(function(p) {
+        if (allPlacedNames.indexOf(p.name) !== -1) return;
+        rows.push({ rank: '', name: p.name, tornId: p.tornId, status: 'active', eliminatedBy: '', prize: '', rowClass: '' });
+      });
+
+      var tbody = document.getElementById('standingsBody');
+      var html = '';
+      rows.forEach(function(row) {
+        html += '<tr class="' + row.rowClass + '">';
+        html += '<td class="st-rank">' + (row.rank || '') + '</td>';
+        html += '<td class="st-name">' + profileLink(row.name, row.tornId);
+        if (row.prize) html += '<span class="st-prize-inline">' + row.prize + '</span>';
+        html += '</td>';
+        var statusLabel = row.status === 'champion' ? 'Champion' : row.status === 'active' ? 'Active' : 'Eliminated';
+        html += '<td><span class="st-status-badge st-status-' + row.status + '">' + statusLabel + '</span></td>';
+        html += '<td class="st-elim">' + esc(row.eliminatedBy) + '</td>';
+        html += '</tr>';
+      });
+      tbody.innerHTML = html;
+    }
+
+    function renderBracket() {
+      var wrapper = document.getElementById('bracketWrapper');
+
+      var winners = state.matches.filter(function(m) { return m.bracket === 'winners' && m.status !== 'bye'; });
+      var losers = state.matches.filter(function(m) { return m.bracket === 'losers' && m.status !== 'bye'; });
+      var gf = state.matches.filter(function(m) { return m.bracket === 'grand_finals'; });
+
+      var html = '';
+      if (gf.length > 0) html += renderBracketSection('Grand Finals', gf);
+      if (winners.length > 0) html += renderBracketSection('Winners Bracket', winners);
+      if (losers.length > 0) html += renderBracketSection('Losers Bracket', losers);
+
+      wrapper.innerHTML = html;
+
+      if (!isMobile) {
+        requestAnimationFrame(function() { drawAllConnectors(); });
+      }
+    }
+
+    function renderBracketSection(title, matches) {
+      var rounds = {};
+      matches.forEach(function(m) {
+        var r = m.round;
+        if (!rounds[r]) rounds[r] = [];
+        rounds[r].push(m);
+      });
+
+      var roundKeys = Object.keys(rounds).map(Number).sort(function(a, b) { return a - b; });
+      var firstRoundCount = rounds[roundKeys[0]] ? rounds[roundKeys[0]].length : 1;
+      var minHeight = Math.max(firstRoundCount * 100, 150);
+      var sectionId = title.replace(/\s+/g, '-').toLowerCase();
+
+      var html = '<div class="bracket-section">';
+      html += '<div class="bracket-title">' + esc(title) + '</div>';
+
+      if (isMobile) {
+        html += '<div class="bracket-rounds" id="section-' + sectionId + '">';
+      } else {
+        html += '<div class="bracket-rounds" id="section-' + sectionId + '" style="min-height:' + minHeight + 'px; padding-top: 24px;">';
+      }
+
+      roundKeys.forEach(function(r, idx) {
+        var roundMatches = rounds[r];
+        roundMatches.sort(function(a, b) { return a.match - b.match; });
+        var roundLabel = getRoundLabel(title, r, roundKeys.length, idx);
+
+        html += '<div class="bracket-round" data-section="' + sectionId + '" data-round="' + r + '">';
+        html += '<div class="round-label">' + roundLabel + '</div>';
+        roundMatches.forEach(function(m) { html += renderMatch(m); });
+        html += '</div>';
+      });
+
+      html += '</div></div>';
+      return html;
+    }
+
+    function getRoundLabel(sectionTitle, round, totalRounds, idx) {
+      if (sectionTitle === 'Grand Finals') return round === 1 ? 'Grand Final' : 'Reset';
+      if (sectionTitle === 'Winners Bracket') {
+        if (idx === totalRounds - 1) return 'WB Final';
+        if (idx === totalRounds - 2) return 'WB Semi';
+        return 'WB Round ' + round;
+      }
+      if (sectionTitle === 'Losers Bracket') {
+        if (idx === totalRounds - 1) return 'LB Final';
+        if (idx === totalRounds - 2) return 'LB Semi';
+        return 'LB Round ' + round;
+      }
+      return 'Round ' + round;
+    }
+
+    function renderMatch(m) {
+      var isComplete = (m.status === 'complete');
+      var cls = 'match';
+      if (m.status === 'ready') cls += ' match-ready';
+      if (isComplete) cls += ' match-complete';
+
+      var p1Winner = isComplete && m.winnerName === m.player1Name;
+      var p2Winner = isComplete && m.winnerName === m.player2Name;
+
+      var html = '<div class="' + cls + '" data-match-id="' + esc(m.matchId) + '">';
+      html += '<div class="match-id-label">' + esc(m.matchId) + '</div>';
+      html += renderSlot(m.player1Name, m.player1TornID, p1Winner, isComplete && !p1Winner);
+      html += renderSlot(m.player2Name, m.player2TornID, p2Winner, isComplete && !p2Winner);
+      html += '</div>';
+      return html;
+    }
+
+    function renderSlot(name, tornId, isWinner, isLoser) {
+      var cls = 'match-slot';
+      if (isWinner) cls += ' is-winner';
+      if (isLoser) cls += ' is-loser';
+
+      var html = '<div class="' + cls + '">';
+      if (!name) {
+        html += '<span class="match-slot-name tbd">TBD</span>';
+      } else if (name === 'BYE') {
+        html += '<span class="match-slot-name bye">BYE</span>';
+      } else {
+        var profileUrl = 'https://www.torn.com/profiles.php?XID=' + esc(tornId);
+        html += '<span class="match-slot-name"><a href="' + profileUrl + '" target="_blank" rel="noopener">' + esc(name) + '</a></span>';
+      }
+      if (isWinner) html += '<div class="winner-indicator"></div>';
+      html += '</div>';
+      return html;
+    }
+
+    // --- SVG CONNECTORS ---
+    function drawAllConnectors() {
+      document.querySelectorAll('.connector-svg').forEach(function(el) { el.remove(); });
+      if (isMobile) return;
+      document.querySelectorAll('.bracket-rounds').forEach(function(section) {
+        drawSectionConnectors(section);
+      });
+    }
+
+    function drawSectionConnectors(section) {
+      var rounds = section.querySelectorAll('.bracket-round');
+      if (rounds.length < 2) return;
+
+      var sectionRect = section.getBoundingClientRect();
+      var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.classList.add('connector-svg');
+      svg.setAttribute('width', sectionRect.width);
+      svg.setAttribute('height', sectionRect.height);
+      section.appendChild(svg);
+
+      for (var i = 0; i < rounds.length - 1; i++) {
+        rounds[i].querySelectorAll('.match').forEach(function(matchEl) {
+          var matchId = matchEl.getAttribute('data-match-id');
+          var matchData = findMatch(matchId);
+          if (!matchData) return;
+
+          var winnerNext = matchData.winnerNextMatch;
+          if (!winnerNext) return;
+
+          var targetEl = section.querySelector('[data-match-id="' + winnerNext + '"]');
+          if (!targetEl) return;
+
+          var fromRect = matchEl.getBoundingClientRect();
+          var toRect = targetEl.getBoundingClientRect();
+
+          var fromX = fromRect.right - sectionRect.left;
+          var fromY = fromRect.top + fromRect.height / 2 - sectionRect.top;
+          var toX = toRect.left - sectionRect.left;
+          var toY = toRect.top + toRect.height / 2 - sectionRect.top;
+          var midX = fromX + (toX - fromX) / 2;
+
+          addLine(svg, fromX, fromY, midX, fromY);
+          addLine(svg, midX, fromY, midX, toY);
+          addLine(svg, midX, toY, toX, toY);
+        });
+      }
+    }
+
+    function addLine(svg, x1, y1, x2, y2) {
+      var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', x1);
+      line.setAttribute('y1', y1);
+      line.setAttribute('x2', x2);
+      line.setAttribute('y2', y2);
+      svg.appendChild(line);
+    }
+
+    function findMatch(matchId) {
+      if (!state || !state.matches) return null;
+      for (var i = 0; i < state.matches.length; i++) {
+        if (state.matches[i].matchId === matchId) return state.matches[i];
+      }
+      return null;
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      var div = document.createElement('div');
+      div.textContent = String(str);
+      return div.innerHTML;
+    }
+
+    var resizeTimeout;
+    window.addEventListener('resize', function() {
+      var wasMobile = isMobile;
+      isMobile = window.innerWidth <= 768;
+      if (wasMobile !== isMobile) {
+        render();
+      } else {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(drawAllConnectors, 200);
+      }
+    });
+  </script>
+
+  <footer class="site-footer">
+    Made by <a href="https://www.torn.com/profiles.php?XID=3583736" target="_blank" rel="noopener">Systoned</a>
+  </footer>
+
+</body>
+</html>
