@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>scripts · systoned</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;1,300&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --border: #e8e8e8;
+      --text: #111111;
+      --muted: #999999;
+    }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 300;
+      min-height: 100vh;
+    }
+
+    body {
+      padding: 60px 40px 80px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 64px;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    header a.home {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--text);
+      text-decoration: none;
+      letter-spacing: 0.04em;
+    }
+
+    header a.home:hover { opacity: 0.4; }
+
+    header span {
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+    }
+
+    h1 {
+      font-family: 'DM Mono', monospace;
+      font-size: clamp(24px, 4vw, 38px);
+      font-weight: 400;
+      color: var(--text);
+      margin-bottom: 10px;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 52px;
+      font-weight: 300;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+    }
+
+    .card {
+      background: var(--bg);
+      padding: 28px;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: background 0.12s ease;
+    }
+
+    .card:hover { background: #f9f9f9; }
+    .card:hover .arrow { opacity: 1; }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+
+    .arrow {
+      font-size: 14px;
+      color: var(--muted);
+      opacity: 0;
+      transition: opacity 0.12s ease;
+    }
+
+    .card-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--text);
+      line-height: 1.4;
+      letter-spacing: -0.01em;
+    }
+
+    .card-desc {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.7;
+      flex: 1;
+      font-weight: 300;
+    }
+
+    .tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'DM Mono', monospace;
+    }
+
+    footer a {
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    footer a:hover { opacity: 0.4; }
+
+    @media (max-width: 600px) {
+      body { padding: 32px 20px 60px; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a class="home" href="https://systoned.cc">systoned</a>
+    <span>/ scripts</span>
+  </header>
+
+  <h1>Userscripts</h1>
+  <p class="subtitle">Tampermonkey scripts for Torn City · free to install via Greasy Fork</p>
+
+  <div class="grid">
+
+    <a class="card" href="https://greasyfork.org/en/scripts/537257-torn-flight-helper-rehab-mode" target="_blank" rel="noopener">
+      <div class="card-top"><span class="card-num">01</span><span class="arrow">↗</span></div>
+      <div class="card-title">Torn Flight Helper · Rehab Mode</div>
+      <div class="card-desc">Travel helper for rehab trips. Guides to Switzerland and checks funds before traveling.</div>
+      <div class="tag">travel</div>
+    </a>
+
+    <a class="card" href="https://greasyfork.org/en/scripts/553922-torn-display-case-market-share-calculator" target="_blank" rel="noopener">
+      <div class="card-top"><span class="card-num">02</span><span class="arrow">↗</span></div>
+      <div class="card-title">Display Case Market Share Calculator</div>
+      <div class="card-desc">Calculate market share for any item in your Torn display case.</div>
+      <div class="tag">economy</div>
+    </a>
+
+    <a class="card" href="https://greasyfork.org/en/scripts/558734-hide-chat-messages-from-users-by-xid" target="_blank" rel="noopener">
+      <div class="card-top"><span class="card-num">03</span><span class="arrow">↗</span></div>
+      <div class="card-title">Hide Chat Messages From Users</div>
+      <div class="card-desc">Hides chat messages from specific users by profile XID.</div>
+      <div class="tag">chat</div>
+    </a>
+
+    <a class="card" href="https://greasyfork.org/en/scripts/560551-torn-join-fight-warning" target="_blank" rel="noopener">
+      <div class="card-top"><span class="card-num">04</span><span class="arrow">↗</span></div>
+      <div class="card-title">Torn Join Fight Warning</div>
+      <div class="card-desc">Warns when a Join Fight button appears on attack pages.</div>
+      <div class="tag">combat</div>
+    </a>
+
+    <a class="card" href="https://greasyfork.org/en/scripts/563523-torn-poker-notes" target="_blank" rel="noopener">
+      <div class="card-top"><span class="card-num">05</span><span class="arrow">↗</span></div>
+      <div class="card-title">Torn Poker Notes</div>
+      <div class="card-desc">Track player reads at the poker table.</div>
+      <div class="tag">poker</div>
+    </a>
+
+    <a class="card" href="https://greasyfork.org/en/scripts/565168-torn-war-tools" target="_blank" rel="noopener">
+      <div class="card-top"><span class="card-num">06</span><span class="arrow">↗</span></div>
+      <div class="card-title">Torn War Tools</div>
+      <div class="card-desc">War target tools: travel warnings, available targets, med targets, sorting, shortlists.</div>
+      <div class="tag">war</div>
+    </a>
+
+    <a class="card" href="https://greasyfork.org/en/scripts/566290-torn-attack-networth-display" target="_blank" rel="noopener">
+      <div class="card-top"><span class="card-num">07</span><span class="arrow">↗</span></div>
+      <div class="card-title">Torn Attack Networth Display</div>
+      <div class="card-desc">Shows target's networth on the attack page before attacking.</div>
+      <div class="tag">combat</div>
+    </a>
+
+    <a class="card" href="https://greasyfork.org/en/scripts/567038-torn-training-tracker" target="_blank" rel="noopener">
+      <div class="card-top"><span class="card-num">08</span><span class="arrow">↗</span></div>
+      <div class="card-title">Torn Training Tracker</div>
+      <div class="card-desc">Tracks how many times each employee has been trained. Reset all counts with one button.</div>
+      <div class="tag">company</div>
+    </a>
+
+    <a class="card" href="https://greasyfork.org/en/scripts/567094-torn-xanax-stacking-planner" target="_blank" rel="noopener">
+      <div class="card-top"><span class="card-num">09</span><span class="arrow">↗</span></div>
+      <div class="card-title">Torn Xanax Stacking Planner</div>
+      <div class="card-desc">Plan your Xanax stacking schedule for Torn wars and chains.</div>
+      <div class="tag">faction</div>
+    </a>
+
+    <a class="card" href="https://greasyfork.org/en/scripts/569499-torn-poker-hide-tables" target="_blank" rel="noopener">
+      <div class="card-top"><span class="card-num">10</span><span class="arrow">↗</span></div>
+      <div class="card-title">Torn Poker · Hide Tables</div>
+      <div class="card-desc">Floating panel to hide and show poker lobby tables with persistence.</div>
+      <div class="tag">poker</div>
+    </a>
+
+    <a class="card" href="https://greasyfork.org/en/scripts/573150-tc-poker-p-l-tracker" target="_blank" rel="noopener">
+      <div class="card-top"><span class="card-num">11</span><span class="arrow">↗</span></div>
+      <div class="card-title">TC Poker P/L Tracker</div>
+      <div class="card-desc">Shows whether you're up or down from your buy-in at a Torn poker table.</div>
+      <div class="tag">poker</div>
+    </a>
+
+    <a class="card" href="https://greasyfork.org/en/scripts/573151-torn-attack-networth-display" target="_blank" rel="noopener">
+      <div class="card-top"><span class="card-num">12</span><span class="arrow">↗</span></div>
+      <div class="card-title">Torn Attack Networth Display v2</div>
+      <div class="card-desc">Shows target's networth on the attack page before attacking.</div>
+      <div class="tag">combat</div>
+    </a>
+
+  </div>
+
+  <footer>
+    <a href="https://greasyfork.org/en/users/1438102-systoned" target="_blank">greasy fork ↗</a>
+    <a href="https://systoned.cc">← home</a>
+  </footer>
+
+</body>
+</html>
