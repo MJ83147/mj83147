@@ -2,9 +2,156 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>systoned</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #ffffff;
+      color: #111111;
+      font-family: 'DM Mono', monospace;
+      min-height: 100vh;
+      padding: 80px 60px 100px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      margin-bottom: 80px;
+    }
+
+    .boxes {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+    }
+
+    .box {
+      border: 2px solid #111111;
+      padding: 48px;
+      width: calc(50% - 12px);
+      min-height: 220px;
+      text-decoration: none;
+      color: #111111;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: background 0.12s ease;
+    }
+
+    .box:hover {
+      background: #f5f5f5;
+    }
+
+    .box-num {
+      font-size: 16px;
+      color: #888888;
+    }
+
+    .box-title {
+      font-size: 28px;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.2);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: #ffffff;
+      border: 2px solid #111111;
+      padding: 52px;
+      max-width: 600px;
+      width: calc(100% - 40px);
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 24px;
+      right: 28px;
+      font-size: 24px;
+      color: #888888;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-family: 'DM Mono', monospace;
+      line-height: 1;
+    }
+
+    .modal-close:hover { color: #111111; }
+
+    .modal h2 {
+      font-size: 24px;
+      font-weight: 400;
+      margin-bottom: 36px;
+    }
+
+    .work-item {
+      padding: 20px 0;
+      border-bottom: 1px solid #cccccc;
+      font-size: 16px;
+      color: #888888;
+    }
+
+    @media (max-width: 600px) {
+      body { padding: 40px 24px 60px; }
+      .box { width: 100%; }
+    }
+  </style>
 </head>
 <body>
-  <p>systoned</p>
+
+  <h1>systoned</h1>
+
+  <div class="boxes">
+
+    <a class="box" href="https://poker.systoned.cc">
+      <span class="box-num">01</span>
+      <span class="box-title">Poker Tool</span>
+    </a>
+
+    <a class="box" href="/scripts">
+      <span class="box-num">02</span>
+      <span class="box-title">Scripts</span>
+    </a>
+
+    <a class="box" href="/request">
+      <span class="box-num">03</span>
+      <span class="box-title">Request a Tool</span>
+    </a>
+
+    <div class="box" onclick="document.getElementById('work-modal').classList.add('open')">
+      <span class="box-num">04</span>
+      <span class="box-title">Recent Work</span>
+    </div>
+
+  </div>
+
+  <div class="modal-overlay" id="work-modal" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal">
+      <button class="modal-close" onclick="document.getElementById('work-modal').classList.remove('open')">×</button>
+      <h2>Recent Work</h2>
+      <div class="work-item">Coming soon</div>
+    </div>
+  </div>
+
 </body>
 </html>
