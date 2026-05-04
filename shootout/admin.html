@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Progressive Shootout // Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1115;
+      --surface: #1a1d24;
+      --surface-2: #22262e;
+      --border: #2e333d;
+      --border-light: #3a404d;
+      --text: #e2e4e9;
+      --text-muted: #8b8f99;
+      --text-dim: #555963;
+      --accent: #e8a832;
+      --accent-dim: #c48a1a;
+      --red: #d94848;
+      --red-dim: #b33a3a;
+      --green: #3dba6a;
+      --green-dim: #2d9452;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* --- HEADER --- */
+    .header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-badge {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-setup { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+    .status-active { background: rgba(61, 186, 106, 0.12); color: var(--green); border: 1px solid var(--green-dim); }
+    .status-complete { background: rgba(232, 168, 50, 0.12); color: var(--accent); border: 1px solid var(--accent-dim); }
+
+    /* --- LAYOUT --- */
+    .main {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      min-height: calc(100vh - 73px);
+    }
+
+    /* --- SIDEBAR --- */
+    .sidebar {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-header h2 {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .add-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .add-form input {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 4px;
+      width: 100%;
+    }
+
+    .add-form input:focus { outline: none; border-color: var(--accent); }
+    .add-form input::placeholder { color: var(--border-light); }
+
+    .add-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .add-row input:first-child { flex: 1.4; }
+    .add-row input:last-child { flex: 1; }
+
+    .btn-add {
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid var(--accent-dim);
+      background: rgba(232, 168, 50, 0.1);
+      color: var(--accent);
+      cursor: pointer;
+      transition: background 0.15s;
+      flex: 1;
+    }
+
+    .btn-add:hover { background: rgba(232, 168, 50, 0.2); }
+    .btn-add:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .lock-notice {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      padding: 6px 0 0;
+      line-height: 1.4;
+    }
+
+    /* --- LISTS --- */
+    .list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+      min-height: 0;
+    }
+
+    .list-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 24px;
+      transition: background 0.1s;
+    }
+
+    .list-item:hover { background: var(--surface); }
+
+    .list-info {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .list-name {
+      font-size: 14px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .list-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .list-meta-text {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .list-meta-text a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    .list-meta-text a:hover { color: var(--accent); }
+
+    .donation-amount {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent);
+    }
+
+    .btn-remove {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 3px 8px;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+
+    .btn-remove:hover { border-color: var(--red); color: var(--red); }
+
+    .list-count {
+      padding: 12px 24px;
+      border-top: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .list-count-amount {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .empty-list {
+      color: var(--text-muted);
+      padding: 20px 24px;
+      font-size: 13px;
+    }
+
+    /* --- DONATIONS SECTION --- */
+    .donations-section {
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      max-height: 320px;
+    }
+
+    .donations-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .donations-header h2 {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    /* --- MAIN PANEL --- */
+    .panel {
+      display: flex;
+      flex-direction: column;
+      min-height: calc(100vh - 73px);
+    }
+
+    .panel-toolbar {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .panel-toolbar h2 {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+    }
+
+    .panel-content {
+      flex: 1;
+      padding: 32px 24px;
+    }
+
+    .placeholder {
+      max-width: 560px;
+      margin: 40px auto;
+      padding: 32px;
+      border: 1px dashed var(--border-light);
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .placeholder h3 {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .placeholder p {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.7;
+      margin-bottom: 12px;
+    }
+
+    .placeholder p:last-child { margin-bottom: 0; }
+
+    .placeholder ul {
+      text-align: left;
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.8;
+      margin: 16px auto;
+      padding-left: 20px;
+      max-width: 420px;
+    }
+
+    .placeholder ul li {
+      margin-bottom: 4px;
+    }
+
+    /* --- TOAST --- */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 20px;
+      border-radius: 5px;
+      animation: toastIn 0.25s ease-out, toastOut 0.25s ease-in 2.5s forwards;
+      max-width: 360px;
+    }
+
+    .toast-success { background: var(--green); color: #fff; }
+    .toast-error { background: var(--red); color: #fff; }
+
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes toastOut { from { opacity: 1; } to { opacity: 0; } }
+
+    /* --- LOADING --- */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 17, 21, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
+
+    .loading-overlay.hidden { display: none; }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* --- CONFIRM DIALOG --- */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 17, 21, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1001;
+    }
+
+    .confirm-overlay.hidden { display: none; }
+
+    .confirm-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 400px;
+      width: 90%;
+    }
+
+    .confirm-box p {
+      font-size: 14px;
+      margin-bottom: 20px;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+    .btn {
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: var(--accent); color: var(--bg); }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-outline { background: none; border: 1px solid var(--border); color: var(--text-muted); }
+    .btn-outline:hover { border-color: var(--text-muted); color: var(--text); }
+
+    /* --- RESPONSIVE --- */
+    @media (max-width: 768px) {
+      .main { grid-template-columns: 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--border); position: static; height: auto; max-height: none; }
+      .header { padding: 16px 20px; }
+      .sidebar-header { padding: 16px 20px 12px; }
+      .list-item { padding: 10px 20px; }
+      .list-count { padding: 10px 20px; }
+      .panel-toolbar { padding: 12px 20px; flex-wrap: wrap; }
+      .panel-content { padding: 20px; }
+      .donations-section { max-height: none; }
+      .panel { min-height: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay hidden" id="loading"><div class="spinner"></div></div>
+
+  <div class="confirm-overlay hidden" id="confirmOverlay">
+    <div class="confirm-box">
+      <p id="confirmMessage">Are you sure?</p>
+      <div class="confirm-actions">
+        <button class="btn btn-outline" id="confirmCancel">Cancel</button>
+        <button class="btn btn-danger" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toasts"></div>
+
+  <header class="header">
+    <h1>PROGRESSIVE SHOOTOUT // ADMIN</h1>
+    <div class="header-right">
+      <span class="status-badge status-setup" id="statusBadge">SETUP</span>
+    </div>
+  </header>
+
+  <div class="main">
+
+    <aside class="sidebar">
+
+      <!-- PLAYERS -->
+      <div class="sidebar-header">
+        <h2>Players</h2>
+        <div class="add-form" id="addPlayerForm">
+          <div class="add-row">
+            <input type="text" id="inputName" placeholder="Player name">
+            <input type="text" id="inputTornId" placeholder="Torn ID">
+          </div>
+          <button class="btn-add" id="btnAddPlayer">Add Player</button>
+          <div class="lock-notice hidden" id="playerLockNotice">
+            Player roster is locked once the tournament is active
+          </div>
+        </div>
+      </div>
+
+      <div class="list" id="playerList"></div>
+      <div class="list-count">
+        <span id="playerCount">0 players</span>
+        <span class="list-count-amount" id="buyInTotal">$0</span>
+      </div>
+
+      <!-- DONATIONS -->
+      <div class="donations-section">
+        <div class="donations-header">
+          <h2>Donations</h2>
+          <div class="add-form">
+            <div class="add-row">
+              <input type="text" id="inputDonorName" placeholder="Donor name">
+              <input type="text" id="inputDonationAmount" placeholder="Amount (e.g. 50000000)">
+            </div>
+            <button class="btn-add" id="btnAddDonation">Add Donation</button>
+          </div>
+        </div>
+        <div class="list" id="donationList"></div>
+        <div class="list-count">
+          <span>Total donated</span>
+          <span class="list-count-amount" id="donationTotal">$0</span>
+        </div>
+      </div>
+
+    </aside>
+
+    <div class="panel">
+      <div class="panel-toolbar">
+        <h2>Tournament Management</h2>
+      </div>
+      <div class="panel-content">
+        <div class="placeholder">
+          <h3>Awaiting Operational Spec</h3>
+          <p>Tournament management UI will be built once the organiser confirms operational rules. Pending answers cover:</p>
+          <ul>
+            <li>Table firing logic (auto-queue or manual draw)</li>
+            <li>Rebuy timing and caps</li>
+            <li>Stage 4 progression and Final Table trigger</li>
+            <li>Result reporting workflow</li>
+          </ul>
+          <p>Player and donation management is fully wired up in the sidebar and saving to the connected sheet.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    var API_URL = 'https://script.google.com/macros/s/AKfycbz5MJp6ecYnI_BmRViunbMUh8P8u3mhZRbmXSmOl71aJE8vGD-amE77Qc8dHFE8SLWv/exec';
+    var state = { settings: {}, players: [], donations: [], tables: [], eliminations: [], queues: [] };
+
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('btnAddPlayer').addEventListener('click', addPlayer);
+      document.getElementById('btnAddDonation').addEventListener('click', addDonation);
+
+      document.getElementById('inputName').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') document.getElementById('inputTornId').focus();
+      });
+      document.getElementById('inputTornId').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') addPlayer();
+      });
+      document.getElementById('inputDonorName').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') document.getElementById('inputDonationAmount').focus();
+      });
+      document.getElementById('inputDonationAmount').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') addDonation();
+      });
+
+      fetchState();
+    });
+
+    // --- API ---
+    function apiCall(action, params, callback) {
+      var url = API_URL + '?action=' + encodeURIComponent(action);
+      if (params) {
+        Object.keys(params).forEach(function(key) {
+          url += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
+        });
+      }
+
+      showLoading(true);
+
+      fetch(url)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          showLoading(false);
+          if (data.error) {
+            toast(data.error, 'error');
+          } else if (callback) {
+            callback(data);
+          }
+        })
+        .catch(function(err) {
+          showLoading(false);
+          toast('Request failed: ' + err.message, 'error');
+        });
+    }
+
+    function fetchState() {
+      apiCall('getState', null, function(data) {
+        state = data;
+        if (!state.donations) state.donations = [];
+        if (!state.players) state.players = [];
+        renderAll();
+      });
+    }
+
+    // --- PLAYER ACTIONS ---
+    function addPlayer() {
+      var name = document.getElementById('inputName').value.trim();
+      var tornId = document.getElementById('inputTornId').value.trim();
+      if (!name || !tornId) return toast('Name and Torn ID required', 'error');
+
+      apiCall('addPlayer', { name: name, tornId: tornId }, function(data) {
+        toast(data.message, 'success');
+        document.getElementById('inputName').value = '';
+        document.getElementById('inputTornId').value = '';
+        document.getElementById('inputName').focus();
+        fetchState();
+      });
+    }
+
+    function removePlayer(tornId) {
+      var player = state.players.find(function(p) { return p.tornId === tornId; });
+      var name = player ? player.name : 'this player';
+      showConfirm('Remove ' + name + ' from the tournament?', function() {
+        apiCall('removePlayer', { tornId: tornId }, function(data) {
+          toast(data.message, 'success');
+          fetchState();
+        });
+      });
+    }
+
+    // --- DONATION ACTIONS ---
+    function addDonation() {
+      var donorName = document.getElementById('inputDonorName').value.trim();
+      var amount = document.getElementById('inputDonationAmount').value.trim();
+      if (!donorName || !amount) return toast('Donor name and amount required', 'error');
+
+      var numAmount = parseInt(amount.replace(/[^0-9]/g, ''), 10);
+      if (!numAmount || numAmount <= 0) return toast('Enter a valid amount', 'error');
+
+      apiCall('addDonation', { donorName: donorName, amount: numAmount }, function(data) {
+        toast(data.message, 'success');
+        document.getElementById('inputDonorName').value = '';
+        document.getElementById('inputDonationAmount').value = '';
+        document.getElementById('inputDonorName').focus();
+        fetchState();
+      });
+    }
+
+    function removeDonation(index) {
+      showConfirm('Remove this donation?', function() {
+        apiCall('removeDonation', { index: index }, function(data) {
+          toast(data.message, 'success');
+          fetchState();
+        });
+      });
+    }
+
+    // --- RENDER ---
+    function renderAll() {
+      renderStatus();
+      renderPlayers();
+      renderDonations();
+    }
+
+    function renderStatus() {
+      var badge = document.getElementById('statusBadge');
+      var status = (state.settings && state.settings.tournament_status) || 'setup';
+      badge.textContent = status.toUpperCase();
+      badge.className = 'status-badge status-' + status;
+
+      var isSetup = (status === 'setup');
+      var addPlayerBtn = document.getElementById('btnAddPlayer');
+      var lockNotice = document.getElementById('playerLockNotice');
+
+      addPlayerBtn.disabled = !isSetup;
+      document.getElementById('inputName').disabled = !isSetup;
+      document.getElementById('inputTornId').disabled = !isSetup;
+
+      if (isSetup) {
+        lockNotice.classList.add('hidden');
+      } else {
+        lockNotice.classList.remove('hidden');
+      }
+    }
+
+    function renderPlayers() {
+      var list = document.getElementById('playerList');
+      var count = document.getElementById('playerCount');
+      var buyInTotal = document.getElementById('buyInTotal');
+      var status = (state.settings && state.settings.tournament_status) || 'setup';
+      var canRemove = (status === 'setup');
+      var buyIn = Number(state.settings.buy_in) || 0;
+
+      if (!state.players || state.players.length === 0) {
+        list.innerHTML = '<p class="empty-list">No players yet.</p>';
+        count.textContent = '0 players';
+        buyInTotal.textContent = '$0';
+        return;
+      }
+
+      var html = '';
+      state.players.forEach(function(p) {
+        html += '<div class="list-item">';
+        html += '<div class="list-info">';
+        html += '  <span class="list-name">' + esc(p.name) + '</span>';
+        html += '  <div class="list-meta">';
+        html += '    <span class="list-meta-text"><a href="https://www.torn.com/profiles.php?XID=' + esc(p.tornId) + '" target="_blank" rel="noopener">#' + esc(p.tornId) + '</a></span>';
+        html += '  </div>';
+        html += '</div>';
+
+        if (canRemove) {
+          html += '<button class="btn-remove" onclick="removePlayer(\'' + esc(p.tornId) + '\')">x</button>';
+        }
+
+        html += '</div>';
+      });
+
+      list.innerHTML = html;
+      count.textContent = state.players.length + ' player' + (state.players.length !== 1 ? 's' : '');
+      buyInTotal.textContent = formatMoney(state.players.length * buyIn);
+    }
+
+    function renderDonations() {
+      var list = document.getElementById('donationList');
+      var totalEl = document.getElementById('donationTotal');
+      var donations = state.donations || [];
+
+      if (donations.length === 0) {
+        list.innerHTML = '<p class="empty-list">No donations yet.</p>';
+        totalEl.textContent = '$0';
+        return;
+      }
+
+      var html = '';
+      var total = 0;
+      donations.forEach(function(d, i) {
+        total += (d.amount || 0);
+        html += '<div class="list-item">';
+        html += '  <div class="list-info">';
+        html += '    <span class="list-name">' + esc(d.donorName) + '</span>';
+        html += '    <span class="donation-amount">' + formatMoney(d.amount) + '</span>';
+        html += '  </div>';
+        html += '  <button class="btn-remove" onclick="removeDonation(' + i + ')">x</button>';
+        html += '</div>';
+      });
+
+      list.innerHTML = html;
+      totalEl.textContent = formatMoney(total);
+    }
+
+    // --- HELPERS ---
+    function formatMoney(amount) {
+      if (!amount) return '$0';
+      if (amount >= 1000000000) return '$' + (amount / 1000000000).toFixed(1).replace(/\.0$/, '') + 'B';
+      if (amount >= 1000000) return '$' + (amount / 1000000).toFixed(0) + 'M';
+      if (amount >= 1000) return '$' + (amount / 1000).toFixed(0) + 'K';
+      return '$' + amount;
+    }
+
+    function showLoading(show) {
+      document.getElementById('loading').classList.toggle('hidden', !show);
+    }
+
+    function toast(message, type) {
+      var container = document.getElementById('toasts');
+      var el = document.createElement('div');
+      el.className = 'toast toast-' + (type || 'success');
+      el.textContent = message;
+      container.appendChild(el);
+      setTimeout(function() { el.remove(); }, 3000);
+    }
+
+    function showConfirm(message, onConfirm) {
+      var overlay = document.getElementById('confirmOverlay');
+      document.getElementById('confirmMessage').textContent = message;
+      overlay.classList.remove('hidden');
+
+      var okBtn = document.getElementById('confirmOk');
+      var cancelBtn = document.getElementById('confirmCancel');
+
+      function cleanup() {
+        overlay.classList.add('hidden');
+        okBtn.removeEventListener('click', handleOk);
+        cancelBtn.removeEventListener('click', handleCancel);
+      }
+
+      function handleOk() { cleanup(); onConfirm(); }
+      function handleCancel() { cleanup(); }
+
+      okBtn.addEventListener('click', handleOk);
+      cancelBtn.addEventListener('click', handleCancel);
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      var div = document.createElement('div');
+      div.textContent = String(str);
+      return div.innerHTML;
+    }
+  </script>
+
+</body>
+</html>
