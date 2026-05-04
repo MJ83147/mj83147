@@ -1,0 +1,1970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Progressive Shootout — Interactive Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1115;
+      --surface: #1a1d24;
+      --surface-2: #22262e;
+      --surface-3: #282c35;
+      --border: #2e333d;
+      --border-light: #3a404d;
+      --text: #e2e4e9;
+      --text-muted: #8b8f99;
+      --text-dim: #555963;
+      --accent: #e8a832;
+      --accent-dim: #c48a1a;
+      --accent-glow: rgba(232, 168, 50, 0.08);
+      --red: #d94848;
+      --red-dim: #b33a3a;
+      --green: #3dba6a;
+      --green-dim: #2d9452;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* === VIEW SWITCHER === */
+    .view-switcher {
+      background: #2d1f0a;
+      border-bottom: 1px solid var(--accent-dim);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .view-switcher-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+    }
+
+    .view-switcher-buttons {
+      display: flex;
+      gap: 6px;
+    }
+
+    .view-btn {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 14px;
+      border-radius: 4px;
+      border: 1px solid var(--border-light);
+      background: var(--bg);
+      color: var(--text-muted);
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.15s;
+    }
+
+    .view-btn:hover { color: var(--text); border-color: var(--text-dim); }
+    .view-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+    .view-reset {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 3px;
+      border: 1px solid var(--border-light);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .view-reset:hover { color: var(--red); border-color: var(--red); }
+
+    /* === SHARED HEADER === */
+    .header {
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-family: var(--font-mono);
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--accent);
+    }
+
+    .header-right { display: flex; gap: 8px; }
+
+    .btn-pill {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: 1px solid var(--border-light);
+      background: var(--surface-2);
+      color: var(--text-muted);
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .btn-pill:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+    /* === ADMIN VIEW === */
+    .admin-layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      min-height: calc(100vh - 100px);
+    }
+
+    .admin-sidebar {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+    }
+
+    .admin-section {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .admin-section h2 {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .add-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .add-row input {
+      flex: 1;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 3px;
+    }
+    .add-row input:focus { outline: none; border-color: var(--accent); }
+
+    .btn {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 3px;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--accent); color: var(--bg); width: 100%; padding: 8px; }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-add { background: rgba(232, 168, 50, 0.15); color: var(--accent); border: 1px solid var(--accent-dim); padding: 6px 10px; }
+    .btn-danger { background: var(--red); color: #fff; }
+    .btn-outline { background: none; border: 1px solid var(--border-light); color: var(--text-muted); }
+    .btn-outline:hover { color: var(--text); border-color: var(--text-dim); }
+
+    .player-row, .donation-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .player-row:last-child, .donation-row:last-child { border-bottom: none; }
+    .player-row-name { font-weight: 600; }
+    .player-row-id { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+    .player-row-status {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 5px;
+      border-radius: 2px;
+      margin-left: 6px;
+    }
+    .player-row-status.active { background: rgba(61, 186, 106, 0.12); color: var(--green); }
+    .player-row-status.eliminated { background: var(--surface-2); color: var(--text-dim); }
+
+    .btn-x {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 2px 6px;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+    .btn-x:hover { border-color: var(--red); color: var(--red); }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .summary-row strong { color: var(--text); }
+
+    /* === ADMIN MAIN PANEL === */
+    .admin-main {
+      padding: 20px 24px;
+    }
+
+    .stage-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .stage-block-header {
+      padding: 12px 16px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stage-block-title {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent);
+    }
+
+    .stage-block-status {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+    .stage-block-status.live { background: rgba(61, 186, 106, 0.12); color: var(--green); }
+    .stage-block-status.complete { background: rgba(232, 168, 50, 0.12); color: var(--accent); }
+    .stage-block-status.pending { background: var(--surface); color: var(--text-dim); border: 1px solid var(--border); }
+
+    .stage-block-body { padding: 14px 16px; }
+
+    .table-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .table-card:last-child { margin-bottom: 0; }
+    .table-card.complete { opacity: 0.85; }
+
+    .table-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .table-id {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .table-status-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 2px;
+      letter-spacing: 0.5px;
+    }
+    .table-status-tag.live { background: rgba(61, 186, 106, 0.12); color: var(--green); }
+    .table-status-tag.complete { background: rgba(232, 168, 50, 0.12); color: var(--accent); }
+
+    .table-players {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .table-player-cell {
+      font-size: 12px;
+      padding: 4px 8px;
+      background: var(--surface-2);
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+    .table-player-cell.placed-1 { border-color: var(--accent-dim); background: rgba(232, 168, 50, 0.08); color: var(--accent); }
+    .table-player-cell.placed-2 { border-color: #5a6a7a; background: rgba(160, 168, 184, 0.08); }
+    .table-player-cell.placed-3 { border-color: #735237; background: rgba(184, 115, 51, 0.08); }
+    .table-player-cell.eliminated { color: var(--text-dim); text-decoration: line-through; }
+    .table-player-cell.placed-1::before { content: '1st '; font-family: var(--font-mono); font-size: 10px; font-weight: 700; opacity: 0.7; }
+    .table-player-cell.placed-2::before { content: '2nd '; font-family: var(--font-mono); font-size: 10px; font-weight: 700; opacity: 0.7; }
+    .table-player-cell.placed-3::before { content: '3rd '; font-family: var(--font-mono); font-size: 10px; font-weight: 700; opacity: 0.7; }
+
+    .result-form {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 8px;
+    }
+
+    .result-form-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .result-form-row:last-child { margin-bottom: 0; }
+
+    .result-form-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      width: 38px;
+      color: var(--text-muted);
+    }
+
+    .result-form select {
+      flex: 1;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 5px 8px;
+      border-radius: 3px;
+    }
+    .result-form select:focus { outline: none; border-color: var(--accent); }
+
+    .result-form-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 8px;
+      gap: 6px;
+    }
+
+    .empty-stage {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-style: italic;
+      padding: 8px 0;
+    }
+
+    .rebuy-mgmt {
+      margin-top: 12px;
+      padding: 12px;
+      background: var(--bg);
+      border: 1px dashed var(--border-light);
+      border-radius: 4px;
+    }
+
+    .rebuy-mgmt-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .rebuy-elig-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      font-size: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rebuy-elig-row:last-child { border-bottom: none; }
+
+    .rebuy-paid-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 2px;
+      background: rgba(61, 186, 106, 0.12);
+      color: var(--green);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-mark-paid {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 2px;
+      border: 1px solid var(--green-dim);
+      background: rgba(61, 186, 106, 0.12);
+      color: var(--green);
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .btn-mark-paid:hover { background: rgba(61, 186, 106, 0.2); }
+
+    .stage-action-bar {
+      margin-top: 12px;
+      padding: 10px;
+      background: var(--accent-glow);
+      border: 1px solid var(--accent-dim);
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .stage-action-text {
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .btn-stage-action {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 3px;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* === PUBLIC VIEW (mirrors index.html) === */
+    .reg-banner {
+      padding: 6px 32px;
+      background: var(--accent-glow);
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .reg-banner strong { color: var(--accent); }
+
+    .prize-strip {
+      display: flex;
+      align-items: stretch;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .prize-pool-total {
+      padding: 12px 24px;
+      border-right: 1px solid var(--border);
+      background: var(--accent-glow);
+      min-width: 200px;
+    }
+    .prize-pool-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 2px; }
+    .prize-pool-amount { font-family: var(--font-mono); font-size: 22px; font-weight: 800; color: var(--accent); }
+    .prize-pool-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+    .prize-places { display: flex; }
+    .prize-place {
+      padding: 12px 16px;
+      border-right: 1px solid var(--border);
+      min-width: 100px;
+    }
+    .prize-place:last-child { border-right: none; }
+    .prize-place-rank { font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 2px; }
+    .prize-place-rank.gold { color: var(--accent); }
+    .prize-place-rank.silver { color: #a0a8b8; }
+    .prize-place-rank.bronze { color: #b87333; }
+    .prize-place-amount { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--text); }
+    .prize-place-pct { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+
+    .prize-info { display: flex; flex: 1; justify-content: flex-end; }
+    .prize-info-item {
+      padding: 12px 18px;
+      border-left: 1px solid var(--border);
+      min-width: 80px;
+    }
+    .prize-info-label { font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-dim); margin-bottom: 2px; }
+    .prize-info-value { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--text); }
+    .prize-info-value.clickable { cursor: pointer; border-bottom: 1px dashed var(--border-light); display: inline-block; padding-bottom: 1px; }
+    .prize-info-value.clickable:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .hero {
+      padding: 24px 32px 16px;
+      text-align: center;
+    }
+    .hero-title { font-family: var(--font-mono); font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+    .hero-blurb { font-size: 13px; color: var(--text-muted); max-width: 640px; margin: 0 auto; }
+
+    .public-content { padding: 0 32px 32px; }
+
+    .search-bar {
+      width: 100%;
+      font-size: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 11px 16px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    .search-bar:focus { outline: none; border-color: var(--accent); }
+
+    .search-result-card {
+      background: var(--surface);
+      border: 1px solid var(--accent-dim);
+      border-radius: 6px;
+      padding: 18px;
+      margin-bottom: 20px;
+    }
+    .search-result-card.hidden { display: none; }
+
+    .search-result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .search-result-name { font-size: 17px; font-weight: 700; }
+    .search-result-id { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+    .search-result-status {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+    .search-result-status.active { background: rgba(61, 186, 106, 0.12); color: var(--green); border: 1px solid var(--green-dim); }
+    .search-result-status.eliminated { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+
+    .search-result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+    }
+
+    .sr-block-label { font-family: var(--font-mono); font-size: 10px; font-weight: 600; text-transform: uppercase; color: var(--text-dim); margin-bottom: 5px; }
+    .sr-block-value { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+    .rebuy-cta {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 5px;
+      background: rgba(232, 168, 50, 0.08);
+      border: 1px solid var(--accent-dim);
+      font-size: 13px;
+    }
+    .rebuy-cta.paid { background: rgba(61, 186, 106, 0.08); border-color: var(--green-dim); }
+    .rebuy-cta.hidden { display: none; }
+    .rebuy-cta strong { color: var(--accent); }
+    .rebuy-cta.paid strong { color: var(--green); }
+    .rebuy-cta code {
+      font-family: var(--font-mono); font-size: 12px;
+      background: var(--bg); border: 1px solid var(--border);
+      padding: 1px 6px; border-radius: 3px;
+    }
+
+    .search-no-result {
+      background: var(--surface);
+      border: 1px dashed var(--border-light);
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .search-no-result.hidden { display: none; }
+
+    .stage-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    .stage-header {
+      padding: 12px 16px;
+      background: var(--surface-2);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .stage-header:hover { background: var(--surface-3); }
+    .stage-chevron { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); transition: transform 0.2s; display: inline-block; margin-right: 10px; width: 12px; }
+    .stage-panel.collapsed .stage-chevron { transform: rotate(-90deg); }
+    .stage-title { font-family: var(--font-mono); font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--accent); }
+    .stage-summary { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); }
+    .stage-body { padding: 14px 16px; border-top: 1px solid var(--border); }
+    .stage-panel.collapsed .stage-body { display: none; }
+
+    .substage-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .substage { margin-bottom: 12px; }
+    .substage:last-child { margin-bottom: 0; }
+    .substage-empty { font-size: 12px; color: var(--text-dim); font-style: italic; padding: 4px 0; }
+
+    .pub-table-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+
+    .pub-table-card-id {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .pub-table-players {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .pub-table-player {
+      font-size: 11px;
+      padding: 2px 6px;
+      background: var(--surface-2);
+      border-radius: 2px;
+      border: 1px solid var(--border);
+    }
+    .pub-table-player.placed-1 { border-color: var(--accent-dim); color: var(--accent); }
+    .pub-table-player.placed-2 { border-color: #5a6a7a; }
+    .pub-table-player.placed-3 { border-color: #735237; }
+    .pub-table-player.eliminated { color: var(--text-dim); }
+
+    .rebuy-nested {
+      margin-top: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 10px;
+    }
+    .rebuy-nested-title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .queue-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .queue-chip {
+      font-size: 11px;
+      padding: 2px 6px;
+      background: var(--surface-2);
+      border-radius: 2px;
+      border: 1px solid var(--border);
+    }
+
+    /* === MODALS === */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7); z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px; opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; width: 100%; max-width: 560px;
+      max-height: 85vh; overflow-y: auto;
+    }
+
+    .modal-header {
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .modal-header h2 {
+      font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px; color: var(--accent);
+    }
+    .modal-close {
+      width: 28px; height: 28px;
+      border: 1px solid var(--border); border-radius: 4px;
+      background: var(--surface-2); color: var(--text-muted);
+      cursor: pointer;
+    }
+    .modal-body { padding: 20px; }
+    .modal-body p { font-size: 13px; line-height: 1.6; color: var(--text-muted); margin-bottom: 10px; }
+    .modal-body p:last-child { margin-bottom: 0; }
+    .modal-body strong { color: var(--text); }
+    .modal-list-item {
+      display: flex; justify-content: space-between;
+      padding: 8px 0; border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .modal-list-item:last-child { border-bottom: none; }
+
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--green); color: #fff;
+      padding: 10px 18px; border-radius: 5px;
+      font-size: 13px; font-weight: 500;
+      animation: toastIn 0.2s ease, toastOut 0.25s ease 2.5s forwards;
+      z-index: 2000;
+    }
+    .toast.error { background: var(--red); }
+    @keyframes toastIn { from { opacity:0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes toastOut { from { opacity:1; } to { opacity: 0; } }
+
+    @media (max-width: 768px) {
+      .admin-layout { grid-template-columns: 1fr; }
+      .admin-sidebar { max-height: none; border-right: none; border-bottom: 1px solid var(--border); }
+      .prize-strip { flex-wrap: wrap; }
+      .prize-info { flex: 1 0 100%; border-top: 1px solid var(--border); }
+      .table-players { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- VIEW SWITCHER -->
+  <div class="view-switcher">
+    <span class="view-switcher-label">Demo Mode</span>
+    <div class="view-switcher-buttons">
+      <button class="view-btn active" id="btnViewAdmin">Admin</button>
+      <button class="view-btn" id="btnViewPublic">Public</button>
+    </div>
+    <button class="view-reset" id="btnReset">Reset</button>
+  </div>
+
+  <!-- ADMIN VIEW -->
+  <div id="adminView">
+    <header class="header">
+      <h1>PROGRESSIVE SHOOTOUT // ADMIN</h1>
+      <div class="header-right">
+        <span id="adminStatusBadge" class="btn-pill"></span>
+      </div>
+    </header>
+
+    <div class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="admin-section">
+          <h2>Players</h2>
+          <div class="add-row">
+            <input type="text" id="inpName" placeholder="Name">
+            <input type="text" id="inpTornId" placeholder="Torn ID">
+          </div>
+          <button class="btn btn-add" id="btnAddPlayer" style="width:100%; margin-bottom: 6px;">Add Player</button>
+          <button class="btn btn-outline" id="btnAddDummy" style="width:100%; font-size: 11px;">+ Add 9 Dummy Players</button>
+          <div id="playerList" style="margin-top: 12px;"></div>
+        </div>
+
+        <div class="admin-section">
+          <h2>Donations</h2>
+          <div class="add-row">
+            <input type="text" id="inpDonor" placeholder="Donor name">
+            <input type="text" id="inpDonationAmt" placeholder="Amount">
+          </div>
+          <button class="btn btn-add" id="btnAddDonation" style="width:100%;">Add Donation</button>
+          <div id="donationList" style="margin-top: 12px;"></div>
+        </div>
+
+        <div class="admin-section">
+          <h2>Summary</h2>
+          <div class="summary-row"><span>Players</span><strong id="sumPlayers">0</strong></div>
+          <div class="summary-row"><span>Active</span><strong id="sumActive">0</strong></div>
+          <div class="summary-row"><span>Eliminated</span><strong id="sumElim">0</strong></div>
+          <div class="summary-row"><span>Tables played</span><strong id="sumTables">0</strong></div>
+          <div class="summary-row"><span>Rebuys taken</span><strong id="sumRebuys">0</strong></div>
+          <div class="summary-row"><span>Prize pool</span><strong id="sumPool">$0</strong></div>
+        </div>
+      </aside>
+
+      <main class="admin-main">
+        <div id="startSection" class="stage-block">
+          <div class="stage-block-header">
+            <span class="stage-block-title">Start Tournament</span>
+            <span class="stage-block-status pending">Pending</span>
+          </div>
+          <div class="stage-block-body">
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">Once you're happy with the player roster, randomise seating and start Stage 1. The roster locks after this.</p>
+            <button class="btn btn-primary" id="btnStartTournament">Randomise & Start Stage 1</button>
+          </div>
+        </div>
+
+        <div id="stage1Block" class="stage-block" style="display:none;">
+          <div class="stage-block-header">
+            <span class="stage-block-title">Stage 1 — 9-player tables, top 3 advance</span>
+            <span class="stage-block-status" id="stage1Status">Live</span>
+          </div>
+          <div class="stage-block-body" id="stage1Body"></div>
+        </div>
+
+        <div id="rebuy25Block" class="stage-block" style="display:none;">
+          <div class="stage-block-header">
+            <span class="stage-block-title">25M Rebuy — for Stage 1 losers</span>
+            <span class="stage-block-status" id="rebuy25Status">Pending</span>
+          </div>
+          <div class="stage-block-body" id="rebuy25Body"></div>
+        </div>
+
+        <div id="stage2Block" class="stage-block" style="display:none;">
+          <div class="stage-block-header">
+            <span class="stage-block-title">Stage 2 — 6-player tables, winner only advances</span>
+            <span class="stage-block-status" id="stage2Status">Pending</span>
+          </div>
+          <div class="stage-block-body" id="stage2Body"></div>
+        </div>
+
+        <div id="postStage2" style="margin-top: 24px; padding: 24px; border: 1px dashed var(--border-light); border-radius: 8px; text-align: center; color: var(--text-dim); font-size: 13px; display:none;">
+          MVP demo ends here. Stage 3, 50M and 75M rebuys, Stage 4 sub-rounds, and Final Table will be built once the workflow is signed off.
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- PUBLIC VIEW -->
+  <div id="publicView" style="display:none;">
+    <header class="header">
+      <h1>PROGRESSIVE SHOOTOUT</h1>
+      <div class="header-right">
+        <button class="btn-pill" id="pubBtnPlayers">Players</button>
+        <button class="btn-pill" id="pubBtnRules">Rules</button>
+      </div>
+    </header>
+
+    <div class="reg-banner">Registration closes <strong>June 15</strong></div>
+
+    <div class="prize-strip">
+      <div class="prize-pool-total">
+        <div class="prize-pool-label">Prize Pool</div>
+        <div class="prize-pool-amount" id="pubPrizeTotal">$0</div>
+        <div class="prize-pool-sub" id="pubPrizeBreakdown">0 players</div>
+      </div>
+      <div class="prize-places">
+        <div class="prize-place"><div class="prize-place-rank gold">1st</div><div class="prize-place-amount" id="pubPrize1">$0</div><div class="prize-place-pct">50%</div></div>
+        <div class="prize-place"><div class="prize-place-rank silver">2nd</div><div class="prize-place-amount" id="pubPrize2">$0</div><div class="prize-place-pct">30%</div></div>
+        <div class="prize-place"><div class="prize-place-rank bronze">3rd</div><div class="prize-place-amount" id="pubPrize3">$0</div><div class="prize-place-pct">20%</div></div>
+      </div>
+      <div class="prize-info">
+        <div class="prize-info-item"><div class="prize-info-label">Players</div><span class="prize-info-value clickable" id="pubInfoPlayers">0</span></div>
+        <div class="prize-info-item"><div class="prize-info-label">Games</div><span class="prize-info-value" id="pubInfoGames">0</span></div>
+        <div class="prize-info-item"><div class="prize-info-label">Rebuys</div><span class="prize-info-value" id="pubInfoRebuys">0</span></div>
+        <div class="prize-info-item"><div class="prize-info-label">Donated</div><span class="prize-info-value" id="pubInfoDonated">$0</span></div>
+      </div>
+    </div>
+
+    <section class="hero">
+      <h1 class="hero-title">Outlast the field. Survive the structure.</h1>
+      <p class="hero-blurb">Track every table, every advancement, and every rebuy as the tournament plays out. Search your name to see where you stand and what's next.</p>
+    </section>
+
+    <div class="public-content">
+      <input type="text" class="search-bar" id="searchBar" placeholder="Search your name or Torn ID to see your status">
+
+      <div class="search-result-card hidden" id="searchResult">
+        <div class="search-result-header">
+          <div>
+            <div class="search-result-name" id="srName"></div>
+            <div class="search-result-id" id="srId"></div>
+          </div>
+          <span class="search-result-status active" id="srStatus">ACTIVE</span>
+        </div>
+        <div class="search-result-grid">
+          <div><div class="sr-block-label">Where you are</div><div class="sr-block-value" id="srWhere"></div></div>
+          <div><div class="sr-block-label">Path so far</div><div class="sr-block-value" id="srPath"></div></div>
+          <div><div class="sr-block-label">What's next</div><div class="sr-block-value" id="srNext"></div></div>
+        </div>
+        <div class="rebuy-cta hidden" id="srRebuyCta">
+          <strong>You can rebuy.</strong> Send <span id="srRebuyAmount">$25M</span> to the organiser with the message <code>Shootout Rebuy</code> to enter the rebuy queue.
+        </div>
+        <div class="rebuy-cta paid hidden" id="srRebuyPaid">
+          <strong>Rebuy paid.</strong> You're in the queue for the next rebuy table.
+        </div>
+      </div>
+
+      <div class="search-no-result hidden" id="searchNoResult">No registered player matches that search.</div>
+
+      <div id="publicStages"></div>
+    </div>
+  </div>
+
+  <!-- MODALS -->
+  <div class="modal-overlay" id="rulesModal">
+    <div class="modal">
+      <div class="modal-header"><h2>Tournament Rules</h2><button class="modal-close" onclick="closeModal('rulesModal')">×</button></div>
+      <div class="modal-body">
+        <p><strong>Format.</strong> Progressive Shootout, Texas Hold'em.</p>
+        <p><strong>Stage 1.</strong> 9-player tables. Top 3 advance: 1st → Stage 4, 2nd → Stage 3, 3rd → Stage 2.</p>
+        <p><strong>Stage 2 + 3.</strong> 6-player tables. Winner only advances.</p>
+        <p><strong>Stage 4.</strong> 9-player tables, top 3 advance. Plays in sub-rounds (4a, 4b, 4c…) until ≤9 players remain — that's the Final Table.</p>
+        <p><strong>Rebuys.</strong> $25M after Stage 1, $50M after Stage 2, $75M after Stage 3. Max 3 per player. No rebuys after Stage 4 begins.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="playersModal">
+    <div class="modal">
+      <div class="modal-header"><h2>Registered Players</h2><button class="modal-close" onclick="closeModal('playersModal')">×</button></div>
+      <div class="modal-body" id="playersModalBody"></div>
+    </div>
+  </div>
+
+  <script>
+    // ========================================================================
+    // STATE
+    // ========================================================================
+    var state = createInitialState();
+
+    function createInitialState() {
+      return {
+        settings: {
+          tournament_status: 'setup', // setup | active | complete
+          buy_in: 25000000,
+          rebuy_25m_amount: 25000000,
+          prize_split_1st: 0.5,
+          prize_split_2nd: 0.3,
+          prize_split_3rd: 0.2,
+          rebuy_window_open: null  // null | '25m' (etc, future)
+        },
+        players: [],         // {tornId, name, status, currentStage, rebuysUsed}
+        donations: [],       // {donorName, amount}
+        tables: [],          // {tableId, stage, tableSize, status, players[], place1, place2, place3}
+        eliminations: [],    // {tornId, name, tableId, stageLostAt, rebuyTaken}
+        queues: []           // {tornId, name, queuedFor, source}
+      };
+    }
+
+    var POKER_NAMES = [
+      'AcesUp','BluffMaster','ChipLeader','DeadMansHand','EightSix','FullHouse',
+      'GutShot','HighRoller','IronCowboy','JackHigh','KingMaker','LooseAggro',
+      'MuckPile','NutFlush','OutKicked','PocketRockets','QueenOfClubs','RiverRat',
+      'ShortStack','TripleBarrel','UnderTheGun','ValueBet','WingedNut','XRayVision',
+      'YouTilted','ZeroEquity','AnteUp','BadBeat','CowboysCall','DoyleBrunson'
+    ];
+
+    // ========================================================================
+    // VIEW SWITCHING
+    // ========================================================================
+    document.getElementById('btnViewAdmin').addEventListener('click', function() {
+      showView('admin');
+    });
+    document.getElementById('btnViewPublic').addEventListener('click', function() {
+      showView('public');
+    });
+    document.getElementById('btnReset').addEventListener('click', function() {
+      if (confirm('Reset everything? All progress will be lost.')) {
+        state = createInitialState();
+        renderAll();
+        toast('Demo reset');
+      }
+    });
+
+    function showView(view) {
+      document.getElementById('adminView').style.display = view === 'admin' ? 'block' : 'none';
+      document.getElementById('publicView').style.display = view === 'public' ? 'block' : 'none';
+      document.getElementById('btnViewAdmin').classList.toggle('active', view === 'admin');
+      document.getElementById('btnViewPublic').classList.toggle('active', view === 'public');
+      renderAll();
+    }
+
+    // ========================================================================
+    // PLAYER MANAGEMENT
+    // ========================================================================
+    document.getElementById('btnAddPlayer').addEventListener('click', addPlayer);
+    document.getElementById('btnAddDummy').addEventListener('click', addDummyPlayers);
+    document.getElementById('inpTornId').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') addPlayer();
+    });
+
+    function addPlayer() {
+      if (state.settings.tournament_status !== 'setup') {
+        toast('Roster is locked once the tournament has started', 'error');
+        return;
+      }
+      var name = document.getElementById('inpName').value.trim();
+      var tornId = document.getElementById('inpTornId').value.trim();
+      if (!name || !tornId) { toast('Name and Torn ID required', 'error'); return; }
+      if (state.players.some(function(p) { return p.tornId === tornId; })) {
+        toast('Torn ID already registered', 'error');
+        return;
+      }
+      state.players.push({
+        tornId: tornId,
+        name: name,
+        status: 'active',
+        currentStage: null,
+        rebuysUsed: 0
+      });
+      document.getElementById('inpName').value = '';
+      document.getElementById('inpTornId').value = '';
+      document.getElementById('inpName').focus();
+      toast(name + ' added');
+      renderAll();
+    }
+
+    function addDummyPlayers() {
+      if (state.settings.tournament_status !== 'setup') {
+        toast('Roster is locked once the tournament has started', 'error');
+        return;
+      }
+      var existing = state.players.length;
+      var added = 0;
+      for (var i = 0; i < 9 && existing + i < POKER_NAMES.length; i++) {
+        var name = POKER_NAMES[existing + i];
+        var tornId = String(1000000 + (existing + i) * 137);
+        if (state.players.some(function(p) { return p.tornId === tornId; })) continue;
+        state.players.push({
+          tornId: tornId, name: name, status: 'active',
+          currentStage: null, rebuysUsed: 0
+        });
+        added++;
+      }
+      toast(added + ' dummy players added');
+      renderAll();
+    }
+
+    function removePlayer(tornId) {
+      if (state.settings.tournament_status !== 'setup') {
+        toast('Cannot remove during active tournament', 'error');
+        return;
+      }
+      state.players = state.players.filter(function(p) { return p.tornId !== tornId; });
+      renderAll();
+    }
+
+    // ========================================================================
+    // DONATIONS
+    // ========================================================================
+    document.getElementById('btnAddDonation').addEventListener('click', addDonation);
+
+    function addDonation() {
+      var donorName = document.getElementById('inpDonor').value.trim();
+      var amt = parseInt(document.getElementById('inpDonationAmt').value.replace(/[^0-9]/g, ''), 10);
+      if (!donorName || !amt) { toast('Donor and amount required', 'error'); return; }
+      state.donations.push({ donorName: donorName, amount: amt });
+      document.getElementById('inpDonor').value = '';
+      document.getElementById('inpDonationAmt').value = '';
+      toast('Donation added');
+      renderAll();
+    }
+
+    function removeDonation(idx) {
+      state.donations.splice(idx, 1);
+      renderAll();
+    }
+
+    // ========================================================================
+    // START TOURNAMENT — randomise & seed Stage 1
+    // ========================================================================
+    document.getElementById('btnStartTournament').addEventListener('click', startTournament);
+
+    function startTournament() {
+      if (state.players.length < 2) { toast('Need at least 2 players', 'error'); return; }
+      if (!confirm('Randomise seating and start Stage 1? Roster will lock.')) return;
+
+      var shuffled = shuffle(state.players.slice());
+      var TABLE_SIZE = 9;
+      for (var i = 0; i < shuffled.length; i += TABLE_SIZE) {
+        var chunk = shuffled.slice(i, i + TABLE_SIZE);
+        state.tables.push({
+          tableId: 'S1-T' + (state.tables.length + 1),
+          stage: '1',
+          tableSize: chunk.length,
+          status: 'live',
+          players: chunk.map(function(p) { return p.tornId; }),
+          place1: '', place2: '', place3: '',
+          notes: chunk.length < TABLE_SIZE ? 'short table (' + chunk.length + ')' : ''
+        });
+      }
+      state.players.forEach(function(p) { p.currentStage = 1; });
+      state.settings.tournament_status = 'active';
+      toast('Stage 1 started: ' + state.tables.length + ' table(s)');
+      renderAll();
+    }
+
+    function shuffle(arr) {
+      for (var i = arr.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+      }
+      return arr;
+    }
+
+    // ========================================================================
+    // RECORDING RESULTS
+    // ========================================================================
+    function recordStage1Result(tableId) {
+      var t = state.tables.find(function(t) { return t.tableId === tableId; });
+      if (!t) return;
+      var p1 = document.getElementById('sel-' + tableId + '-1').value;
+      var p2 = document.getElementById('sel-' + tableId + '-2').value;
+      var p3 = document.getElementById('sel-' + tableId + '-3').value;
+
+      if (!p1) { toast('Select 1st place', 'error'); return; }
+      if (t.tableSize >= 4 && !p2) { toast('Select 2nd place', 'error'); return; }
+      if (t.tableSize >= 7 && !p3) { toast('Select 3rd place', 'error'); return; }
+      var sel = [p1, p2, p3].filter(Boolean);
+      if (new Set(sel).size !== sel.length) { toast('Each placement must be different player', 'error'); return; }
+
+      t.place1 = p1;
+      t.place2 = p2 || '';
+      t.place3 = p3 || '';
+      t.status = 'complete';
+
+      // Advance / eliminate per Stage 1 rules
+      // Short-table rule: 7-9 -> top 3 (S4/S3/S2), 4-6 -> top 2 (S4/S3), 1-3 -> winner only (S4)
+      var advancers = [];
+      if (t.tableSize >= 7) {
+        advancers = [
+          { id: p1, dest: 'stage_4', src: tableId + ' 1st' },
+          { id: p2, dest: 'stage_3', src: tableId + ' 2nd' },
+          { id: p3, dest: 'stage_2', src: tableId + ' 3rd' }
+        ];
+      } else if (t.tableSize >= 4) {
+        advancers = [
+          { id: p1, dest: 'stage_4', src: tableId + ' 1st' },
+          { id: p2, dest: 'stage_3', src: tableId + ' 2nd' }
+        ];
+      } else {
+        advancers = [{ id: p1, dest: 'stage_4', src: tableId + ' 1st' }];
+      }
+
+      advancers.forEach(function(a) {
+        var player = state.players.find(function(p) { return p.tornId === a.id; });
+        state.queues.push({ tornId: a.id, name: player.name, queuedFor: a.dest, source: a.src });
+      });
+
+      // Eliminate everyone else at the table
+      var advancerIds = advancers.map(function(a) { return a.id; });
+      t.players.forEach(function(pid) {
+        if (advancerIds.indexOf(pid) === -1) {
+          var pl = state.players.find(function(p) { return p.tornId === pid; });
+          pl.status = 'eliminated';
+          state.eliminations.push({
+            tornId: pid, name: pl.name,
+            tableId: tableId, stageLostAt: 1, rebuyTaken: 'no'
+          });
+        }
+      });
+
+      toast('Result recorded for ' + tableId);
+      renderAll();
+    }
+
+    function recordStage2Result(tableId) {
+      var t = state.tables.find(function(t) { return t.tableId === tableId; });
+      if (!t) return;
+      var winner = document.getElementById('sel-' + tableId + '-1').value;
+      if (!winner) { toast('Select winner', 'error'); return; }
+
+      t.place1 = winner;
+      t.status = 'complete';
+
+      // Stage 2 winners go to stage_3 queue
+      var player = state.players.find(function(p) { return p.tornId === winner; });
+      state.queues.push({ tornId: winner, name: player.name, queuedFor: 'stage_3', source: tableId + ' winner' });
+
+      // Everyone else eliminated, eligible for 50M rebuy (but MVP stops here for simplicity)
+      t.players.forEach(function(pid) {
+        if (pid !== winner) {
+          var pl = state.players.find(function(p) { return p.tornId === pid; });
+          pl.status = 'eliminated';
+          state.eliminations.push({
+            tornId: pid, name: pl.name,
+            tableId: tableId, stageLostAt: 2, rebuyTaken: 'no'
+          });
+        }
+      });
+
+      toast('Result recorded for ' + tableId);
+      renderAll();
+    }
+
+    // ========================================================================
+    // REBUY MANAGEMENT
+    // ========================================================================
+    function openRebuy25Window() {
+      state.settings.rebuy_window_open = '25m';
+      toast('25M rebuy window open');
+      renderAll();
+    }
+
+    function markRebuyPaid(tornId) {
+      var elim = state.eliminations.find(function(e) {
+        return e.tornId === tornId && e.stageLostAt === 1 && e.rebuyTaken === 'no';
+      });
+      if (!elim) return;
+      elim.rebuyTaken = 'yes';
+      var player = state.players.find(function(p) { return p.tornId === tornId; });
+      player.rebuysUsed = (player.rebuysUsed || 0) + 1;
+      state.queues.push({
+        tornId: tornId, name: player.name,
+        queuedFor: 'rebuy_25', source: 'paid 25M rebuy'
+      });
+      toast(player.name + ' rebuy marked paid');
+      renderAll();
+    }
+
+    function fireRebuy25Tables() {
+      var queue = state.queues.filter(function(q) { return q.queuedFor === 'rebuy_25'; });
+      if (queue.length === 0) { toast('No paid rebuys to seat', 'error'); return; }
+      // Remove from queue
+      state.queues = state.queues.filter(function(q) { return q.queuedFor !== 'rebuy_25'; });
+
+      var shuffled = shuffle(queue.slice());
+      var REBUY_SIZE = 3;
+      var rebuyTables = [];
+      for (var i = 0; i < shuffled.length; i += REBUY_SIZE) {
+        var chunk = shuffled.slice(i, i + REBUY_SIZE);
+        var tbl = {
+          tableId: 'R25-T' + (state.tables.filter(function(t) { return t.stage === 'rebuy_25'; }).length + 1 + Math.floor(i / REBUY_SIZE)),
+          stage: 'rebuy_25',
+          tableSize: chunk.length,
+          status: 'live',
+          players: chunk.map(function(c) { return c.tornId; }),
+          place1: '', place2: '', place3: '',
+          notes: chunk.length < REBUY_SIZE ? 'short rebuy table' : ''
+        };
+        // Special case: solo rebuy — auto-advances per the rules
+        if (chunk.length === 1) {
+          tbl.status = 'complete';
+          tbl.place1 = chunk[0].tornId;
+          state.queues.push({
+            tornId: chunk[0].tornId, name: chunk[0].name,
+            queuedFor: 'stage_2', source: tbl.tableId + ' walkover'
+          });
+          tbl.notes = 'walkover (solo rebuy)';
+        }
+        state.tables.push(tbl);
+        rebuyTables.push(tbl);
+      }
+      state.settings.rebuy_window_open = null;
+      toast(rebuyTables.length + ' rebuy table(s) seeded');
+      renderAll();
+    }
+
+    function recordRebuy25Result(tableId) {
+      var t = state.tables.find(function(t) { return t.tableId === tableId; });
+      if (!t) return;
+      var winner = document.getElementById('sel-' + tableId + '-1').value;
+      if (!winner) { toast('Select winner', 'error'); return; }
+
+      t.place1 = winner;
+      t.status = 'complete';
+
+      // Winner advances to Stage 2 queue
+      var player = state.players.find(function(p) { return p.tornId === winner; });
+      state.queues.push({ tornId: winner, name: player.name, queuedFor: 'stage_2', source: tableId + ' winner' });
+
+      // Losers stay eliminated (already are)
+      toast('Rebuy result recorded for ' + tableId);
+      renderAll();
+    }
+
+    function fireStage2() {
+      var queue = state.queues.filter(function(q) { return q.queuedFor === 'stage_2'; });
+      if (queue.length === 0) { toast('Stage 2 queue is empty', 'error'); return; }
+      state.queues = state.queues.filter(function(q) { return q.queuedFor !== 'stage_2'; });
+
+      var shuffled = shuffle(queue.slice());
+      var TABLE_SIZE = 6;
+      for (var i = 0; i < shuffled.length; i += TABLE_SIZE) {
+        var chunk = shuffled.slice(i, i + TABLE_SIZE);
+        state.tables.push({
+          tableId: 'S2-T' + (state.tables.filter(function(t) { return t.stage === '2'; }).length + 1 + Math.floor(i / TABLE_SIZE)),
+          stage: '2',
+          tableSize: chunk.length,
+          status: 'live',
+          players: chunk.map(function(c) { return c.tornId; }),
+          place1: '', place2: '', place3: '',
+          notes: chunk.length < TABLE_SIZE ? 'short table (' + chunk.length + ')' : ''
+        });
+      }
+      shuffled.forEach(function(s) {
+        var p = state.players.find(function(pl) { return pl.tornId === s.tornId; });
+        if (p) p.currentStage = 2;
+      });
+      toast('Stage 2 fired');
+      renderAll();
+    }
+
+    // ========================================================================
+    // RENDER
+    // ========================================================================
+    function renderAll() {
+      renderAdmin();
+      renderPublic();
+    }
+
+    function renderAdmin() {
+      renderAdminStatusBadge();
+      renderAdminPlayers();
+      renderAdminDonations();
+      renderAdminSummary();
+      renderAdminStages();
+    }
+
+    function renderAdminStatusBadge() {
+      var badge = document.getElementById('adminStatusBadge');
+      var st = state.settings.tournament_status;
+      badge.textContent = st.toUpperCase();
+      badge.style.color = st === 'setup' ? 'var(--text-muted)' : st === 'active' ? 'var(--green)' : 'var(--accent)';
+      badge.style.borderColor = st === 'setup' ? 'var(--border)' : st === 'active' ? 'var(--green-dim)' : 'var(--accent-dim)';
+    }
+
+    function renderAdminPlayers() {
+      var container = document.getElementById('playerList');
+      if (state.players.length === 0) {
+        container.innerHTML = '<p style="font-size: 12px; color: var(--text-dim);">No players yet.</p>';
+        return;
+      }
+      var canRemove = state.settings.tournament_status === 'setup';
+      var html = '';
+      state.players.forEach(function(p) {
+        html += '<div class="player-row">';
+        html += '<div><span class="player-row-name">' + esc(p.name) + '</span> <span class="player-row-id">#' + esc(p.tornId) + '</span>';
+        if (p.status === 'eliminated') html += '<span class="player-row-status eliminated">Out</span>';
+        else if (state.settings.tournament_status === 'active') html += '<span class="player-row-status active">In</span>';
+        html += '</div>';
+        if (canRemove) html += '<button class="btn-x" onclick="removePlayer(\'' + esc(p.tornId) + '\')">×</button>';
+        html += '</div>';
+      });
+      container.innerHTML = html;
+    }
+
+    function renderAdminDonations() {
+      var container = document.getElementById('donationList');
+      if (state.donations.length === 0) {
+        container.innerHTML = '<p style="font-size: 12px; color: var(--text-dim);">No donations yet.</p>';
+        return;
+      }
+      var html = '';
+      state.donations.forEach(function(d, i) {
+        html += '<div class="donation-row">';
+        html += '<div><span class="player-row-name">' + esc(d.donorName) + '</span> <span style="font-family: var(--font-mono); font-size: 11px; color: var(--accent);">' + formatMoney(d.amount) + '</span></div>';
+        html += '<button class="btn-x" onclick="removeDonation(' + i + ')">×</button>';
+        html += '</div>';
+      });
+      container.innerHTML = html;
+    }
+
+    function renderAdminSummary() {
+      var active = state.players.filter(function(p) { return p.status === 'active'; }).length;
+      var elim = state.players.filter(function(p) { return p.status === 'eliminated'; }).length;
+      var tablesPlayed = state.tables.filter(function(t) { return t.status === 'complete'; }).length;
+      var rebuys = state.eliminations.filter(function(e) { return e.rebuyTaken === 'yes'; }).length;
+      var pool = computePool();
+      document.getElementById('sumPlayers').textContent = state.players.length;
+      document.getElementById('sumActive').textContent = active;
+      document.getElementById('sumElim').textContent = elim;
+      document.getElementById('sumTables').textContent = tablesPlayed;
+      document.getElementById('sumRebuys').textContent = rebuys;
+      document.getElementById('sumPool').textContent = formatMoney(pool);
+    }
+
+    function renderAdminStages() {
+      var startSec = document.getElementById('startSection');
+      var s1 = document.getElementById('stage1Block');
+      var r25 = document.getElementById('rebuy25Block');
+      var s2 = document.getElementById('stage2Block');
+      var post = document.getElementById('postStage2');
+
+      // Show/hide blocks based on state
+      if (state.settings.tournament_status === 'setup') {
+        startSec.style.display = 'block';
+        s1.style.display = 'none';
+        r25.style.display = 'none';
+        s2.style.display = 'none';
+        post.style.display = 'none';
+        document.getElementById('btnStartTournament').disabled = state.players.length < 2;
+        return;
+      }
+
+      startSec.style.display = 'none';
+
+      // Stage 1
+      var s1Tables = state.tables.filter(function(t) { return t.stage === '1'; });
+      if (s1Tables.length > 0) {
+        s1.style.display = 'block';
+        renderStage1Block();
+      }
+
+      // Rebuy 25M
+      var s1Complete = s1Tables.length > 0 && s1Tables.every(function(t) { return t.status === 'complete'; });
+      if (s1Complete) {
+        r25.style.display = 'block';
+        renderRebuy25Block();
+      }
+
+      // Stage 2
+      var r25Tables = state.tables.filter(function(t) { return t.stage === 'rebuy_25'; });
+      var allRebuysDone = r25Tables.length === 0 ? false : r25Tables.every(function(t) { return t.status === 'complete'; });
+      // Show stage 2 block once rebuy 25M tables complete OR if no rebuys were taken
+      var stage2Tables = state.tables.filter(function(t) { return t.stage === '2'; });
+      if (stage2Tables.length > 0 || (s1Complete && allRebuysDone) || (s1Complete && state.queues.filter(function(q) { return q.queuedFor === 'stage_2'; }).length > 0)) {
+        s2.style.display = 'block';
+        renderStage2Block();
+      }
+
+      // Post stage 2 placeholder
+      var s2Complete = stage2Tables.length > 0 && stage2Tables.every(function(t) { return t.status === 'complete'; });
+      post.style.display = s2Complete ? 'block' : 'none';
+    }
+
+    function renderStage1Block() {
+      var s1Tables = state.tables.filter(function(t) { return t.stage === '1'; });
+      var allDone = s1Tables.every(function(t) { return t.status === 'complete'; });
+      document.getElementById('stage1Status').className = 'stage-block-status ' + (allDone ? 'complete' : 'live');
+      document.getElementById('stage1Status').textContent = allDone ? 'Complete' : 'Live';
+
+      var html = '';
+      s1Tables.forEach(function(t) {
+        html += renderTableCard(t, 'stage1');
+      });
+      document.getElementById('stage1Body').innerHTML = html;
+    }
+
+    function renderRebuy25Block() {
+      var elim = state.eliminations.filter(function(e) { return e.stageLostAt === 1; });
+      var r25Tables = state.tables.filter(function(t) { return t.stage === 'rebuy_25'; });
+      var windowOpen = state.settings.rebuy_window_open === '25m';
+      var anyComplete = r25Tables.length > 0 && r25Tables.every(function(t) { return t.status === 'complete'; });
+
+      document.getElementById('rebuy25Status').className = 'stage-block-status ' + (anyComplete ? 'complete' : (r25Tables.length > 0 ? 'live' : 'pending'));
+      document.getElementById('rebuy25Status').textContent = anyComplete ? 'Complete' : (r25Tables.length > 0 ? 'Live' : (windowOpen ? 'Window Open' : 'Pending'));
+
+      var html = '';
+
+      if (!windowOpen && r25Tables.length === 0) {
+        html += '<div class="stage-action-bar">';
+        html += '<div class="stage-action-text">Open the 25M rebuy window so eliminated Stage 1 players can pay in.</div>';
+        html += '<button class="btn-stage-action" onclick="openRebuy25Window()">Open 25M Rebuy Window</button>';
+        html += '</div>';
+      }
+
+      if (windowOpen) {
+        html += '<div class="rebuy-mgmt">';
+        html += '<div class="rebuy-mgmt-title">Eliminated Stage 1 Players</div>';
+        if (elim.length === 0) {
+          html += '<div class="empty-stage">No eliminated players yet.</div>';
+        } else {
+          elim.forEach(function(e) {
+            html += '<div class="rebuy-elig-row">';
+            html += '<span>' + esc(e.name) + ' <span style="color: var(--text-dim); font-family: var(--font-mono); font-size: 11px;">#' + esc(e.tornId) + '</span></span>';
+            if (e.rebuyTaken === 'yes') {
+              html += '<span class="rebuy-paid-tag">paid</span>';
+            } else {
+              html += '<button class="btn-mark-paid" onclick="markRebuyPaid(\'' + esc(e.tornId) + '\')">Mark paid</button>';
+            }
+            html += '</div>';
+          });
+        }
+        html += '</div>';
+        var paidCount = elim.filter(function(e) { return e.rebuyTaken === 'yes'; }).length;
+        if (paidCount > 0) {
+          html += '<div class="stage-action-bar" style="margin-top: 12px;">';
+          html += '<div class="stage-action-text">' + paidCount + ' player(s) have paid. Close the window and seat them into rebuy tables.</div>';
+          html += '<button class="btn-stage-action" onclick="fireRebuy25Tables()">Seat Rebuy Tables</button>';
+          html += '</div>';
+        }
+      }
+
+      r25Tables.forEach(function(t) {
+        html += renderTableCard(t, 'rebuy25');
+      });
+
+      document.getElementById('rebuy25Body').innerHTML = html;
+    }
+
+    function renderStage2Block() {
+      var s2Tables = state.tables.filter(function(t) { return t.stage === '2'; });
+      var stage2Queue = state.queues.filter(function(q) { return q.queuedFor === 'stage_2'; });
+      var allDone = s2Tables.length > 0 && s2Tables.every(function(t) { return t.status === 'complete'; });
+      var hasLive = s2Tables.some(function(t) { return t.status === 'live'; });
+
+      document.getElementById('stage2Status').className = 'stage-block-status ' + (allDone ? 'complete' : hasLive ? 'live' : 'pending');
+      document.getElementById('stage2Status').textContent = allDone ? 'Complete' : hasLive ? 'Live' : 'Pending';
+
+      var html = '';
+
+      if (s2Tables.length === 0 && stage2Queue.length > 0) {
+        html += '<div class="rebuy-mgmt">';
+        html += '<div class="rebuy-mgmt-title">Stage 2 Queue (' + stage2Queue.length + ')</div>';
+        stage2Queue.forEach(function(q) {
+          html += '<div class="rebuy-elig-row"><span>' + esc(q.name) + '</span><span style="font-size: 11px; color: var(--text-dim);">' + esc(q.source) + '</span></div>';
+        });
+        html += '</div>';
+        html += '<div class="stage-action-bar" style="margin-top: 12px;">';
+        html += '<div class="stage-action-text">' + stage2Queue.length + ' player(s) queued. Fire Stage 2 to seat 6-player tables.</div>';
+        html += '<button class="btn-stage-action" onclick="fireStage2()">Fire Stage 2</button>';
+        html += '</div>';
+      }
+
+      s2Tables.forEach(function(t) {
+        html += renderTableCard(t, 'stage2');
+      });
+
+      if (s2Tables.length === 0 && stage2Queue.length === 0) {
+        html += '<div class="empty-stage">Waiting for players to advance from Stage 1 / 25M rebuys.</div>';
+      }
+
+      document.getElementById('stage2Body').innerHTML = html;
+    }
+
+    function renderTableCard(t, stageKey) {
+      var html = '<div class="table-card' + (t.status === 'complete' ? ' complete' : '') + '">';
+      html += '<div class="table-card-header">';
+      html += '<span class="table-id">' + esc(t.tableId) + (t.notes ? ' <span style="font-weight: 400; color: var(--text-dim); font-size: 11px;">' + esc(t.notes) + '</span>' : '') + '</span>';
+      html += '<span class="table-status-tag ' + t.status + '">' + t.status + '</span>';
+      html += '</div>';
+
+      // Players grid
+      html += '<div class="table-players">';
+      t.players.forEach(function(pid) {
+        var p = state.players.find(function(pl) { return pl.tornId === pid; });
+        if (!p) return;
+        var cls = '';
+        if (t.status === 'complete') {
+          if (t.place1 === pid) cls = 'placed-1';
+          else if (t.place2 === pid) cls = 'placed-2';
+          else if (t.place3 === pid) cls = 'placed-3';
+          else cls = 'eliminated';
+        }
+        html += '<div class="table-player-cell ' + cls + '">' + esc(p.name) + '</div>';
+      });
+      html += '</div>';
+
+      // Result form for live tables
+      if (t.status === 'live') {
+        html += renderResultForm(t, stageKey);
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderResultForm(t, stageKey) {
+      var isStage1 = (stageKey === 'stage1');
+      var isStage2OrRebuy = (stageKey === 'stage2' || stageKey === 'rebuy25');
+      var html = '<div class="result-form">';
+
+      // Build options
+      var options = '<option value="">— Select —</option>';
+      t.players.forEach(function(pid) {
+        var p = state.players.find(function(pl) { return pl.tornId === pid; });
+        if (p) options += '<option value="' + esc(pid) + '">' + esc(p.name) + '</option>';
+      });
+
+      html += '<div class="result-form-row"><span class="result-form-label">1st</span><select id="sel-' + esc(t.tableId) + '-1">' + options + '</select></div>';
+
+      if (isStage1) {
+        if (t.tableSize >= 4) {
+          html += '<div class="result-form-row"><span class="result-form-label">2nd</span><select id="sel-' + esc(t.tableId) + '-2">' + options + '</select></div>';
+        }
+        if (t.tableSize >= 7) {
+          html += '<div class="result-form-row"><span class="result-form-label">3rd</span><select id="sel-' + esc(t.tableId) + '-3">' + options + '</select></div>';
+        }
+      }
+
+      var fnName = '';
+      if (stageKey === 'stage1') fnName = 'recordStage1Result';
+      else if (stageKey === 'stage2') fnName = 'recordStage2Result';
+      else if (stageKey === 'rebuy25') fnName = 'recordRebuy25Result';
+
+      html += '<div class="result-form-actions">';
+      html += '<button class="btn btn-primary" style="width: auto; padding: 6px 16px;" onclick="' + fnName + '(\'' + esc(t.tableId) + '\')">Record Result</button>';
+      html += '</div>';
+
+      html += '</div>';
+      return html;
+    }
+
+    // ========================================================================
+    // PUBLIC VIEW RENDER
+    // ========================================================================
+    function renderPublic() {
+      renderPublicPrize();
+      renderPublicStages();
+    }
+
+    function computePool() {
+      var bi = state.settings.buy_in;
+      var fromBuyIns = state.players.length * bi;
+      var fromDonations = state.donations.reduce(function(s, d) { return s + d.amount; }, 0);
+      var rebuyAmts = state.eliminations.filter(function(e) { return e.rebuyTaken === 'yes'; }).map(function(e) {
+        return e.stageLostAt === 1 ? state.settings.rebuy_25m_amount : 0;
+      });
+      var fromRebuys = rebuyAmts.reduce(function(s, a) { return s + a; }, 0);
+      return fromBuyIns + fromDonations + fromRebuys;
+    }
+
+    function renderPublicPrize() {
+      var pool = computePool();
+      var bi = state.players.length * state.settings.buy_in;
+      var dn = state.donations.reduce(function(s, d) { return s + d.amount; }, 0);
+      var rb = state.eliminations.filter(function(e) { return e.rebuyTaken === 'yes' && e.stageLostAt === 1; }).length * state.settings.rebuy_25m_amount;
+
+      document.getElementById('pubPrizeTotal').textContent = formatMoney(pool);
+      var parts = [formatMoney(bi) + ' from buy-ins'];
+      if (rb > 0) parts.push(formatMoney(rb) + ' from rebuys');
+      if (dn > 0) parts.push(formatMoney(dn) + ' donated');
+      document.getElementById('pubPrizeBreakdown').textContent = parts.join(' + ');
+
+      document.getElementById('pubPrize1').textContent = formatMoney(Math.floor(pool * 0.5));
+      document.getElementById('pubPrize2').textContent = formatMoney(Math.floor(pool * 0.3));
+      document.getElementById('pubPrize3').textContent = formatMoney(Math.floor(pool * 0.2));
+
+      document.getElementById('pubInfoPlayers').textContent = state.players.length;
+      document.getElementById('pubInfoGames').textContent = state.tables.filter(function(t) { return t.status === 'complete'; }).length;
+      document.getElementById('pubInfoRebuys').textContent = state.eliminations.filter(function(e) { return e.rebuyTaken === 'yes'; }).length;
+      document.getElementById('pubInfoDonated').textContent = formatMoney(dn);
+    }
+
+    function renderPublicStages() {
+      var container = document.getElementById('publicStages');
+      var html = '';
+
+      // Stage 1 panel
+      html += renderPublicStagePanel({
+        stageKey: '1',
+        title: 'Stage 1',
+        summary: '9-player tables, top 3 advance',
+        rebuyTier: { stage: 'rebuy_25', label: '25M Rebuy' }
+      });
+
+      // Stage 2 panel (always show, even if no tables yet)
+      html += renderPublicStagePanel({
+        stageKey: '2',
+        title: 'Stage 2',
+        summary: '6-player tables, winner only',
+        rebuyTier: null  // 50M not built in MVP
+      });
+
+      container.innerHTML = html;
+    }
+
+    function renderPublicStagePanel(opts) {
+      var stageTables = state.tables.filter(function(t) { return t.stage === opts.stageKey; });
+      var live = stageTables.filter(function(t) { return t.status === 'live'; });
+      var complete = stageTables.filter(function(t) { return t.status === 'complete'; });
+      var queue = state.queues.filter(function(q) { return q.queuedFor === 'stage_' + opts.stageKey; });
+
+      var collapsed = (stageTables.length === 0 && queue.length === 0) ? ' collapsed' : '';
+
+      var html = '<div class="stage-panel' + collapsed + '">';
+      html += '<div class="stage-header" onclick="this.parentElement.classList.toggle(\'collapsed\');">';
+      html += '<div><span class="stage-chevron">▼</span><span class="stage-title">' + esc(opts.title) + '</span></div>';
+      html += '<span class="stage-summary">' + esc(opts.summary) + '</span>';
+      html += '</div>';
+
+      html += '<div class="stage-body">';
+
+      // Live
+      html += '<div class="substage">';
+      html += '<div class="substage-title">Live tables</div>';
+      if (live.length === 0) html += '<div class="substage-empty">No live tables.</div>';
+      else live.forEach(function(t) { html += renderPublicTableCard(t); });
+      html += '</div>';
+
+      // Complete
+      html += '<div class="substage">';
+      html += '<div class="substage-title">Complete tables</div>';
+      if (complete.length === 0) html += '<div class="substage-empty">No completed tables.</div>';
+      else complete.forEach(function(t) { html += renderPublicTableCard(t); });
+      html += '</div>';
+
+      // Queue
+      html += '<div class="substage">';
+      html += '<div class="substage-title">Queue (' + queue.length + ')</div>';
+      if (queue.length === 0) html += '<div class="substage-empty">No queued players.</div>';
+      else {
+        html += '<div class="queue-list">';
+        queue.forEach(function(q) { html += '<span class="queue-chip">' + esc(q.name) + '</span>'; });
+        html += '</div>';
+      }
+      html += '</div>';
+
+      // Nested rebuy
+      if (opts.rebuyTier) {
+        var rebuyTables = state.tables.filter(function(t) { return t.stage === opts.rebuyTier.stage; });
+        var rbLive = rebuyTables.filter(function(t) { return t.status === 'live'; });
+        var rbComp = rebuyTables.filter(function(t) { return t.status === 'complete'; });
+        var rbQueue = state.queues.filter(function(q) { return q.queuedFor === opts.rebuyTier.stage; });
+
+        html += '<div class="rebuy-nested">';
+        html += '<div class="rebuy-nested-title">' + esc(opts.rebuyTier.label) + ' tables</div>';
+        if (rbLive.length === 0 && rbComp.length === 0 && rbQueue.length === 0) {
+          html += '<div class="substage-empty">No rebuy activity.</div>';
+        } else {
+          if (rbLive.length > 0) {
+            html += '<div style="margin-bottom: 6px;"><span style="font-size: 10px; color: var(--text-dim);">LIVE</span></div>';
+            rbLive.forEach(function(t) { html += renderPublicTableCard(t); });
+          }
+          if (rbComp.length > 0) {
+            html += '<div style="margin-top: 8px; margin-bottom: 6px;"><span style="font-size: 10px; color: var(--text-dim);">COMPLETE</span></div>';
+            rbComp.forEach(function(t) { html += renderPublicTableCard(t); });
+          }
+          if (rbQueue.length > 0) {
+            html += '<div style="margin-top: 8px; margin-bottom: 6px;"><span style="font-size: 10px; color: var(--text-dim);">QUEUE (' + rbQueue.length + ')</span></div>';
+            html += '<div class="queue-list">';
+            rbQueue.forEach(function(q) { html += '<span class="queue-chip">' + esc(q.name) + '</span>'; });
+            html += '</div>';
+          }
+        }
+        html += '</div>';
+      }
+
+      html += '</div></div>';
+      return html;
+    }
+
+    function renderPublicTableCard(t) {
+      var html = '<div class="pub-table-card">';
+      html += '<div class="pub-table-card-id">' + esc(t.tableId);
+      if (t.notes) html += ' <span style="color: var(--text-dim); font-weight: 400;">' + esc(t.notes) + '</span>';
+      html += '</div>';
+      html += '<div class="pub-table-players">';
+      t.players.forEach(function(pid) {
+        var p = state.players.find(function(pl) { return pl.tornId === pid; });
+        if (!p) return;
+        var cls = '';
+        if (t.status === 'complete') {
+          if (t.place1 === pid) cls = 'placed-1';
+          else if (t.place2 === pid) cls = 'placed-2';
+          else if (t.place3 === pid) cls = 'placed-3';
+          else cls = 'eliminated';
+        }
+        html += '<span class="pub-table-player ' + cls + '">' + esc(p.name) + '</span>';
+      });
+      html += '</div></div>';
+      return html;
+    }
+
+    // ========================================================================
+    // PUBLIC SEARCH
+    // ========================================================================
+    var searchTimeout;
+    document.getElementById('searchBar').addEventListener('input', function(e) {
+      clearTimeout(searchTimeout);
+      var q = e.target.value.trim().toLowerCase();
+      searchTimeout = setTimeout(function() { runSearch(q); }, 120);
+    });
+
+    function runSearch(query) {
+      var card = document.getElementById('searchResult');
+      var no = document.getElementById('searchNoResult');
+      if (!query) { card.classList.add('hidden'); no.classList.add('hidden'); return; }
+
+      var p = state.players.find(function(pl) {
+        return pl.name.toLowerCase().indexOf(query) !== -1 || pl.tornId.indexOf(query) !== -1;
+      });
+
+      if (!p) { card.classList.add('hidden'); no.classList.remove('hidden'); return; }
+
+      no.classList.add('hidden'); card.classList.remove('hidden');
+      document.getElementById('srName').textContent = p.name;
+      document.getElementById('srId').textContent = '#' + p.tornId;
+
+      var sEl = document.getElementById('srStatus');
+      sEl.textContent = (p.status || 'active').toUpperCase();
+      sEl.className = 'search-result-status ' + (p.status || 'active');
+
+      var info = computeInfo(p);
+      document.getElementById('srWhere').textContent = info.where;
+      document.getElementById('srPath').textContent = info.path;
+      document.getElementById('srNext').textContent = info.next;
+
+      var rebuyCta = document.getElementById('srRebuyCta');
+      var rebuyPaid = document.getElementById('srRebuyPaid');
+      rebuyCta.classList.add('hidden'); rebuyPaid.classList.add('hidden');
+      if (info.rebuyState === 'eligible') {
+        rebuyCta.classList.remove('hidden');
+        document.getElementById('srRebuyAmount').textContent = info.rebuyAmount;
+      } else if (info.rebuyState === 'paid') {
+        rebuyPaid.classList.remove('hidden');
+      }
+    }
+
+    function computeInfo(p) {
+      var pid = p.tornId;
+      var playerTables = state.tables.filter(function(t) { return t.players.indexOf(pid) !== -1; });
+      var liveTable = playerTables.find(function(t) { return t.status === 'live'; });
+      var queued = state.queues.find(function(q) { return q.tornId === pid; });
+      var elim = state.eliminations.find(function(e) { return e.tornId === pid; });
+      var status = state.settings.tournament_status;
+
+      var pathParts = [];
+      playerTables.filter(function(t) { return t.status === 'complete'; }).forEach(function(t) {
+        var place = t.place1 === pid ? '1st' : t.place2 === pid ? '2nd' : t.place3 === pid ? '3rd' : 'out';
+        pathParts.push(t.tableId + ' (' + place + ')');
+      });
+
+      var where, next;
+      var rebuyState = null, rebuyAmount = '';
+
+      if (status === 'setup') {
+        where = 'Registered. Tournament hasn\'t started yet.';
+        next = 'Wait for tournament to start.';
+      } else if (liveTable) {
+        where = 'Playing at ' + liveTable.tableId;
+        next = 'Finish current table.';
+      } else if (queued) {
+        var ql = queued.queuedFor.replace('stage_', 'Stage ').replace('rebuy_25', '25M Rebuy');
+        where = 'Waiting in ' + ql + ' queue.';
+        next = 'Wait for ' + ql + ' to be drawn.';
+      } else if (p.status === 'eliminated') {
+        where = 'Eliminated at Stage ' + (elim ? elim.stageLostAt : '?') + '.';
+        if (elim && elim.rebuyTaken === 'yes') {
+          next = 'Rebuy paid. Waiting for rebuy table.';
+          rebuyState = 'paid';
+          rebuyAmount = '$25M';
+        } else if (elim && elim.stageLostAt === 1 && state.settings.rebuy_window_open === '25m' && (p.rebuysUsed || 0) < 3) {
+          next = 'Rebuy for $25M to enter Stage 2.';
+          rebuyState = 'eligible';
+          rebuyAmount = '$25M';
+        } else {
+          next = 'Out of the tournament.';
+        }
+      } else {
+        where = 'Active' + (p.currentStage ? ' in Stage ' + p.currentStage : '') + '.';
+        next = 'Wait for next table.';
+      }
+
+      return {
+        where: where,
+        path: pathParts.length > 0 ? pathParts.join(' → ') : 'No matches played yet.',
+        next: next,
+        rebuyState: rebuyState,
+        rebuyAmount: rebuyAmount
+      };
+    }
+
+    // ========================================================================
+    // MODALS / PUBLIC PLAYER + RULES
+    // ========================================================================
+    document.getElementById('pubBtnRules').addEventListener('click', function() { openModal('rulesModal'); });
+    document.getElementById('pubBtnPlayers').addEventListener('click', function() {
+      renderPlayersModal(); openModal('playersModal');
+    });
+    document.getElementById('pubInfoPlayers').addEventListener('click', function() {
+      renderPlayersModal(); openModal('playersModal');
+    });
+
+    document.querySelectorAll('.modal-overlay').forEach(function(o) {
+      o.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(function(m) { m.classList.remove('open'); });
+    });
+
+    function openModal(id) { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    function renderPlayersModal() {
+      var body = document.getElementById('playersModalBody');
+      if (state.players.length === 0) {
+        body.innerHTML = '<p style="color: var(--text-dim); text-align: center;">No registrations yet.</p>';
+        return;
+      }
+      var html = '';
+      state.players.forEach(function(p) {
+        html += '<div class="modal-list-item">';
+        html += '<span><strong>' + esc(p.name) + '</strong> <span style="color: var(--text-dim); font-family: var(--font-mono); font-size: 12px;">#' + esc(p.tornId) + '</span></span>';
+        html += '<span style="font-family: var(--font-mono); font-size: 11px; color: ' + (p.status === 'eliminated' ? 'var(--text-dim)' : 'var(--green)') + ';">' + p.status + '</span>';
+        html += '</div>';
+      });
+      body.innerHTML = html;
+    }
+
+    // ========================================================================
+    // HELPERS
+    // ========================================================================
+    function formatMoney(amt) {
+      if (!amt) return '$0';
+      if (amt >= 1e9) return '$' + (amt / 1e9).toFixed(1).replace(/\.0$/, '') + 'B';
+      if (amt >= 1e6) return '$' + (amt / 1e6).toFixed(0) + 'M';
+      if (amt >= 1e3) return '$' + (amt / 1e3).toFixed(0) + 'K';
+      return '$' + amt;
+    }
+
+    function esc(s) {
+      if (s === null || s === undefined) return '';
+      var d = document.createElement('div');
+      d.textContent = String(s);
+      return d.innerHTML;
+    }
+
+    function toast(msg, type) {
+      var el = document.createElement('div');
+      el.className = 'toast' + (type === 'error' ? ' error' : '');
+      el.textContent = msg;
+      document.body.appendChild(el);
+      setTimeout(function() { el.remove(); }, 3000);
+    }
+
+    // ========================================================================
+    // INIT
+    // ========================================================================
+    renderAll();
+  </script>
+
+</body>
+</html>
