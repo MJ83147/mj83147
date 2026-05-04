@@ -97,6 +97,25 @@
     .status-active { background: rgba(61, 186, 106, 0.12); color: var(--green); border: 1px solid var(--green-dim); }
     .status-complete { background: rgba(232, 168, 50, 0.12); color: var(--accent); border: 1px solid var(--accent-dim); }
 
+    /* --- REG BANNER --- */
+    .reg-banner {
+      padding: 8px 32px;
+      background: var(--accent-glow);
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 0.3px;
+    }
+
+    .reg-banner strong {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .reg-banner.hidden { display: none; }
+
     /* --- PRIZE STRIP --- */
     .prize-strip {
       display: flex;
@@ -109,7 +128,7 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding: 12px 28px;
+      padding: 12px 24px;
       border-right: 1px solid var(--border);
       background: var(--accent-glow);
       min-width: 200px;
@@ -127,7 +146,7 @@
 
     .prize-pool-amount {
       font-family: var(--font-mono);
-      font-size: 28px;
+      font-size: 26px;
       font-weight: 800;
       color: var(--accent);
       letter-spacing: -0.5px;
@@ -135,31 +154,31 @@
 
     .prize-pool-sub {
       font-family: var(--font-body);
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-dim);
-      margin-top: 1px;
+      margin-top: 2px;
+      line-height: 1.4;
     }
 
     .prize-places {
       display: flex;
       align-items: stretch;
-      flex: 1;
     }
 
     .prize-place {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding: 12px 28px;
+      padding: 12px 18px;
       border-right: 1px solid var(--border);
-      flex: 1;
+      min-width: 110px;
     }
 
     .prize-place:last-child { border-right: none; }
 
     .prize-place-rank {
       font-family: var(--font-body);
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -172,42 +191,45 @@
 
     .prize-place-amount {
       font-family: var(--font-mono);
-      font-size: 22px;
+      font-size: 16px;
       font-weight: 700;
       color: var(--text);
     }
 
     .prize-place-pct {
       font-family: var(--font-body);
-      font-size: 13px;
+      font-size: 11px;
       color: var(--text-dim);
       margin-top: 1px;
     }
 
     .prize-place-tentative {
       font-family: var(--font-mono);
-      font-size: 10px;
+      font-size: 9px;
       color: var(--text-dim);
-      margin-top: 4px;
+      margin-top: 3px;
       font-style: italic;
     }
 
     .prize-info {
       display: flex;
       align-items: stretch;
+      flex: 1;
+      justify-content: flex-end;
     }
 
     .prize-info-item {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding: 12px 28px;
+      padding: 12px 20px;
       border-left: 1px solid var(--border);
+      min-width: 90px;
     }
 
     .prize-info-label {
       font-family: var(--font-body);
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -217,7 +239,7 @@
 
     .prize-info-value {
       font-family: var(--font-mono);
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
       color: var(--text);
     }
@@ -231,132 +253,70 @@
       color: var(--accent);
     }
 
-    .prize-info-value .donor-link {
+    .prize-info-value .value-link {
       border-bottom: 1px dashed var(--border-light);
       padding-bottom: 1px;
     }
 
-    .prize-info-value.clickable:hover .donor-link {
+    .prize-info-value.clickable:hover .value-link {
       border-bottom-color: var(--accent);
     }
 
     /* --- HERO --- */
     .hero {
-      padding: 48px 32px 40px;
+      padding: 28px 32px 20px;
       text-align: center;
-      max-width: 720px;
-      margin: 0 auto;
-    }
-
-    .hero-eyebrow {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      color: var(--text-dim);
-      margin-bottom: 12px;
     }
 
     .hero-title {
       font-family: var(--font-mono);
-      font-size: 28px;
+      font-size: 22px;
       font-weight: 800;
       color: var(--text);
       letter-spacing: -0.5px;
-      margin-bottom: 16px;
+      margin-bottom: 8px;
       line-height: 1.2;
     }
 
     .hero-blurb {
-      font-size: 15px;
+      font-size: 13px;
       color: var(--text-muted);
-      line-height: 1.6;
-      max-width: 560px;
+      line-height: 1.5;
+      max-width: 640px;
       margin: 0 auto;
     }
 
     /* --- PLAYERS GRID --- */
-    .players-section {
-      padding: 0 32px 48px;
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-
-    .section-header {
+    /* --- PLAYERS LIST IN MODAL --- */
+    .player-list-item {
       display: flex;
+      align-items: center;
       justify-content: space-between;
-      align-items: baseline;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
+      padding: 10px 0;
       border-bottom: 1px solid var(--border);
     }
 
-    .section-title {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--accent);
-    }
+    .player-list-item:last-child { border-bottom: none; }
 
-    .section-count {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--text-dim);
-    }
-
-    .players-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 8px;
-    }
-
-    .player-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      padding: 12px 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      transition: border-color 0.15s;
-    }
-
-    .player-card:hover {
-      border-color: var(--border-light);
-    }
-
-    .player-card-info {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .player-card-name {
+    .player-list-name {
       font-size: 14px;
       font-weight: 600;
       color: var(--text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
 
-    .player-card-name a {
+    .player-list-name a {
       color: inherit;
       text-decoration: none;
     }
 
-    .player-card-name a:hover {
+    .player-list-name a:hover {
       color: var(--accent);
     }
 
-    .player-card-id {
+    .player-list-id {
       font-family: var(--font-mono);
-      font-size: 11px;
+      font-size: 12px;
       color: var(--text-dim);
-      margin-top: 1px;
     }
 
     .empty-state {
@@ -371,8 +331,6 @@
     /* --- TOURNAMENT VIEW --- */
     .tournament-section {
       padding: 0 32px 48px;
-      max-width: 1100px;
-      margin: 0 auto;
     }
 
     .search-bar-wrap {
@@ -667,51 +625,17 @@
       display: none;
     }
 
-    /* --- HOW TO JOIN --- */
-    .join-section {
-      padding: 0 32px 64px;
-      max-width: 720px;
-      margin: 0 auto;
-    }
-
-    .join-card {
-      background: var(--surface);
-      border: 1px solid var(--accent-dim);
-      border-radius: 8px;
-      padding: 28px;
-    }
-
-    .join-card h3 {
+    /* --- HOW TO ENTER MODAL CONTENT --- */
+    .enter-amount {
       font-family: var(--font-mono);
-      font-size: 13px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--accent);
-      margin-bottom: 16px;
-    }
-
-    .join-card p {
-      font-size: 14px;
-      color: var(--text-muted);
-      line-height: 1.7;
-      margin-bottom: 12px;
-    }
-
-    .join-card p:last-child { margin-bottom: 0; }
-
-    .join-card strong { color: var(--text); font-weight: 600; }
-
-    .join-amount {
-      font-family: var(--font-mono);
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 700;
       color: var(--accent);
       display: block;
-      margin: 16px 0 8px;
+      margin: 12px 0 8px;
     }
 
-    .join-message {
+    .enter-message {
       font-family: var(--font-mono);
       font-size: 13px;
       color: var(--text);
@@ -1016,13 +940,10 @@
 
       .prize-info-value { font-size: 14px; }
 
-      .hero { padding: 32px 16px 24px; }
-      .hero-title { font-size: 22px; }
-      .hero-blurb { font-size: 14px; }
-
-      .players-section { padding: 0 16px 32px; }
-      .players-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
-      .player-card { padding: 10px 12px; }
+      .reg-banner { padding: 6px 16px; font-size: 11px; }
+      .hero { padding: 20px 16px 16px; }
+      .hero-title { font-size: 18px; }
+      .hero-blurb { font-size: 12px; }
 
       .tournament-section { padding: 0 16px 32px; }
       .search-result-grid { grid-template-columns: 1fr; gap: 12px; }
@@ -1031,9 +952,6 @@
       .stage-body { padding: 12px 14px 14px; }
       .rebuy-header { padding: 10px 12px; }
       .rebuy-body { padding: 10px 12px 12px; }
-
-      .join-section { padding: 0 16px 40px; }
-      .join-card { padding: 20px; }
 
       .modal-overlay { padding: 12px; }
       .modal { max-height: 90vh; }
@@ -1047,10 +965,15 @@
   <header class="header">
     <h1>PROGRESSIVE SHOOTOUT</h1>
     <div class="header-right">
+      <button class="btn-pill" id="btnPlayers">Players</button>
+      <button class="btn-pill" id="btnEnter">Enter</button>
       <button class="btn-pill" id="btnRules">Rules</button>
-      <span class="status-badge status-setup" id="statusBadge">SETUP</span>
     </div>
   </header>
+
+  <div class="reg-banner" id="regBanner">
+    Registration closes <strong id="regBannerDate">June 15</strong>
+  </div>
 
   <div class="prize-strip">
     <div class="prize-pool-total">
@@ -1081,31 +1004,30 @@
     <div class="prize-info">
       <div class="prize-info-item">
         <span class="prize-info-label">Players</span>
-        <span class="prize-info-value" id="infoPlayers">0</span>
+        <span class="prize-info-value clickable" id="infoPlayers" title="View player list"><span class="value-link">0</span></span>
+      </div>
+      <div class="prize-info-item">
+        <span class="prize-info-label">Games</span>
+        <span class="prize-info-value" id="infoGames">0</span>
+      </div>
+      <div class="prize-info-item">
+        <span class="prize-info-label">Rebuys</span>
+        <span class="prize-info-value" id="infoRebuys">0</span>
       </div>
       <div class="prize-info-item">
         <span class="prize-info-label">Donors</span>
-        <span class="prize-info-value clickable" id="infoDonors" title="View donor list"><span class="donor-link">0</span></span>
+        <span class="prize-info-value clickable" id="infoDonors" title="View donor list"><span class="value-link">0</span></span>
       </div>
       <div class="prize-info-item">
         <span class="prize-info-label">Donated</span>
         <span class="prize-info-value" id="infoDonationTotal">$0</span>
       </div>
-      <div class="prize-info-item">
-        <span class="prize-info-label">Buy-in</span>
-        <span class="prize-info-value">$25M</span>
-      </div>
-      <div class="prize-info-item">
-        <span class="prize-info-label">Reg. closes</span>
-        <span class="prize-info-value" id="infoRegCloses">June 15</span>
-      </div>
     </div>
   </div>
 
   <section class="hero">
-    <div class="hero-eyebrow">Texas Hold'em / 9-player tables</div>
     <h1 class="hero-title">Outlast the field. Survive the structure.</h1>
-    <p class="hero-blurb">A multi-stage shootout where 1st, 2nd, and 3rd place at every table advance to different stages. Lose and you can rebuy back in, at the cost of a tougher path forward.</p>
+    <p class="hero-blurb">Track every table, every advancement, and every rebuy as the tournament plays out. Search your name to see where you stand and what's next.</p>
   </section>
 
   <section class="tournament-section" id="tournamentSection">
@@ -1310,30 +1232,6 @@
     </div>
   </section>
 
-  <section class="players-section">
-    <div class="section-header">
-      <span class="section-title">Registered Players</span>
-      <span class="section-count" id="playerSectionCount">0 entries</span>
-    </div>
-    <div id="playersContainer">
-      <div class="empty-state">
-        <p>No registrations yet</p>
-        <p class="sub">Be the first to enter</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="join-section">
-    <div class="join-card">
-      <h3>How to Enter</h3>
-      <p>Send the buy-in to the organiser with the message below to confirm your spot.</p>
-      <span class="join-amount">$25,000,000</span>
-      <p>Send with message:</p>
-      <span class="join-message">Shootout Tournament Entry</span>
-      <p style="margin-top: 16px;">Then comment on the original thread to confirm. <strong>Registration closes June 15th.</strong></p>
-    </div>
-  </section>
-
   <!-- RULES MODAL -->
   <div class="modal-overlay" id="rulesModal">
     <div class="modal">
@@ -1429,6 +1327,42 @@
     </div>
   </div>
 
+  <!-- PLAYERS MODAL -->
+  <div class="modal-overlay" id="playersModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Registered Players</h2>
+        <button class="modal-close" onclick="closeModal('playersModal')">&times;</button>
+      </div>
+      <div class="modal-body" id="playersModalBody">
+        <div class="donor-empty">No registrations yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENTER MODAL -->
+  <div class="modal-overlay" id="enterModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>How to Enter</h2>
+        <button class="modal-close" onclick="closeModal('enterModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-section">
+          <p>Send the buy-in to the organiser with the message below to confirm your spot.</p>
+          <span class="enter-amount">$25,000,000</span>
+          <p style="margin-top: 12px;">Send with message:</p>
+          <span class="enter-message">Shootout Tournament Entry</span>
+          <p style="margin-top: 16px;">Then comment on the original thread to confirm. <strong>Registration closes June 15th.</strong></p>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Donations</div>
+          <p>Donations of cash or items are welcome and grow the prize pool. All donors are publicly thanked.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     var API_URL = 'https://script.google.com/macros/s/AKfycbz5MJp6ecYnI_BmRViunbMUh8P8u3mhZRbmXSmOl71aJE8vGD-amE77Qc8dHFE8SLWv/exec';
     var state = null;
@@ -1444,6 +1378,20 @@
 
     document.getElementById('btnRules').addEventListener('click', function() {
       openModal('rulesModal');
+    });
+
+    document.getElementById('btnEnter').addEventListener('click', function() {
+      openModal('enterModal');
+    });
+
+    document.getElementById('btnPlayers').addEventListener('click', function() {
+      renderPlayersModal();
+      openModal('playersModal');
+    });
+
+    document.getElementById('infoPlayers').addEventListener('click', function() {
+      renderPlayersModal();
+      openModal('playersModal');
     });
 
     document.getElementById('infoDonors').addEventListener('click', function() {
@@ -1488,10 +1436,136 @@
     // --- RENDER ---
     function render() {
       renderPrizes();
-      renderStatus();
-      renderRegistrationDate();
-      renderPlayers();
+      renderRegBanner();
       renderPrizeSplits();
+    }
+
+    function renderRegBanner() {
+      var raw = state && state.settings && state.settings.registration_closes;
+      var banner = document.getElementById('regBanner');
+      if (!raw) {
+        banner.classList.add('hidden');
+        return;
+      }
+      banner.classList.remove('hidden');
+      try {
+        var d = new Date(raw);
+        if (isNaN(d.getTime())) {
+          document.getElementById('regBannerDate').textContent = String(raw);
+          return;
+        }
+        var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        document.getElementById('regBannerDate').textContent = months[d.getMonth()] + ' ' + d.getDate();
+      } catch(e) {
+        document.getElementById('regBannerDate').textContent = String(raw);
+      }
+    }
+
+    function getDonationTotal() {
+      var donations = (state && state.donations) ? state.donations : [];
+      var total = 0;
+      donations.forEach(function(d) { total += (d.amount || 0); });
+      return total;
+    }
+
+    function getRebuyStats() {
+      // Rebuys are tracked via the Eliminations sheet (rebuyTaken === 'yes')
+      // Each rebuy's $ amount depends on which stage it was at: 25/50/75M
+      var eliminations = (state && state.eliminations) ? state.eliminations : [];
+      var settings = (state && state.settings) ? state.settings : {};
+      var amount25 = Number(settings.rebuy_25m_amount) || 25000000;
+      var amount50 = Number(settings.rebuy_50m_amount) || 50000000;
+      var amount75 = Number(settings.rebuy_75m_amount) || 75000000;
+
+      var count = 0;
+      var total = 0;
+      eliminations.forEach(function(e) {
+        if (String(e.rebuyTaken).toLowerCase() === 'yes') {
+          count++;
+          var stage = Number(e.stageLostAt);
+          if (stage === 1) total += amount25;
+          else if (stage === 2) total += amount50;
+          else if (stage === 3) total += amount75;
+        }
+      });
+      return { count: count, total: total };
+    }
+
+    function getGamesCount() {
+      var tables = (state && state.tables) ? state.tables : [];
+      return tables.filter(function(t) { return t.status === 'complete'; }).length;
+    }
+
+    function renderPrizes() {
+      var playerCount = (state && state.players) ? state.players.length : 0;
+      var donations = (state && state.donations) ? state.donations : [];
+      var buyIn = (state && state.settings && state.settings.buy_in) ? Number(state.settings.buy_in) : 25000000;
+      var playerPool = playerCount * buyIn;
+      var donationTotal = getDonationTotal();
+      var rebuyStats = getRebuyStats();
+      var pool = playerPool + donationTotal + rebuyStats.total;
+
+      var split1 = (state && state.settings && state.settings.prize_split_1st) ? Number(state.settings.prize_split_1st) : 0.5;
+      var split2 = (state && state.settings && state.settings.prize_split_2nd) ? Number(state.settings.prize_split_2nd) : 0.3;
+      var split3 = (state && state.settings && state.settings.prize_split_3rd) ? Number(state.settings.prize_split_3rd) : 0.2;
+
+      document.getElementById('prizeTotal').textContent = formatMoney(pool);
+
+      var breakdownParts = [];
+      breakdownParts.push(formatMoney(playerPool) + ' from buy-ins');
+      if (rebuyStats.total > 0) {
+        breakdownParts.push(formatMoney(rebuyStats.total) + ' from rebuys');
+      }
+      if (donationTotal > 0) {
+        breakdownParts.push(formatMoney(donationTotal) + ' donated');
+      }
+      document.getElementById('prizePoolBreakdown').textContent = breakdownParts.join(' + ');
+
+      document.getElementById('prize1st').textContent = formatMoney(Math.floor(pool * split1));
+      document.getElementById('prize2nd').textContent = formatMoney(Math.floor(pool * split2));
+      document.getElementById('prize3rd').textContent = formatMoney(Math.floor(pool * split3));
+
+      document.getElementById('infoPlayers').querySelector('.value-link').textContent = playerCount;
+      document.getElementById('infoGames').textContent = getGamesCount();
+      document.getElementById('infoRebuys').textContent = rebuyStats.count;
+      document.getElementById('infoDonors').querySelector('.value-link').textContent = donations.length;
+      document.getElementById('infoDonationTotal').textContent = formatMoney(donationTotal);
+    }
+
+    function renderPrizeSplits() {
+      var split1 = (state && state.settings && state.settings.prize_split_1st) ? Number(state.settings.prize_split_1st) : 0.5;
+      var split2 = (state && state.settings && state.settings.prize_split_2nd) ? Number(state.settings.prize_split_2nd) : 0.3;
+      var split3 = (state && state.settings && state.settings.prize_split_3rd) ? Number(state.settings.prize_split_3rd) : 0.2;
+
+      document.getElementById('pct1st').textContent = Math.round(split1 * 100) + '%';
+      document.getElementById('pct2nd').textContent = Math.round(split2 * 100) + '%';
+      document.getElementById('pct3rd').textContent = Math.round(split3 * 100) + '%';
+    }
+
+    function renderPlayersModal() {
+      var body = document.getElementById('playersModalBody');
+      var players = (state && state.players) ? state.players : [];
+
+      if (players.length === 0) {
+        body.innerHTML = '<div class="donor-empty">No registrations yet. Be the first to enter.</div>';
+        return;
+      }
+
+      var html = '';
+      players.forEach(function(p) {
+        var profileUrl = 'https://www.torn.com/profiles.php?XID=' + esc(p.tornId);
+        html += '<div class="player-list-item">';
+        html += '  <span class="player-list-name"><a href="' + profileUrl + '" target="_blank" rel="noopener">' + esc(p.name) + '</a></span>';
+        html += '  <span class="player-list-id">#' + esc(p.tornId) + '</span>';
+        html += '</div>';
+      });
+
+      html += '<div class="donor-total-row">';
+      html += '  <span class="donor-total-label">Total Registered</span>';
+      html += '  <span class="donor-total-amount">' + players.length + '</span>';
+      html += '</div>';
+
+      body.innerHTML = html;
     }
 
     // --- STAGE TOGGLES ---
@@ -1602,56 +1676,6 @@
       document.getElementById('pct1st').textContent = Math.round(split1 * 100) + '%';
       document.getElementById('pct2nd').textContent = Math.round(split2 * 100) + '%';
       document.getElementById('pct3rd').textContent = Math.round(split3 * 100) + '%';
-    }
-
-    function renderStatus() {
-      var badge = document.getElementById('statusBadge');
-      var status = (state.settings && state.settings.tournament_status) || 'setup';
-      badge.textContent = status.toUpperCase();
-      badge.className = 'status-badge status-' + status;
-    }
-
-    function renderRegistrationDate() {
-      var raw = state && state.settings && state.settings.registration_closes;
-      if (!raw) return;
-      try {
-        var d = new Date(raw);
-        if (isNaN(d.getTime())) {
-          document.getElementById('infoRegCloses').textContent = String(raw);
-          return;
-        }
-        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        document.getElementById('infoRegCloses').textContent = months[d.getMonth()] + ' ' + d.getDate();
-      } catch(e) {
-        document.getElementById('infoRegCloses').textContent = String(raw);
-      }
-    }
-
-    function renderPlayers() {
-      var container = document.getElementById('playersContainer');
-      var count = document.getElementById('playerSectionCount');
-      var players = (state && state.players) ? state.players : [];
-
-      count.textContent = players.length + ' ' + (players.length === 1 ? 'entry' : 'entries');
-
-      if (players.length === 0) {
-        container.innerHTML = '<div class="empty-state"><p>No registrations yet</p><p class="sub">Be the first to enter</p></div>';
-        return;
-      }
-
-      var html = '<div class="players-grid">';
-      players.forEach(function(p) {
-        var profileUrl = 'https://www.torn.com/profiles.php?XID=' + esc(p.tornId);
-        html += '<div class="player-card">';
-        html += '  <div class="player-card-info">';
-        html += '    <span class="player-card-name"><a href="' + profileUrl + '" target="_blank" rel="noopener">' + esc(p.name) + '</a></span>';
-        html += '    <span class="player-card-id">#' + esc(p.tornId) + '</span>';
-        html += '  </div>';
-        html += '</div>';
-      });
-      html += '</div>';
-
-      container.innerHTML = html;
     }
 
     function renderDonorsModal() {
