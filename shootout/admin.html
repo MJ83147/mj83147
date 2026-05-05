@@ -348,6 +348,259 @@
       margin-bottom: 4px;
     }
 
+    /* --- STAGE MANAGEMENT --- */
+    .start-cta {
+      max-width: 560px;
+      margin: 40px auto;
+      padding: 28px;
+      border: 1px solid var(--accent-dim);
+      background: rgba(232, 168, 50, 0.05);
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .start-cta h3 {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    .start-cta p {
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+
+    .start-cta button {
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-weight: 700;
+      padding: 10px 24px;
+      border-radius: 5px;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      cursor: pointer;
+    }
+
+    .start-cta button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .stage-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    .stage-block-header {
+      padding: 12px 16px;
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stage-block-title {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent);
+    }
+
+    .stage-block-meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .stage-block-status {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+    .stage-block-status.live { background: rgba(61, 186, 106, 0.12); color: var(--green); }
+    .stage-block-status.complete { background: rgba(232, 168, 50, 0.12); color: var(--accent); }
+
+    .btn-reseat {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 3px;
+      border: 1px solid var(--border-light);
+      background: var(--bg);
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .btn-reseat:hover { color: var(--accent); border-color: var(--accent-dim); }
+
+    .stage-block-body { padding: 14px 16px; }
+
+    .table-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .table-card:last-child { margin-bottom: 0; }
+    .table-card.complete { opacity: 0.95; }
+
+    .table-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .table-card-id {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .table-card-id-note {
+      color: var(--text-dim);
+      font-weight: 400;
+      font-size: 11px;
+      margin-left: 6px;
+    }
+
+    .table-status-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 2px;
+      letter-spacing: 0.5px;
+    }
+    .table-status-tag.live { background: rgba(61, 186, 106, 0.12); color: var(--green); }
+    .table-status-tag.complete { background: rgba(232, 168, 50, 0.12); color: var(--accent); }
+
+    .table-players {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 4px;
+      margin-bottom: 10px;
+    }
+
+    .table-player-cell {
+      font-size: 12px;
+      padding: 5px 8px;
+      background: var(--surface-2);
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .table-player-cell.placed-1 { border-color: var(--accent-dim); background: rgba(232, 168, 50, 0.08); color: var(--accent); }
+    .table-player-cell.placed-2 { border-color: #5a6a7a; background: rgba(160, 168, 184, 0.08); }
+    .table-player-cell.placed-3 { border-color: #735237; background: rgba(184, 115, 51, 0.08); }
+    .table-player-cell.eliminated { color: var(--text-dim); text-decoration: line-through; }
+
+    .place-prefix {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      opacity: 0.7;
+      margin-right: 4px;
+    }
+
+    .result-form {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 8px;
+    }
+
+    .result-form-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .result-form-row:last-child { margin-bottom: 0; }
+
+    .result-form-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      width: 38px;
+      color: var(--text-muted);
+    }
+
+    .result-form select {
+      flex: 1;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 8px;
+      border-radius: 3px;
+    }
+    .result-form select:focus { outline: none; border-color: var(--accent); }
+    .result-form select option:disabled {
+      color: var(--text-dim);
+    }
+
+    .result-form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .btn-record {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 16px;
+      border-radius: 3px;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-edit {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 3px;
+      border: 1px solid var(--border-light);
+      background: var(--bg);
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .btn-edit:hover { color: var(--accent); border-color: var(--accent-dim); }
+    .btn-edit:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .table-card-footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+
     /* --- TOAST --- */
     .toast-container {
       position: fixed;
@@ -535,18 +788,8 @@
       <div class="panel-toolbar">
         <h2>Tournament Management</h2>
       </div>
-      <div class="panel-content">
-        <div class="placeholder">
-          <h3>Awaiting Operational Spec</h3>
-          <p>Tournament management UI will be built once we have  confirmed operational rules. Pending answers cover:</p>
-          <ul>
-            <li>Table firing logic (auto-queue or manual draw)</li>
-            <li>Rebuy timing and caps</li>
-            <li>Stage 4 progression and Final Table trigger</li>
-            <li>Result reporting workflow</li>
-          </ul>
-          <p>Player and donation management is fully wired up in the sidebar.</p>
-        </div>
+      <div class="panel-content" id="panelContent">
+        <!-- Populated by renderTournamentPanel() -->
       </div>
     </div>
 
@@ -608,6 +851,9 @@
         state = data;
         if (!state.donations) state.donations = [];
         if (!state.players) state.players = [];
+        if (!state.tables) state.tables = [];
+        if (!state.eliminations) state.eliminations = [];
+        if (!state.queues) state.queues = [];
         renderAll();
       });
     }
@@ -670,6 +916,7 @@
       renderStatus();
       renderPlayers();
       renderDonations();
+      renderTournamentPanel();
     }
 
     function renderStatus() {
@@ -756,6 +1003,288 @@
 
       list.innerHTML = html;
       totalEl.textContent = formatMoney(total);
+    }
+
+    // --- TOURNAMENT PANEL (Stage 1) ---
+    function renderTournamentPanel() {
+      var container = document.getElementById('panelContent');
+      var status = (state.settings && state.settings.tournament_status) || 'setup';
+
+      if (status === 'setup') {
+        container.innerHTML = renderStartCta();
+        var btn = document.getElementById('btnStartTournament');
+        if (btn) btn.addEventListener('click', startTournament);
+        return;
+      }
+
+      // Tournament is active or complete — render Stage 1 block
+      container.innerHTML = renderStage1Block();
+
+      // Wire up buttons
+      var reseatBtn = document.getElementById('btnReseat');
+      if (reseatBtn) reseatBtn.addEventListener('click', reseatStage1);
+
+      document.querySelectorAll('.btn-record').forEach(function(b) {
+        b.addEventListener('click', function() {
+          var tableId = b.getAttribute('data-table-id');
+          submitResult(tableId, false);
+        });
+      });
+
+      document.querySelectorAll('.btn-edit').forEach(function(b) {
+        b.addEventListener('click', function() {
+          var tableId = b.getAttribute('data-table-id');
+          enterEditMode(tableId);
+        });
+      });
+
+      // Wire up dropdown change handlers (disable selected players in other slots)
+      document.querySelectorAll('.result-form select').forEach(function(sel) {
+        sel.addEventListener('change', function() {
+          var tableId = sel.getAttribute('data-table-id');
+          updateDropdownDisables(tableId);
+        });
+      });
+    }
+
+    function renderStartCta() {
+      var enoughPlayers = state.players && state.players.length >= 2;
+      return '<div class="start-cta">' +
+        '<h3>Ready to Start</h3>' +
+        '<p>Lock the roster and seed Stage 1 tables. Players are randomly assigned. ' +
+        (enoughPlayers ? '' : '<br><strong style="color: var(--text-dim);">Need at least 2 players.</strong>') +
+        '</p>' +
+        '<button id="btnStartTournament"' + (enoughPlayers ? '' : ' disabled') + '>' +
+        'Randomise &amp; Start Stage 1' +
+        '</button>' +
+        '</div>';
+    }
+
+    function renderStage1Block() {
+      var stage1Tables = (state.tables || []).filter(function(t) { return String(t.stage) === '1'; });
+      stage1Tables.sort(function(a, b) {
+        // Sort by table number
+        var aNum = parseInt(a.tableId.replace(/[^0-9]/g, ''), 10) || 0;
+        var bNum = parseInt(b.tableId.replace(/[^0-9]/g, ''), 10) || 0;
+        return aNum - bNum;
+      });
+
+      var allComplete = stage1Tables.length > 0 && stage1Tables.every(function(t) { return t.status === 'complete'; });
+      var anyComplete = stage1Tables.some(function(t) { return t.status === 'complete'; });
+      var hasDownstream = (state.tables || []).some(function(t) { return String(t.stage) !== '1'; });
+
+      var html = '<div class="stage-block">';
+      html += '<div class="stage-block-header">';
+      html += '<span class="stage-block-title">Stage 1 — 9-player tables, top 3 advance</span>';
+      html += '<div class="stage-block-meta">';
+      if (!anyComplete) {
+        html += '<button class="btn-reseat" id="btnReseat">Re-randomise seating</button>';
+      }
+      html += '<span class="stage-block-status ' + (allComplete ? 'complete' : 'live') + '">' + (allComplete ? 'Complete' : 'Live') + '</span>';
+      html += '</div>';
+      html += '</div>';
+
+      html += '<div class="stage-block-body">';
+      stage1Tables.forEach(function(t) {
+        html += renderTableCard(t, hasDownstream);
+      });
+      html += '</div></div>';
+
+      return html;
+    }
+
+    function renderTableCard(t, hasDownstream) {
+      var isComplete = t.status === 'complete';
+      var html = '<div class="table-card' + (isComplete ? ' complete' : '') + '" data-table-id="' + esc(t.tableId) + '">';
+
+      html += '<div class="table-card-header">';
+      html += '<span class="table-card-id">' + esc(t.tableId);
+      if (t.notes) html += '<span class="table-card-id-note">' + esc(t.notes) + '</span>';
+      html += '</span>';
+      html += '<span class="table-status-tag ' + t.status + '">' + esc(t.status) + '</span>';
+      html += '</div>';
+
+      // Players grid
+      html += '<div class="table-players">';
+      t.players.forEach(function(pid) {
+        var p = findPlayerById(pid);
+        if (!p) return;
+        var cls = '';
+        var prefix = '';
+        if (isComplete) {
+          if (t.place1 === pid) { cls = 'placed-1'; prefix = '1st'; }
+          else if (t.place2 === pid) { cls = 'placed-2'; prefix = '2nd'; }
+          else if (t.place3 === pid) { cls = 'placed-3'; prefix = '3rd'; }
+          else cls = 'eliminated';
+        }
+        html += '<div class="table-player-cell ' + cls + '">';
+        if (prefix) html += '<span class="place-prefix">' + prefix + '</span>';
+        html += esc(p.name);
+        html += '</div>';
+      });
+      html += '</div>';
+
+      if (!isComplete) {
+        // Live: render result form
+        html += renderResultForm(t);
+      } else {
+        // Complete: edit button (disabled if downstream cascade)
+        html += '<div class="table-card-footer">';
+        var editDisabled = hasDownstream;
+        var editTitle = editDisabled ? 'Cannot edit: downstream tables exist' : 'Edit this result';
+        html += '<button class="btn-edit" data-table-id="' + esc(t.tableId) + '"' + (editDisabled ? ' disabled' : '') + ' title="' + editTitle + '">Edit Result</button>';
+        html += '</div>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderResultForm(t) {
+      var size = Number(t.tableSize);
+      var optionsList = t.players.map(function(pid) {
+        var p = findPlayerById(pid);
+        return p ? { tornId: pid, name: p.name } : null;
+      }).filter(Boolean);
+
+      var html = '<div class="result-form" data-table-form="' + esc(t.tableId) + '">';
+
+      html += renderResultFormRow(t.tableId, '1st', '1', optionsList);
+      if (size >= 4) html += renderResultFormRow(t.tableId, '2nd', '2', optionsList);
+      if (size >= 7) html += renderResultFormRow(t.tableId, '3rd', '3', optionsList);
+
+      html += '<div class="result-form-actions">';
+      html += '<button class="btn-record" data-table-id="' + esc(t.tableId) + '">Record Result</button>';
+      html += '</div>';
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderResultFormRow(tableId, label, slot, optionsList) {
+      var html = '<div class="result-form-row">';
+      html += '<span class="result-form-label">' + label + '</span>';
+      html += '<select id="sel-' + esc(tableId) + '-' + slot + '" data-table-id="' + esc(tableId) + '" data-slot="' + slot + '">';
+      html += '<option value="">— Select —</option>';
+      optionsList.forEach(function(o) {
+        html += '<option value="' + esc(o.tornId) + '">' + esc(o.name) + '</option>';
+      });
+      html += '</select>';
+      html += '</div>';
+      return html;
+    }
+
+    function updateDropdownDisables(tableId) {
+      // Disable already-selected players in the other dropdowns for this table
+      var selects = document.querySelectorAll('.result-form select[data-table-id="' + tableId + '"]');
+      var picked = [];
+      selects.forEach(function(s) { if (s.value) picked.push(s.value); });
+
+      selects.forEach(function(s) {
+        var current = s.value;
+        Array.from(s.options).forEach(function(opt) {
+          if (!opt.value) return; // skip placeholder
+          opt.disabled = (picked.indexOf(opt.value) !== -1) && (opt.value !== current);
+        });
+      });
+    }
+
+    function findPlayerById(tornId) {
+      return (state.players || []).filter(function(p) { return p.tornId === String(tornId); })[0];
+    }
+
+    // --- TOURNAMENT ACTIONS ---
+    function startTournament() {
+      showConfirm('Lock the roster and start Stage 1? Players will be randomly seated.', function() {
+        apiCall('startTournament', null, function(data) {
+          toast(data.message || 'Tournament started', 'success');
+          fetchState();
+        });
+      });
+    }
+
+    function reseatStage1() {
+      showConfirm('Re-randomise Stage 1 seating? All current Stage 1 tables will be wiped and redrawn.', function() {
+        apiCall('reseatStage1', null, function(data) {
+          toast(data.message || 'Reseated', 'success');
+          fetchState();
+        });
+      });
+    }
+
+    function submitResult(tableId, isEdit) {
+      var p1 = (document.getElementById('sel-' + tableId + '-1') || {}).value || '';
+      var p2El = document.getElementById('sel-' + tableId + '-2');
+      var p3El = document.getElementById('sel-' + tableId + '-3');
+      var p2 = p2El ? p2El.value : '';
+      var p3 = p3El ? p3El.value : '';
+
+      if (!p1) return toast('Pick a 1st place', 'error');
+      // Find table to know size
+      var t = (state.tables || []).filter(function(tt) { return tt.tableId === tableId; })[0];
+      if (!t) return toast('Table not found in state', 'error');
+      var size = Number(t.tableSize);
+      if (size >= 4 && !p2) return toast('Pick a 2nd place', 'error');
+      if (size >= 7 && !p3) return toast('Pick a 3rd place', 'error');
+
+      // Build a confirm summary
+      var name = function(id) { var pl = findPlayerById(id); return pl ? pl.name : id; };
+      var summary = '1st: ' + name(p1);
+      if (p2) summary += '\n2nd: ' + name(p2);
+      if (p3) summary += '\n3rd: ' + name(p3);
+
+      showConfirm('Record result for ' + tableId + '?\n\n' + summary, function() {
+        var action = isEdit ? 'editTableResult' : 'recordTableResult';
+        var params = { tableId: tableId, place1: p1 };
+        if (p2) params.place2 = p2;
+        if (p3) params.place3 = p3;
+        apiCall(action, params, function(data) {
+          toast(data.message || 'Result recorded', 'success');
+          fetchState();
+        });
+      });
+    }
+
+    function enterEditMode(tableId) {
+      // Find the table card and replace its footer with a result form
+      var card = document.querySelector('.table-card[data-table-id="' + tableId + '"]');
+      if (!card) return;
+      var t = (state.tables || []).filter(function(tt) { return tt.tableId === tableId; })[0];
+      if (!t) return;
+
+      // Remove footer with Edit Result button, insert form
+      var footer = card.querySelector('.table-card-footer');
+      if (footer) footer.remove();
+
+      // Build the form HTML and inject
+      var formHtml = renderResultForm(t);
+      card.insertAdjacentHTML('beforeend', formHtml);
+
+      // Pre-populate with current values
+      if (t.place1) document.getElementById('sel-' + tableId + '-1').value = t.place1;
+      if (t.place2) {
+        var p2El = document.getElementById('sel-' + tableId + '-2');
+        if (p2El) p2El.value = t.place2;
+      }
+      if (t.place3) {
+        var p3El = document.getElementById('sel-' + tableId + '-3');
+        if (p3El) p3El.value = t.place3;
+      }
+      updateDropdownDisables(tableId);
+
+      // Wire up the new submit and selects
+      var newBtn = card.querySelector('.btn-record');
+      if (newBtn) {
+        newBtn.textContent = 'Save Edit';
+        newBtn.addEventListener('click', function() {
+          submitResult(tableId, true);
+        });
+      }
+      card.querySelectorAll('.result-form select').forEach(function(sel) {
+        sel.addEventListener('change', function() {
+          updateDropdownDisables(tableId);
+        });
+      });
     }
 
     // --- HELPERS ---
