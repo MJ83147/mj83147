@@ -556,6 +556,99 @@
       padding: 8px 0;
     }
 
+    /* Public table cards */
+    .pub-table-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 9px 11px;
+      margin-bottom: 6px;
+    }
+    .pub-table-card:last-child { margin-bottom: 0; }
+
+    .pub-table-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .pub-table-card-id {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .pub-table-card-id-note {
+      color: var(--text-dim);
+      font-weight: 400;
+      font-size: 10px;
+      margin-left: 6px;
+    }
+
+    .pub-table-status {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 1px 6px;
+      border-radius: 2px;
+      letter-spacing: 0.3px;
+    }
+    .pub-table-status.live { background: rgba(61, 186, 106, 0.12); color: var(--green); }
+    .pub-table-status.complete { background: rgba(232, 168, 50, 0.12); color: var(--accent); }
+
+    .pub-table-players {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .pub-table-player {
+      font-size: 11px;
+      padding: 2px 7px;
+      background: var(--surface-2);
+      border-radius: 2px;
+      border: 1px solid var(--border);
+    }
+    .pub-table-player.placed-1 { border-color: var(--accent-dim); background: rgba(232, 168, 50, 0.08); color: var(--accent); }
+    .pub-table-player.placed-2 { border-color: #5a6a7a; background: rgba(160, 168, 184, 0.08); }
+    .pub-table-player.placed-3 { border-color: #735237; background: rgba(184, 115, 51, 0.08); }
+    .pub-table-player.eliminated { color: var(--text-dim); text-decoration: line-through; opacity: 0.7; }
+
+    .pub-table-place-prefix {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 700;
+      opacity: 0.7;
+      margin-right: 3px;
+    }
+
+    /* Queue chips */
+    .queue-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      padding: 4px 0;
+    }
+
+    .queue-chip {
+      font-size: 11px;
+      padding: 3px 8px;
+      background: var(--surface-2);
+      border-radius: 3px;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .queue-chip-source {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-dim);
+      margin-left: 4px;
+    }
+
     /* Rebuy nested panel */
     .rebuy-nested {
       margin-top: 16px;
@@ -1046,15 +1139,15 @@
       <div class="search-result-grid">
         <div class="search-result-block">
           <div class="search-result-block-label">Where you are</div>
-          <div class="search-result-block-value">Tournament not started yet</div>
+          <div class="search-result-block-value" id="srWhere">Tournament not started yet</div>
         </div>
         <div class="search-result-block">
           <div class="search-result-block-label">Path so far</div>
-          <div class="search-result-block-value">No matches played</div>
+          <div class="search-result-block-value" id="srPath">No matches played</div>
         </div>
         <div class="search-result-block">
           <div class="search-result-block-label">What's next</div>
-          <div class="search-result-block-value">Wait for tournament to begin</div>
+          <div class="search-result-block-value" id="srNext">Wait for tournament to begin</div>
         </div>
       </div>
     </div>
@@ -1069,20 +1162,20 @@
           <span class="stage-chevron">▼</span>
           <span class="stage-title">Stage 1</span>
         </div>
-        <span class="stage-summary">Awaiting tournament start</span>
+        <span class="stage-summary" id="s1-summary">Awaiting tournament start</span>
       </div>
       <div class="stage-body">
         <div class="stage-subsection">
-          <div class="stage-subsection-title">Live tables <span class="stage-subsection-count">0</span></div>
-          <div class="stage-placeholder">No live tables yet.</div>
+          <div class="stage-subsection-title">Live tables <span class="stage-subsection-count" id="s1-live-count">0</span></div>
+          <div id="s1-live-body"><div class="stage-placeholder">No live tables yet.</div></div>
         </div>
         <div class="stage-subsection">
-          <div class="stage-subsection-title">Complete tables <span class="stage-subsection-count">0</span></div>
-          <div class="stage-placeholder">No completed tables yet.</div>
+          <div class="stage-subsection-title">Complete tables <span class="stage-subsection-count" id="s1-complete-count">0</span></div>
+          <div id="s1-complete-body"><div class="stage-placeholder">No completed tables yet.</div></div>
         </div>
         <div class="stage-subsection">
-          <div class="stage-subsection-title">Queue <span class="stage-subsection-count">0</span></div>
-          <div class="stage-placeholder">All registered players will appear here when the tournament starts.</div>
+          <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="s1-queue-count">0</span></div>
+          <div id="s1-queue-body"><div class="stage-placeholder">All registered players will appear here when the tournament starts.</div></div>
         </div>
         <div class="rebuy-nested collapsed">
           <div class="rebuy-header" onclick="toggleRebuy(this)">
@@ -1095,16 +1188,16 @@
           </div>
           <div class="rebuy-body">
             <div class="stage-subsection">
-              <div class="stage-subsection-title">Live <span class="stage-subsection-count">0</span></div>
-              <div class="stage-placeholder">No live rebuy tables.</div>
+              <div class="stage-subsection-title">Live <span class="stage-subsection-count" id="r25-live-count">0</span></div>
+              <div id="r25-live-body"><div class="stage-placeholder">No live rebuy tables.</div></div>
             </div>
             <div class="stage-subsection">
-              <div class="stage-subsection-title">Complete <span class="stage-subsection-count">0</span></div>
-              <div class="stage-placeholder">No completed rebuy tables.</div>
+              <div class="stage-subsection-title">Complete <span class="stage-subsection-count" id="r25-complete-count">0</span></div>
+              <div id="r25-complete-body"><div class="stage-placeholder">No completed rebuy tables.</div></div>
             </div>
             <div class="stage-subsection">
-              <div class="stage-subsection-title">Queue <span class="stage-subsection-count">0</span></div>
-              <div class="stage-placeholder">Eliminated Stage 1 players who have paid the 25M rebuy will appear here.</div>
+              <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="r25-queue-count">0</span></div>
+              <div id="r25-queue-body"><div class="stage-placeholder">Eliminated Stage 1 players who have paid the 25M rebuy will appear here.</div></div>
             </div>
           </div>
         </div>
@@ -1117,20 +1210,20 @@
           <span class="stage-chevron">▼</span>
           <span class="stage-title">Stage 2</span>
         </div>
-        <span class="stage-summary">3rd place finishers + 25M rebuy winners</span>
+        <span class="stage-summary">6-player tables. 1st → Stage 4, 2nd → Stage 3</span>
       </div>
       <div class="stage-body">
         <div class="stage-subsection">
-          <div class="stage-subsection-title">Live tables <span class="stage-subsection-count">0</span></div>
-          <div class="stage-placeholder">No live tables yet.</div>
+          <div class="stage-subsection-title">Live tables <span class="stage-subsection-count" id="s2-live-count">0</span></div>
+          <div id="s2-live-body"><div class="stage-placeholder">No live tables yet.</div></div>
         </div>
         <div class="stage-subsection">
-          <div class="stage-subsection-title">Complete tables <span class="stage-subsection-count">0</span></div>
-          <div class="stage-placeholder">No completed tables yet.</div>
+          <div class="stage-subsection-title">Complete tables <span class="stage-subsection-count" id="s2-complete-count">0</span></div>
+          <div id="s2-complete-body"><div class="stage-placeholder">No completed tables yet.</div></div>
         </div>
         <div class="stage-subsection">
-          <div class="stage-subsection-title">Queue <span class="stage-subsection-count">0</span></div>
-          <div class="stage-placeholder">Players advancing into Stage 2 will appear here.</div>
+          <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="s2-queue-count">0</span></div>
+          <div id="s2-queue-body"><div class="stage-placeholder">Players advancing into Stage 2 will appear here.</div></div>
         </div>
         <div class="rebuy-nested collapsed">
           <div class="rebuy-header" onclick="toggleRebuy(this)">
@@ -1143,16 +1236,16 @@
           </div>
           <div class="rebuy-body">
             <div class="stage-subsection">
-              <div class="stage-subsection-title">Live <span class="stage-subsection-count">0</span></div>
-              <div class="stage-placeholder">No live rebuy tables.</div>
+              <div class="stage-subsection-title">Live <span class="stage-subsection-count" id="r50-live-count">0</span></div>
+              <div id="r50-live-body"><div class="stage-placeholder">No live rebuy tables.</div></div>
             </div>
             <div class="stage-subsection">
-              <div class="stage-subsection-title">Complete <span class="stage-subsection-count">0</span></div>
-              <div class="stage-placeholder">No completed rebuy tables.</div>
+              <div class="stage-subsection-title">Complete <span class="stage-subsection-count" id="r50-complete-count">0</span></div>
+              <div id="r50-complete-body"><div class="stage-placeholder">No completed rebuy tables.</div></div>
             </div>
             <div class="stage-subsection">
-              <div class="stage-subsection-title">Queue <span class="stage-subsection-count">0</span></div>
-              <div class="stage-placeholder">Eliminated Stage 2 players who have paid the 50M rebuy will appear here.</div>
+              <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="r50-queue-count">0</span></div>
+              <div id="r50-queue-body"><div class="stage-placeholder">Eliminated Stage 2 players who have paid the 50M rebuy will appear here.</div></div>
             </div>
           </div>
         </div>
@@ -1165,20 +1258,20 @@
           <span class="stage-chevron">▼</span>
           <span class="stage-title">Stage 3</span>
         </div>
-        <span class="stage-summary">2nd place finishers + Stage 2 winners + 50M rebuy winners</span>
+        <span class="stage-summary">6-player tables. Winner advances to Stage 4</span>
       </div>
       <div class="stage-body">
         <div class="stage-subsection">
-          <div class="stage-subsection-title">Live tables <span class="stage-subsection-count">0</span></div>
-          <div class="stage-placeholder">No live tables yet.</div>
+          <div class="stage-subsection-title">Live tables <span class="stage-subsection-count" id="s3-live-count">0</span></div>
+          <div id="s3-live-body"><div class="stage-placeholder">No live tables yet.</div></div>
         </div>
         <div class="stage-subsection">
-          <div class="stage-subsection-title">Complete tables <span class="stage-subsection-count">0</span></div>
-          <div class="stage-placeholder">No completed tables yet.</div>
+          <div class="stage-subsection-title">Complete tables <span class="stage-subsection-count" id="s3-complete-count">0</span></div>
+          <div id="s3-complete-body"><div class="stage-placeholder">No completed tables yet.</div></div>
         </div>
         <div class="stage-subsection">
-          <div class="stage-subsection-title">Queue <span class="stage-subsection-count">0</span></div>
-          <div class="stage-placeholder">Players advancing into Stage 3 will appear here.</div>
+          <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="s3-queue-count">0</span></div>
+          <div id="s3-queue-body"><div class="stage-placeholder">Players advancing into Stage 3 will appear here.</div></div>
         </div>
         <div class="rebuy-nested collapsed">
           <div class="rebuy-header" onclick="toggleRebuy(this)">
@@ -1191,16 +1284,16 @@
           </div>
           <div class="rebuy-body">
             <div class="stage-subsection">
-              <div class="stage-subsection-title">Live <span class="stage-subsection-count">0</span></div>
-              <div class="stage-placeholder">No live rebuy tables.</div>
+              <div class="stage-subsection-title">Live <span class="stage-subsection-count" id="r75-live-count">0</span></div>
+              <div id="r75-live-body"><div class="stage-placeholder">No live rebuy tables.</div></div>
             </div>
             <div class="stage-subsection">
-              <div class="stage-subsection-title">Complete <span class="stage-subsection-count">0</span></div>
-              <div class="stage-placeholder">No completed rebuy tables.</div>
+              <div class="stage-subsection-title">Complete <span class="stage-subsection-count" id="r75-complete-count">0</span></div>
+              <div id="r75-complete-body"><div class="stage-placeholder">No completed rebuy tables.</div></div>
             </div>
             <div class="stage-subsection">
-              <div class="stage-subsection-title">Queue <span class="stage-subsection-count">0</span></div>
-              <div class="stage-placeholder">Eliminated Stage 3 players who have paid the 75M rebuy will appear here.</div>
+              <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="r75-queue-count">0</span></div>
+              <div id="r75-queue-body"><div class="stage-placeholder">Eliminated Stage 3 players who have paid the 75M rebuy will appear here.</div></div>
             </div>
           </div>
         </div>
@@ -1213,20 +1306,20 @@
           <span class="stage-chevron">▼</span>
           <span class="stage-title">Stage 4</span>
         </div>
-        <span class="stage-summary">1st place finishers + Stage 3 winners + 75M rebuy winners</span>
+        <span class="stage-summary">9-player tables. Top 3 advance until the Final Table</span>
       </div>
       <div class="stage-body">
         <div class="stage-subsection">
-          <div class="stage-subsection-title">Live tables <span class="stage-subsection-count">0</span></div>
-          <div class="stage-placeholder">No live tables yet.</div>
+          <div class="stage-subsection-title">Live tables <span class="stage-subsection-count" id="s4-live-count">0</span></div>
+          <div id="s4-live-body"><div class="stage-placeholder">No live tables yet.</div></div>
         </div>
         <div class="stage-subsection">
-          <div class="stage-subsection-title">Complete tables <span class="stage-subsection-count">0</span></div>
-          <div class="stage-placeholder">No completed tables yet.</div>
+          <div class="stage-subsection-title">Complete tables <span class="stage-subsection-count" id="s4-complete-count">0</span></div>
+          <div id="s4-complete-body"><div class="stage-placeholder">No completed tables yet.</div></div>
         </div>
         <div class="stage-subsection">
-          <div class="stage-subsection-title">Queue <span class="stage-subsection-count">0</span></div>
-          <div class="stage-placeholder">Players advancing into Stage 4 will appear here. Progression continues until the Final Table.</div>
+          <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="s4-queue-count">0</span></div>
+          <div id="s4-queue-body"><div class="stage-placeholder">Players advancing into Stage 4 will appear here. Progression continues until the Final Table.</div></div>
         </div>
       </div>
     </div>
@@ -1438,6 +1531,7 @@
       renderPrizes();
       renderRegBanner();
       renderPrizeSplits();
+      renderStages();
     }
 
     function renderRegBanner() {
@@ -1568,6 +1662,152 @@
       body.innerHTML = html;
     }
 
+    // --- STAGES (live/complete/queue rendering) ---
+    function renderStages() {
+      // Stages 1-4 main and rebuy tiers (R25 nested under S1, R50 under S2, R75 under S3)
+      renderStageContent('1', '1', { liveCount: 's1-live-count', liveBody: 's1-live-body', completeCount: 's1-complete-count', completeBody: 's1-complete-body', queueCount: 's1-queue-count', queueBody: 's1-queue-body' });
+      renderStageContent('2', 'stage_2', { liveCount: 's2-live-count', liveBody: 's2-live-body', completeCount: 's2-complete-count', completeBody: 's2-complete-body', queueCount: 's2-queue-count', queueBody: 's2-queue-body' });
+      renderStageContent('3', 'stage_3', { liveCount: 's3-live-count', liveBody: 's3-live-body', completeCount: 's3-complete-count', completeBody: 's3-complete-body', queueCount: 's3-queue-count', queueBody: 's3-queue-body' });
+      renderStageContent('4', 'stage_4', { liveCount: 's4-live-count', liveBody: 's4-live-body', completeCount: 's4-complete-count', completeBody: 's4-complete-body', queueCount: 's4-queue-count', queueBody: 's4-queue-body' });
+
+      renderRebuyContent('rebuy_25', { liveCount: 'r25-live-count', liveBody: 'r25-live-body', completeCount: 'r25-complete-count', completeBody: 'r25-complete-body', queueCount: 'r25-queue-count', queueBody: 'r25-queue-body' });
+      renderRebuyContent('rebuy_50', { liveCount: 'r50-live-count', liveBody: 'r50-live-body', completeCount: 'r50-complete-count', completeBody: 'r50-complete-body', queueCount: 'r50-queue-count', queueBody: 'r50-queue-body' });
+      renderRebuyContent('rebuy_75', { liveCount: 'r75-live-count', liveBody: 'r75-live-body', completeCount: 'r75-complete-count', completeBody: 'r75-complete-body', queueCount: 'r75-queue-count', queueBody: 'r75-queue-body' });
+
+      // Stage 1 summary tweak: show table count once active
+      var s1Tables = (state && state.tables) ? state.tables.filter(function(t) { return String(t.stage) === '1'; }) : [];
+      var s1Summary = document.getElementById('s1-summary');
+      if (s1Summary) {
+        var status = (state && state.settings && state.settings.tournament_status) || 'setup';
+        if (status === 'setup' || s1Tables.length === 0) {
+          s1Summary.textContent = 'Awaiting tournament start';
+        } else {
+          var done = s1Tables.filter(function(t) { return t.status === 'complete'; }).length;
+          s1Summary.textContent = '9-player tables, top 3 advance · ' + done + ' / ' + s1Tables.length + ' complete';
+        }
+      }
+    }
+
+    function renderStageContent(stageKey, queueKey, ids) {
+      var tables = (state && state.tables) ? state.tables.filter(function(t) { return String(t.stage) === stageKey; }) : [];
+      var live = tables.filter(function(t) { return t.status === 'live'; });
+      var complete = tables.filter(function(t) { return t.status === 'complete'; });
+      var queue = (state && state.queues) ? state.queues.filter(function(q) { return q.queuedFor === queueKey; }) : [];
+
+      // Sort tables by table number
+      live.sort(sortByTableNumber);
+      complete.sort(sortByTableNumber);
+
+      // Live
+      document.getElementById(ids.liveCount).textContent = live.length;
+      document.getElementById(ids.liveBody).innerHTML = live.length > 0
+        ? live.map(renderPubTableCard).join('')
+        : '<div class="stage-placeholder">No live tables yet.</div>';
+
+      // Complete
+      document.getElementById(ids.completeCount).textContent = complete.length;
+      document.getElementById(ids.completeBody).innerHTML = complete.length > 0
+        ? complete.map(renderPubTableCard).join('')
+        : '<div class="stage-placeholder">No completed tables yet.</div>';
+
+      // Queue
+      document.getElementById(ids.queueCount).textContent = queue.length;
+      if (queue.length > 0) {
+        document.getElementById(ids.queueBody).innerHTML = renderQueueList(queue);
+      } else {
+        // Keep the existing placeholder text — don't blank it out
+        var existingBody = document.getElementById(ids.queueBody);
+        if (!existingBody.querySelector('.stage-placeholder')) {
+          existingBody.innerHTML = '<div class="stage-placeholder">No queued players yet.</div>';
+        }
+      }
+    }
+
+    function renderRebuyContent(stageKey, ids) {
+      // Rebuy stages use the same shape as main stages but with stageKey 'rebuy_25' etc.
+      var tables = (state && state.tables) ? state.tables.filter(function(t) { return String(t.stage) === stageKey; }) : [];
+      var live = tables.filter(function(t) { return t.status === 'live'; });
+      var complete = tables.filter(function(t) { return t.status === 'complete'; });
+      var queue = (state && state.queues) ? state.queues.filter(function(q) { return q.queuedFor === stageKey; }) : [];
+
+      live.sort(sortByTableNumber);
+      complete.sort(sortByTableNumber);
+
+      document.getElementById(ids.liveCount).textContent = live.length;
+      document.getElementById(ids.liveBody).innerHTML = live.length > 0
+        ? live.map(renderPubTableCard).join('')
+        : '<div class="stage-placeholder">No live rebuy tables.</div>';
+
+      document.getElementById(ids.completeCount).textContent = complete.length;
+      document.getElementById(ids.completeBody).innerHTML = complete.length > 0
+        ? complete.map(renderPubTableCard).join('')
+        : '<div class="stage-placeholder">No completed rebuy tables.</div>';
+
+      document.getElementById(ids.queueCount).textContent = queue.length;
+      if (queue.length > 0) {
+        document.getElementById(ids.queueBody).innerHTML = renderQueueList(queue);
+      } else {
+        var existingBody = document.getElementById(ids.queueBody);
+        if (!existingBody.querySelector('.stage-placeholder')) {
+          existingBody.innerHTML = '<div class="stage-placeholder">No players have paid the rebuy yet.</div>';
+        }
+      }
+    }
+
+    function sortByTableNumber(a, b) {
+      var aNum = parseInt(String(a.tableId).replace(/[^0-9]/g, ''), 10) || 0;
+      var bNum = parseInt(String(b.tableId).replace(/[^0-9]/g, ''), 10) || 0;
+      return aNum - bNum;
+    }
+
+    function renderPubTableCard(t) {
+      var isComplete = t.status === 'complete';
+      var html = '<div class="pub-table-card">';
+      html += '<div class="pub-table-card-header">';
+      html += '<span class="pub-table-card-id">' + esc(t.tableId);
+      if (t.notes) html += '<span class="pub-table-card-id-note">' + esc(t.notes) + '</span>';
+      html += '</span>';
+      html += '<span class="pub-table-status ' + esc(t.status) + '">' + esc(t.status) + '</span>';
+      html += '</div>';
+
+      html += '<div class="pub-table-players">';
+      (t.players || []).forEach(function(pid) {
+        var p = findPlayerByTornId(pid);
+        if (!p) return;
+        var cls = '';
+        var prefix = '';
+        if (isComplete) {
+          if (t.place1 === pid) { cls = 'placed-1'; prefix = '1st'; }
+          else if (t.place2 === pid) { cls = 'placed-2'; prefix = '2nd'; }
+          else if (t.place3 === pid) { cls = 'placed-3'; prefix = '3rd'; }
+          else cls = 'eliminated';
+        }
+        html += '<span class="pub-table-player ' + cls + '">';
+        if (prefix) html += '<span class="pub-table-place-prefix">' + prefix + '</span>';
+        html += esc(p.name);
+        html += '</span>';
+      });
+      html += '</div>';
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderQueueList(queue) {
+      var html = '<div class="queue-list">';
+      queue.forEach(function(q) {
+        html += '<span class="queue-chip">' + esc(q.name);
+        if (q.source) html += '<span class="queue-chip-source">' + esc(q.source) + '</span>';
+        html += '</span>';
+      });
+      html += '</div>';
+      return html;
+    }
+
+    function findPlayerByTornId(tornId) {
+      return ((state && state.players) || []).filter(function(p) { return p.tornId === String(tornId); })[0];
+    }
+
     // --- STAGE TOGGLES ---
     function toggleStage(headerEl) {
       headerEl.parentElement.classList.toggle('collapsed');
@@ -1619,8 +1859,83 @@
       statusEl.textContent = playerStatus.toUpperCase();
       statusEl.className = 'search-result-status ' + playerStatus;
 
-      // Where you are / Path so far / What's next will be wired up
-      // once tournament logic is implemented in Apps Script.
+      var info = computePlayerInfo(match);
+      document.getElementById('srWhere').textContent = info.where;
+      document.getElementById('srPath').textContent = info.path;
+      document.getElementById('srNext').textContent = info.next;
+    }
+
+    function computePlayerInfo(player) {
+      var pid = player.tornId;
+      var status = (state && state.settings && state.settings.tournament_status) || 'setup';
+      var tables = (state && state.tables) ? state.tables : [];
+      var queues = (state && state.queues) ? state.queues : [];
+      var eliminations = (state && state.eliminations) ? state.eliminations : [];
+
+      // Tables this player is at
+      var playerTables = tables.filter(function(t) {
+        return t.players && t.players.indexOf(pid) !== -1;
+      });
+      var liveTable = playerTables.find(function(t) { return t.status === 'live'; });
+      var queued = queues.find(function(q) { return q.tornId === pid; });
+
+      // Path so far: completed tables and finishing position
+      var pathParts = [];
+      playerTables.filter(function(t) { return t.status === 'complete'; }).forEach(function(t) {
+        var place;
+        if (t.place1 === pid) place = '1st';
+        else if (t.place2 === pid) place = '2nd';
+        else if (t.place3 === pid) place = '3rd';
+        else place = 'eliminated';
+        pathParts.push(t.tableId + ' (' + place + ')');
+      });
+      var path = pathParts.length > 0 ? pathParts.join(' → ') : 'No matches played yet.';
+
+      // Where you are
+      var where, next;
+
+      if (status === 'setup') {
+        where = 'Registered. Tournament hasn\'t started yet.';
+        next = 'Wait for the tournament to begin.';
+      } else if (player.status === 'champion') {
+        where = 'Tournament champion.';
+        next = 'Tournament won.';
+      } else if (liveTable) {
+        where = 'Playing at ' + liveTable.tableId + '.';
+        next = 'Finish your current table.';
+      } else if (queued) {
+        var qLabel = friendlyQueueLabel(queued.queuedFor);
+        where = 'Waiting in the ' + qLabel + ' queue.';
+        next = 'Wait for the next ' + qLabel + ' table to be drawn.';
+      } else if (player.status === 'eliminated') {
+        var elim = eliminations.find(function(e) { return e.tornId === pid; });
+        if (!elim) {
+          where = 'Eliminated.';
+          next = 'Out of the tournament.';
+        } else {
+          where = 'Eliminated at Stage ' + elim.stageLostAt + '.';
+          // Phase 1: rebuy CTA logic will be wired in Phase 2
+          next = 'Out of the tournament.';
+        }
+      } else {
+        where = 'Active' + (player.currentStage ? ' in Stage ' + player.currentStage : '') + '.';
+        next = 'Wait for the next table.';
+      }
+
+      return { where: where, path: path, next: next };
+    }
+
+    function friendlyQueueLabel(queueKey) {
+      switch (queueKey) {
+        case 'stage_2': return 'Stage 2';
+        case 'stage_3': return 'Stage 3';
+        case 'stage_4': return 'Stage 4';
+        case 'rebuy_25': return '25M rebuy';
+        case 'rebuy_50': return '50M rebuy';
+        case 'rebuy_75': return '75M rebuy';
+        case 'final': return 'Final Table';
+        default: return queueKey;
+      }
     }
 
     function formatMoney(amount) {
