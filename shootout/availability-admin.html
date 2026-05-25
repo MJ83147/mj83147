@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -530,7 +529,7 @@
   </footer>
 
   <script>
-    var API_URL = 'https://script.google.com/macros/s/AKfycbxM4yYlrAbLvuvC-ATMsS_oagJItae_scs-W9GnVzUlyHr2vQP8qq7lcjco0IMkuiLG/exec';
+    var API_URL = 'https://script.google.com/macros/s/AKfycbz5MJp6ecYnI_BmRViunbMUh8P8u3mhZRbmXSmOl71aJE8vGD-amE77Qc8dHFE8SLWv/exec';
 
     var state = {
       players: [],
@@ -564,24 +563,27 @@
     }
 
     function computeStats() {
-      // For each hour 0-23, count 1st, 2nd, and 3rd picks
+      // For each 2-hour slot, count 1st, 2nd, and 3rd picks
+      var validHours = [];
+      for (var hh = 0; hh < 24; hh += 2) validHours.push(hh);
+
       var hourCounts = {};
-      for (var h = 0; h < 24; h++) {
+      validHours.forEach(function(h) {
         hourCounts[h] = { firstPicks: [], secondPicks: [], thirdPicks: [] };
-      }
+      });
 
       state.availability.forEach(function(a) {
         var firstHour = slotIdToHour(a.firstChoiceSlotId);
         var secondHour = slotIdToHour(a.secondChoiceSlotId);
         var thirdHour = slotIdToHour(a.thirdChoiceSlotId);
 
-        if (firstHour !== null) {
+        if (firstHour !== null && hourCounts[firstHour]) {
           hourCounts[firstHour].firstPicks.push(a);
         }
-        if (secondHour !== null) {
+        if (secondHour !== null && hourCounts[secondHour]) {
           hourCounts[secondHour].secondPicks.push(a);
         }
-        if (thirdHour !== null) {
+        if (thirdHour !== null && hourCounts[thirdHour]) {
           hourCounts[thirdHour].thirdPicks.push(a);
         }
       });
@@ -589,7 +591,7 @@
       // Build sorted array
       // Demand score: 1st × 3 + 2nd × 2 + 3rd × 1
       var hours = [];
-      for (var hr = 0; hr < 24; hr++) {
+      validHours.forEach(function(hr) {
         var hc = hourCounts[hr];
         hours.push({
           hour: hr,
@@ -602,7 +604,7 @@
           score: hc.firstPicks.length * 3 + hc.secondPicks.length * 2 + hc.thirdPicks.length,
           totalPicks: hc.firstPicks.length + hc.secondPicks.length + hc.thirdPicks.length
         });
-      }
+      });
 
       hours.sort(function(a, b) {
         if (b.score !== a.score) return b.score - a.score;
@@ -779,6 +781,7 @@
       if (!match) return null;
       var hr = parseInt(match[1], 10);
       if (hr < 0 || hr > 23) return null;
+      if (hr % 2 !== 0) return null; // only even hours are valid slots
       return hr;
     }
 
