@@ -1,1 +1,810 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Progressive Shootout // Availability Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1115;
+      --surface: #1a1d24;
+      --surface-2: #22262e;
+      --surface-3: #282c35;
+      --border: #2e333d;
+      --border-light: #3a404d;
+      --text: #e2e4e9;
+      --text-muted: #8b8f99;
+      --text-dim: #555963;
+      --accent: #e8a832;
+      --accent-dim: #c48a1a;
+      --accent-glow: rgba(232, 168, 50, 0.08);
+      --red: #d94848;
+      --green: #3dba6a;
+      --green-dim: #2d9452;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* --- HEADER --- */
+    .header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-pill {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 4px;
+      border: 1px solid var(--border-light);
+      background: var(--surface-2);
+      color: var(--text-muted);
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: border-color 0.2s, color 0.2s;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-pill:hover {
+      border-color: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    /* --- STATS STRIP --- */
+    .stats-strip {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .stat-item {
+      flex: 1;
+      padding: 16px 24px;
+      border-right: 1px solid var(--border);
+    }
+
+    .stat-item:last-child { border-right: none; }
+
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-family: var(--font-mono);
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .stat-value.accent { color: var(--accent); }
+    .stat-value.green { color: var(--green); }
+    .stat-value.red { color: var(--red); }
+
+    /* --- MAIN --- */
+    .main {
+      padding: 32px;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .section-title {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .section-title-count {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .section-blurb {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin-bottom: 18px;
+      line-height: 1.5;
+    }
+
+    .ranked-section {
+      margin-bottom: 36px;
+    }
+
+    /* --- HOUR ROW --- */
+    .hour-row {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      overflow: hidden;
+    }
+
+    .hour-row.high-demand {
+      border-color: var(--accent-dim);
+    }
+
+    .hour-row.no-demand {
+      opacity: 0.5;
+    }
+
+    .hour-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    .hour-header:hover {
+      background: var(--surface-2);
+    }
+
+    .hour-row.no-demand .hour-header {
+      cursor: default;
+    }
+
+    .hour-row.no-demand .hour-header:hover {
+      background: transparent;
+    }
+
+    .hour-chevron {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      width: 10px;
+      transition: transform 0.2s;
+    }
+
+    .hour-row.collapsed .hour-chevron {
+      transform: rotate(-90deg);
+    }
+
+    .hour-row.no-demand .hour-chevron {
+      visibility: hidden;
+    }
+
+    .hour-time {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      min-width: 80px;
+    }
+
+    .hour-row.high-demand .hour-time {
+      color: var(--accent);
+    }
+
+    .hour-local {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      min-width: 90px;
+    }
+
+    .hour-demand-bar {
+      flex: 1;
+      height: 8px;
+      background: var(--bg);
+      border-radius: 2px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+    }
+
+    .demand-bar-first {
+      background: var(--accent);
+      height: 100%;
+    }
+
+    .demand-bar-second {
+      background: var(--green-dim);
+      height: 100%;
+    }
+
+    .demand-bar-third {
+      background: #4a7ba8;
+      height: 100%;
+    }
+
+    .hour-counts {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      min-width: 110px;
+      justify-content: flex-end;
+    }
+
+    .hour-count {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+
+    .hour-count.first {
+      background: var(--accent-glow);
+      color: var(--accent);
+      border: 1px solid var(--accent-dim);
+    }
+
+    .hour-count.second {
+      background: rgba(61, 186, 106, 0.1);
+      color: var(--green);
+      border: 1px solid var(--green-dim);
+    }
+
+    .hour-count.third {
+      background: rgba(100, 160, 220, 0.1);
+      color: #64a0dc;
+      border: 1px solid #4a7ba8;
+    }
+
+    .hour-count.zero {
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+    }
+
+    .hour-body {
+      padding: 12px 16px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg);
+    }
+
+    .hour-row.collapsed .hour-body {
+      display: none;
+    }
+
+    .pick-group {
+      margin-bottom: 12px;
+    }
+
+    .pick-group:last-child { margin-bottom: 0; }
+
+    .pick-group-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+
+    .pick-group-label.first { color: var(--accent); }
+    .pick-group-label.second { color: var(--green); }
+    .pick-group-label.third { color: #64a0dc; }
+
+    .pick-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .pick-chip {
+      font-size: 12px;
+      padding: 3px 9px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text);
+    }
+
+    .pick-chip.first {
+      border-color: var(--accent-dim);
+      background: var(--accent-glow);
+    }
+
+    .pick-chip.second {
+      border-color: var(--green-dim);
+      background: rgba(61, 186, 106, 0.08);
+    }
+
+    .pick-chip.third {
+      border-color: #4a7ba8;
+      background: rgba(100, 160, 220, 0.08);
+    }
+
+    .pick-empty {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    /* --- NON-RESPONDERS --- */
+    .non-responders {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px 18px;
+    }
+
+    .non-responders-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .non-responder-chip {
+      font-size: 13px;
+      padding: 4px 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .non-responder-chip a {
+      color: var(--text-dim);
+      text-decoration: none;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .non-responder-chip a:hover {
+      color: var(--accent);
+    }
+
+    .all-submitted {
+      font-size: 13px;
+      color: var(--green);
+      padding: 8px 0;
+      text-align: center;
+    }
+
+    /* --- LOADING --- */
+    .loading-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-bottom: 12px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .hidden { display: none !important; }
+
+    /* --- FOOTER --- */
+    .site-footer {
+      padding: 20px 32px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .site-footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    .site-footer a:hover {
+      color: var(--accent);
+    }
+
+    /* --- MOBILE --- */
+    @media (max-width: 768px) {
+      .header { padding: 16px 16px; flex-wrap: wrap; gap: 8px; }
+      .header h1 { font-size: 14px; }
+      .stats-strip { flex-wrap: wrap; }
+      .stat-item { flex: 1 1 50%; padding: 12px 14px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+      .stat-value { font-size: 18px; }
+      .main { padding: 20px 16px; }
+      .hour-header { gap: 8px; padding: 10px 12px; flex-wrap: wrap; }
+      .hour-time { min-width: 70px; font-size: 13px; }
+      .hour-local { min-width: 0; font-size: 10px; }
+      .hour-demand-bar { display: none; }
+      .hour-counts { min-width: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <h1>PROGRESSIVE SHOOTOUT // AVAILABILITY ADMIN</h1>
+    <div class="header-right">
+      <a class="btn-pill" href="admin.html">Tournament</a>
+      <a class="btn-pill" href="availability.html">Player form</a>
+    </div>
+  </header>
+
+  <div class="stats-strip" id="statsStrip">
+    <div class="stat-item">
+      <div class="stat-label">Registered</div>
+      <div class="stat-value" id="statRegistered">—</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Submitted</div>
+      <div class="stat-value green" id="statSubmitted">—</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Outstanding</div>
+      <div class="stat-value red" id="statOutstanding">—</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Top hour</div>
+      <div class="stat-value accent" id="statTopHour">—</div>
+    </div>
+  </div>
+
+  <main class="main">
+
+    <div id="loadingState" class="loading-state">
+      <div class="spinner"></div>
+      <div>Loading…</div>
+    </div>
+
+    <div id="content" class="hidden">
+
+      <div class="ranked-section">
+        <div class="section-title">
+          <span>Hours ranked by demand</span>
+          <span class="section-title-count" id="ranking-count"></span>
+        </div>
+        <p class="section-blurb">Hours sorted by total demand (1st choices count for 3, 2nd for 2, 3rd for 1). Expand any row to see who picked it.</p>
+
+        <div id="hourList"></div>
+      </div>
+
+      <div class="ranked-section">
+        <div class="section-title">
+          <span>Haven't submitted yet</span>
+          <span class="section-title-count" id="non-responders-count"></span>
+        </div>
+        <div class="non-responders" id="nonResponders"></div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <footer class="site-footer">
+    Made by <a href="https://www.torn.com/profiles.php?XID=3583736" target="_blank" rel="noopener">Systoned</a>
+  </footer>
+
+  <script>
+    var API_URL = 'https://script.google.com/macros/s/AKfycbz5MJp6ecYnI_BmRViunbMUh8P8u3mhZRbmXSmOl71aJE8vGD-amE77Qc8dHFE8SLWv/exec';
+
+    var state = {
+      players: [],
+      availability: []
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+      fetchState();
+    });
+
+    function fetchState() {
+      fetch(API_URL + '?action=getState')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          state.players = data.players || [];
+          state.availability = data.availability || [];
+          document.getElementById('loadingState').classList.add('hidden');
+          document.getElementById('content').classList.remove('hidden');
+          render();
+        })
+        .catch(function(err) {
+          document.getElementById('loadingState').innerHTML = 'Failed to load. Refresh the page.';
+        });
+    }
+
+    function render() {
+      var stats = computeStats();
+      renderStats(stats);
+      renderHourList(stats);
+      renderNonResponders(stats);
+    }
+
+    function computeStats() {
+      // For each hour 0-23, count 1st, 2nd, and 3rd picks
+      var hourCounts = {};
+      for (var h = 0; h < 24; h++) {
+        hourCounts[h] = { firstPicks: [], secondPicks: [], thirdPicks: [] };
+      }
+
+      state.availability.forEach(function(a) {
+        var firstHour = slotIdToHour(a.firstChoiceSlotId);
+        var secondHour = slotIdToHour(a.secondChoiceSlotId);
+        var thirdHour = slotIdToHour(a.thirdChoiceSlotId);
+
+        if (firstHour !== null) {
+          hourCounts[firstHour].firstPicks.push(a);
+        }
+        if (secondHour !== null) {
+          hourCounts[secondHour].secondPicks.push(a);
+        }
+        if (thirdHour !== null) {
+          hourCounts[thirdHour].thirdPicks.push(a);
+        }
+      });
+
+      // Build sorted array
+      // Demand score: 1st × 3 + 2nd × 2 + 3rd × 1
+      var hours = [];
+      for (var hr = 0; hr < 24; hr++) {
+        var hc = hourCounts[hr];
+        hours.push({
+          hour: hr,
+          firstPicks: hc.firstPicks,
+          secondPicks: hc.secondPicks,
+          thirdPicks: hc.thirdPicks,
+          firstCount: hc.firstPicks.length,
+          secondCount: hc.secondPicks.length,
+          thirdCount: hc.thirdPicks.length,
+          score: hc.firstPicks.length * 3 + hc.secondPicks.length * 2 + hc.thirdPicks.length,
+          totalPicks: hc.firstPicks.length + hc.secondPicks.length + hc.thirdPicks.length
+        });
+      }
+
+      hours.sort(function(a, b) {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.hour - b.hour; // tie-break by hour ascending
+      });
+
+      // Non-responders
+      var submittedIds = {};
+      state.availability.forEach(function(a) { submittedIds[a.tornId] = true; });
+      var nonResponders = state.players.filter(function(p) { return !submittedIds[p.tornId]; });
+
+      // Top hour for display
+      var topHour = hours[0];
+      var topHourDisplay = (topHour && topHour.totalPicks > 0)
+        ? pad2(topHour.hour) + ':00'
+        : '—';
+
+      return {
+        hours: hours,
+        nonResponders: nonResponders,
+        topHourDisplay: topHourDisplay,
+        registeredCount: state.players.length,
+        submittedCount: state.availability.length
+      };
+    }
+
+    function renderStats(stats) {
+      document.getElementById('statRegistered').textContent = stats.registeredCount;
+      document.getElementById('statSubmitted').textContent = stats.submittedCount;
+      document.getElementById('statOutstanding').textContent = stats.registeredCount - stats.submittedCount;
+      document.getElementById('statTopHour').textContent = stats.topHourDisplay;
+    }
+
+    function renderHourList(stats) {
+      var container = document.getElementById('hourList');
+      document.getElementById('ranking-count').textContent = stats.submittedCount + ' submission' + (stats.submittedCount === 1 ? '' : 's');
+
+      // Find max score for bar scaling (only count hours with picks)
+      var maxScore = 0;
+      stats.hours.forEach(function(h) { if (h.score > maxScore) maxScore = h.score; });
+
+      var html = '';
+      stats.hours.forEach(function(h, i) {
+        html += renderHourRow(h, i, maxScore);
+      });
+
+      container.innerHTML = html;
+
+      // Wire up toggles
+      container.querySelectorAll('.hour-header').forEach(function(header) {
+        var row = header.parentElement;
+        if (row.classList.contains('no-demand')) return;
+        header.addEventListener('click', function() {
+          row.classList.toggle('collapsed');
+        });
+      });
+    }
+
+    function renderHourRow(h, rankIndex, maxScore) {
+      var noDemand = h.totalPicks === 0;
+      var highDemand = !noDemand && rankIndex < 3 && h.score >= 2;
+      var collapsed = (rankIndex >= 5) || noDemand; // top 5 expanded by default
+
+      var localTime = formatLocalTime(h.hour);
+
+      var classes = ['hour-row'];
+      if (collapsed) classes.push('collapsed');
+      if (noDemand) classes.push('no-demand');
+      if (highDemand) classes.push('high-demand');
+
+      var html = '<div class="' + classes.join(' ') + '">';
+
+      // Header
+      html += '<div class="hour-header">';
+      html += '  <span class="hour-chevron">▼</span>';
+      html += '  <span class="hour-time">' + pad2(h.hour) + ':00 TCT</span>';
+      html += '  <span class="hour-local">= ' + localTime + ' local</span>';
+
+      // Demand bar (only if there's any demand)
+      html += '  <div class="hour-demand-bar">';
+      if (maxScore > 0) {
+        var firstPct = (h.firstCount * 3 / maxScore) * 100;
+        var secondPct = (h.secondCount * 2 / maxScore) * 100;
+        var thirdPct = (h.thirdCount / maxScore) * 100;
+        html += '    <div class="demand-bar-first" style="width: ' + firstPct + '%"></div>';
+        html += '    <div class="demand-bar-second" style="width: ' + secondPct + '%"></div>';
+        html += '    <div class="demand-bar-third" style="width: ' + thirdPct + '%"></div>';
+      }
+      html += '  </div>';
+
+      html += '  <div class="hour-counts">';
+      html += '    <span class="hour-count ' + (h.firstCount > 0 ? 'first' : 'zero') + '" title="1st choice picks">' + h.firstCount + ' × 1st</span>';
+      html += '    <span class="hour-count ' + (h.secondCount > 0 ? 'second' : 'zero') + '" title="2nd choice picks">' + h.secondCount + ' × 2nd</span>';
+      html += '    <span class="hour-count ' + (h.thirdCount > 0 ? 'third' : 'zero') + '" title="3rd choice picks">' + h.thirdCount + ' × 3rd</span>';
+      html += '  </div>';
+      html += '</div>';
+
+      // Body
+      if (!noDemand) {
+        html += '<div class="hour-body">';
+
+        html += '  <div class="pick-group">';
+        html += '    <div class="pick-group-label first">1st choice picks (' + h.firstCount + ')</div>';
+        if (h.firstCount === 0) {
+          html += '    <div class="pick-empty">No one picked this as their first choice.</div>';
+        } else {
+          html += '    <div class="pick-chips">';
+          h.firstPicks.forEach(function(a) {
+            html += '<span class="pick-chip first">' + esc(a.name) + '</span>';
+          });
+          html += '    </div>';
+        }
+        html += '  </div>';
+
+        html += '  <div class="pick-group">';
+        html += '    <div class="pick-group-label second">2nd choice picks (' + h.secondCount + ')</div>';
+        if (h.secondCount === 0) {
+          html += '    <div class="pick-empty">No one picked this as their second choice.</div>';
+        } else {
+          html += '    <div class="pick-chips">';
+          h.secondPicks.forEach(function(a) {
+            html += '<span class="pick-chip second">' + esc(a.name) + '</span>';
+          });
+          html += '    </div>';
+        }
+        html += '  </div>';
+
+        html += '  <div class="pick-group">';
+        html += '    <div class="pick-group-label third">3rd choice picks (' + h.thirdCount + ')</div>';
+        if (h.thirdCount === 0) {
+          html += '    <div class="pick-empty">No one picked this as their third choice.</div>';
+        } else {
+          html += '    <div class="pick-chips">';
+          h.thirdPicks.forEach(function(a) {
+            html += '<span class="pick-chip third">' + esc(a.name) + '</span>';
+          });
+          html += '    </div>';
+        }
+        html += '  </div>';
+
+        html += '</div>';
+      }
+
+      html += '</div>';
+      return html;
+    }
+
+    function renderNonResponders(stats) {
+      var container = document.getElementById('nonResponders');
+      document.getElementById('non-responders-count').textContent = stats.nonResponders.length + ' / ' + stats.registeredCount;
+
+      if (stats.nonResponders.length === 0) {
+        container.innerHTML = '<div class="all-submitted">Everyone has submitted their availability.</div>';
+        return;
+      }
+
+      var html = '<div class="non-responders-list">';
+      stats.nonResponders.forEach(function(p) {
+        var profileUrl = 'https://www.torn.com/profiles.php?XID=' + esc(p.tornId);
+        html += '<span class="non-responder-chip">';
+        html += esc(p.name);
+        html += '<a href="' + profileUrl + '" target="_blank" rel="noopener">#' + esc(p.tornId) + '</a>';
+        html += '</span>';
+      });
+      html += '</div>';
+
+      container.innerHTML = html;
+    }
+
+    // ===== HELPERS =====
+    function slotIdToHour(slotId) {
+      if (!slotId) return null;
+      var match = String(slotId).match(/^slot_(\d+)$/);
+      if (!match) return null;
+      var hr = parseInt(match[1], 10);
+      if (hr < 0 || hr > 23) return null;
+      return hr;
+    }
+
+    function formatLocalTime(tctHour) {
+      var d = new Date();
+      d.setUTCHours(tctHour, 0, 0, 0);
+      var h = d.getHours();
+      var m = d.getMinutes();
+      var ampm = h >= 12 ? 'pm' : 'am';
+      var displayHour = h % 12;
+      if (displayHour === 0) displayHour = 12;
+      var minStr = m === 0 ? '' : ':' + pad2(m);
+      return displayHour + minStr + ampm;
+    }
+
+    function pad2(n) {
+      return n < 10 ? '0' + n : String(n);
+    }
+
+    function esc(str) {
+      if (str === null || str === undefined) return '';
+      var div = document.createElement('div');
+      div.textContent = String(str);
+      return div.innerHTML;
+    }
+  </script>
+
+</body>
+</html>
