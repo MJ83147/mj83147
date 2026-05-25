@@ -25,7 +25,7 @@
   <div class="toast-container" id="toasts"></div>
 
   <header class="header">
-    <h1>PROGRESSIVE SHOOTOUT // ADMIN</h1>
+    <h1><a href="index.html">PROGRESSIVE SHOOTOUT</a> // ADMIN</h1>
     <div class="header-right">
       <a class="btn-pill" href="availability-admin.html" style="font-family: var(--font-mono); font-size: 11px; font-weight: 600; padding: 6px 14px; border-radius: 4px; border: 1px solid var(--border-light); background: var(--surface-2); color: var(--text-muted); text-decoration: none; text-transform: uppercase; letter-spacing: 0.5px;">Availability</a>
       <span class="status-badge status-setup" id="statusBadge">SETUP</span>
@@ -64,7 +64,7 @@
           <div class="add-form">
             <div class="add-row">
               <input type="text" id="inputDonorName" placeholder="Donor name">
-              <input type="text" id="inputDonationAmount" placeholder="Amount (e.g. 50000000)">
+              <input type="text" id="inputDonationAmount" placeholder="Amount (e.g. 5m or 50000000)">
             </div>
             <button class="btn-add" id="btnAddDonation">Add Donation</button>
           </div>
@@ -184,7 +184,7 @@
       var amount = document.getElementById('inputDonationAmount').value.trim();
       if (!donorName || !amount) return toast('Donor name and amount required', 'error');
 
-      var numAmount = parseInt(amount.replace(/[^0-9]/g, ''), 10);
+      var numAmount = parseAmount(amount);
       if (!numAmount || numAmount <= 0) return toast('Enter a valid amount', 'error');
 
       apiCall('addDonation', { donorName: donorName, amount: numAmount }, function(data) {
@@ -585,6 +585,20 @@
       if (amount >= 1000000) return '$' + (amount / 1000000).toFixed(0) + 'M';
       if (amount >= 1000) return '$' + (amount / 1000).toFixed(0) + 'K';
       return '$' + amount;
+    }
+
+    // Parses amounts with optional k/m/b suffixes, e.g. "5m" -> 5000000, "1.5b" -> 1500000000
+    function parseAmount(raw) {
+      var str = String(raw).trim().toLowerCase().replace(/[$,\s]/g, '');
+      if (!str) return NaN;
+      var multiplier = 1;
+      var last = str.charAt(str.length - 1);
+      if (last === 'k') { multiplier = 1000; str = str.slice(0, -1); }
+      else if (last === 'm') { multiplier = 1000000; str = str.slice(0, -1); }
+      else if (last === 'b') { multiplier = 1000000000; str = str.slice(0, -1); }
+      var num = parseFloat(str);
+      if (isNaN(num)) return NaN;
+      return Math.round(num * multiplier);
     }
 
     function showLoading(show) {

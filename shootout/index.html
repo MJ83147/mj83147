@@ -11,7 +11,7 @@
 <body class="leaderboard">
 
   <header class="header">
-    <h1>PROGRESSIVE SHOOTOUT</h1>
+    <h1><a href="index.html">PROGRESSIVE SHOOTOUT</a></h1>
     <div class="header-right">
       <button class="btn-pill" id="btnPlayers">Players</button>
       <button class="btn-pill" id="btnEnter">Enter</button>
@@ -20,7 +20,7 @@
   </header>
 
   <div class="reg-banner" id="regBanner">
-    Registration closes <strong id="regBannerDate">June 15</strong>
+    Registration closes <strong id="regBannerDate">Monday 25th May</strong>
   </div>
 
   <div class="prize-strip">
@@ -401,7 +401,7 @@
           <span class="enter-amount">$25,000,000</span>
           <p style="margin-top: 12px;">Send with message:</p>
           <span class="enter-message">Shootout Tournament Entry</span>
-          <p style="margin-top: 16px;">Then comment on the original thread to confirm. <strong>Registration closes June 15th.</strong></p>
+          <p style="margin-top: 16px;">Then comment on the original thread to confirm. <strong>Registration closes Monday 25th May.</strong></p>
         </div>
         <div class="modal-section">
           <div class="modal-section-title">Donations</div>
@@ -899,53 +899,6 @@
       if (amount >= 1000000) return '$' + (amount / 1000000).toFixed(0) + 'M';
       if (amount >= 1000) return '$' + (amount / 1000).toFixed(0) + 'K';
       return '$' + amount;
-    }
-
-    function getDonationTotal() {
-      var donations = (state && state.donations) ? state.donations : [];
-      var total = 0;
-      donations.forEach(function(d) { total += (d.amount || 0); });
-      return total;
-    }
-
-    function renderPrizes() {
-      var playerCount = (state && state.players) ? state.players.length : 0;
-      var donations = (state && state.donations) ? state.donations : [];
-      var buyIn = (state && state.settings && state.settings.buy_in) ? Number(state.settings.buy_in) : 25000000;
-      var playerPool = playerCount * buyIn;
-      var donationTotal = getDonationTotal();
-      var pool = playerPool + donationTotal;
-
-      var split1 = (state && state.settings && state.settings.prize_split_1st) ? Number(state.settings.prize_split_1st) : 0.5;
-      var split2 = (state && state.settings && state.settings.prize_split_2nd) ? Number(state.settings.prize_split_2nd) : 0.3;
-      var split3 = (state && state.settings && state.settings.prize_split_3rd) ? Number(state.settings.prize_split_3rd) : 0.2;
-
-      document.getElementById('prizeTotal').textContent = formatMoney(pool);
-
-      var breakdownParts = [];
-      breakdownParts.push(formatMoney(playerPool) + ' from buy-ins');
-      if (donationTotal > 0) {
-        breakdownParts.push(formatMoney(donationTotal) + ' donated');
-      }
-      document.getElementById('prizePoolBreakdown').textContent = breakdownParts.join(' + ');
-
-      document.getElementById('prize1st').textContent = formatMoney(Math.floor(pool * split1));
-      document.getElementById('prize2nd').textContent = formatMoney(Math.floor(pool * split2));
-      document.getElementById('prize3rd').textContent = formatMoney(Math.floor(pool * split3));
-
-      document.getElementById('infoPlayers').textContent = playerCount;
-      document.getElementById('infoDonors').querySelector('.donor-link').textContent = donations.length;
-      document.getElementById('infoDonationTotal').textContent = formatMoney(donationTotal);
-    }
-
-    function renderPrizeSplits() {
-      var split1 = (state && state.settings && state.settings.prize_split_1st) ? Number(state.settings.prize_split_1st) : 0.5;
-      var split2 = (state && state.settings && state.settings.prize_split_2nd) ? Number(state.settings.prize_split_2nd) : 0.3;
-      var split3 = (state && state.settings && state.settings.prize_split_3rd) ? Number(state.settings.prize_split_3rd) : 0.2;
-
-      document.getElementById('pct1st').textContent = Math.round(split1 * 100) + '%';
-      document.getElementById('pct2nd').textContent = Math.round(split2 * 100) + '%';
-      document.getElementById('pct3rd').textContent = Math.round(split3 * 100) + '%';
     }
 
     function renderDonorsModal() {
