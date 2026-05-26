@@ -386,6 +386,21 @@
       return hr;
     }
 
+    function getBrowserId() {
+      var key = 'shootout_browser_id';
+      try {
+        var existing = localStorage.getItem(key);
+        if (existing) return existing;
+        var fresh = (typeof crypto !== 'undefined' && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : 'b_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+        localStorage.setItem(key, fresh);
+        return fresh;
+      } catch (_) {
+        return '';
+      }
+    }
+
     function submit() {
       if (!selection.player) return;
       var ids = selectedSlotIds();
@@ -399,7 +414,8 @@
       var url = API_URL +
         '?action=submitAvailability' +
         '&tornId=' + encodeURIComponent(selection.player.tornId) +
-        '&availableSlotIds=' + encodeURIComponent(ids.join(','));
+        '&availableSlotIds=' + encodeURIComponent(ids.join(',')) +
+        '&browserId=' + encodeURIComponent(getBrowserId());
 
       fetch(url)
         .then(function(res) { return res.json(); })

@@ -17,9 +17,11 @@
  *   commitStageTables              (writes a previewed plan to the Tables sheet)
  *
  * Availability sheet schema:
- *   A=tornId  B=name  C=availableSlotIds  D=submittedAt
+ *   A=tornId  B=name  C=availableSlotIds  D=submittedAt  E=browserId
  *
  *   availableSlotIds is a comma-separated string of slot IDs, e.g. "slot_0,slot_4,slot_18".
+ *   browserId is a per-browser UUID set by the client (localStorage). Used to spot
+ *   when one browser submitted on behalf of multiple players.
  */
 
 // ===== CONFIG =====
@@ -678,7 +680,8 @@ function readAvailability() {
       tornId: String(r.tornId || ''),
       name: r.name || '',
       availableSlotIds: String(r.availableSlotIds || ''),
-      submittedAt: formatDate(r.submittedAt)
+      submittedAt: formatDate(r.submittedAt),
+      browserId: String(r.browserId || '')
     };
   });
 }
@@ -686,6 +689,7 @@ function readAvailability() {
 function submitAvailability(params) {
   var tornId = String(params.tornId || '').trim();
   var raw = String(params.availableSlotIds || '').trim();
+  var browserId = String(params.browserId || '').trim();
 
   if (!tornId) return { error: 'tornId required' };
   if (!raw) return { error: 'At least one slot required' };
@@ -724,10 +728,10 @@ function submitAvailability(params) {
   }
 
   var now = new Date();
-  var rowValues = [tornId, player.name, combined, now];
+  var rowValues = [tornId, player.name, combined, now, browserId];
 
   if (existingRow > -1) {
-    availSheet.getRange(existingRow, 1, 1, 4).setValues([rowValues]);
+    availSheet.getRange(existingRow, 1, 1, 5).setValues([rowValues]);
     return { message: 'Availability updated', slots: dedupedIds.length };
   } else {
     availSheet.appendRow(rowValues);

@@ -88,6 +88,15 @@
         <div id="hourList"></div>
       </div>
 
+      <div class="ranked-section" id="dupeSection" style="display:none;">
+        <div class="section-title">
+          <span>Shared browser IDs</span>
+          <span class="section-title-count" id="dupe-count"></span>
+        </div>
+        <p class="section-blurb">Submissions that came from the same browser. Worth checking if you suspect someone is filling out the form on behalf of another player.</p>
+        <div id="dupeList"></div>
+      </div>
+
       <div class="ranked-section">
         <div class="section-title">
           <span>Haven't submitted yet</span>
@@ -145,6 +154,52 @@
       renderStats(stats);
       renderHourList(stats);
       renderNonResponders(stats);
+      renderDuplicateBrowsers();
+    }
+
+    function renderDuplicateBrowsers() {
+      var section = document.getElementById('dupeSection');
+      var container = document.getElementById('dupeList');
+      var countLabel = document.getElementById('dupe-count');
+
+      var byBrowser = {};
+      state.availability.forEach(function(a) {
+        var bid = String(a.browserId || '').trim();
+        if (!bid) return;
+        if (!byBrowser[bid]) byBrowser[bid] = [];
+        byBrowser[bid].push(a);
+      });
+
+      var groups = [];
+      Object.keys(byBrowser).forEach(function(bid) {
+        if (byBrowser[bid].length > 1) {
+          groups.push({ browserId: bid, members: byBrowser[bid] });
+        }
+      });
+
+      if (groups.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+      section.style.display = '';
+      countLabel.textContent = groups.length + ' shared ID' + (groups.length === 1 ? '' : 's');
+
+      var html = '<div class="non-responders-list">';
+      groups.forEach(function(g) {
+        var shortId = g.browserId.length > 8 ? g.browserId.slice(0, 8) + '…' : g.browserId;
+        html += '<div style="display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--red-dim);border-radius:5px;padding:10px 12px;margin-bottom:8px;">';
+        html += '  <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">browser ' + esc(shortId) + ' — ' + g.members.length + ' submissions</div>';
+        html += '  <div style="display:flex;flex-wrap:wrap;gap:6px;">';
+        g.members.forEach(function(m) {
+          var profileUrl = 'https://www.torn.com/profiles.php?XID=' + esc(m.tornId);
+          html += '<span class="non-responder-chip">' + esc(m.name) + '<a href="' + profileUrl + '" target="_blank" rel="noopener">#' + esc(m.tornId) + '</a></span>';
+        });
+        html += '  </div>';
+        html += '</div>';
+      });
+      html += '</div>';
+
+      container.innerHTML = html;
     }
 
     function computeStats() {
