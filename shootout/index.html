@@ -20,7 +20,7 @@
   </header>
 
   <div class="reg-banner" id="regBanner">
-    Registration closes <strong id="regBannerDate">Monday 25th May</strong>
+    Tournament starts <strong id="regBannerDate">Friday 5th June</strong>
   </div>
 
   <div class="prize-strip">
@@ -29,30 +29,18 @@
       <div class="prize-pool-amount" id="prizeTotal">$0</div>
       <div class="prize-pool-sub" id="prizePoolBreakdown">0 players</div>
     </div>
-    <div class="prize-places">
-      <div class="prize-place">
-        <div class="prize-place-rank gold">1st Place</div>
-        <div class="prize-place-amount" id="prize1st">$0</div>
-        <div class="prize-place-pct" id="pct1st">50%</div>
-        <div class="prize-place-tentative">tentative</div>
-      </div>
-      <div class="prize-place">
-        <div class="prize-place-rank silver">2nd Place</div>
-        <div class="prize-place-amount" id="prize2nd">$0</div>
-        <div class="prize-place-pct" id="pct2nd">30%</div>
-        <div class="prize-place-tentative">tentative</div>
-      </div>
-      <div class="prize-place">
-        <div class="prize-place-rank bronze">3rd Place</div>
-        <div class="prize-place-amount" id="prize3rd">$0</div>
-        <div class="prize-place-pct" id="pct3rd">20%</div>
-        <div class="prize-place-tentative">tentative</div>
-      </div>
-    </div>
     <div class="prize-info">
       <div class="prize-info-item">
-        <span class="prize-info-label">Players</span>
-        <span class="prize-info-value clickable" id="infoPlayers" title="View player list"><span class="value-link">0</span></span>
+        <span class="prize-info-label">Registered</span>
+        <span class="prize-info-value clickable" id="infoRegistered" title="View registered players"><span class="value-link">0</span></span>
+      </div>
+      <div class="prize-info-item">
+        <span class="prize-info-label">Active</span>
+        <span class="prize-info-value clickable" id="infoActive" title="View active players"><span class="value-link">0</span></span>
+      </div>
+      <div class="prize-info-item">
+        <span class="prize-info-label">Eliminated</span>
+        <span class="prize-info-value clickable" id="infoEliminated" title="View eliminated players"><span class="value-link">0</span></span>
       </div>
       <div class="prize-info-item">
         <span class="prize-info-label">Games</span>
@@ -355,7 +343,6 @@
         <div class="modal-section">
           <div class="modal-section-title">Prize Pool</div>
           <p>100% of buy-ins and rebuys go into the prize pool. Donations grow the pool further.</p>
-          <p>Prize splits are tentative and may be adjusted based on total entries once registration closes.</p>
         </div>
 
       </div>
@@ -375,15 +362,41 @@
     </div>
   </div>
 
-  <!-- PLAYERS MODAL -->
-  <div class="modal-overlay" id="playersModal">
+  <!-- REGISTERED PLAYERS MODAL -->
+  <div class="modal-overlay" id="registeredModal">
     <div class="modal">
       <div class="modal-header">
         <h2>Registered Players</h2>
-        <button class="modal-close" onclick="closeModal('playersModal')">&times;</button>
+        <button class="modal-close" onclick="closeModal('registeredModal')">&times;</button>
       </div>
-      <div class="modal-body" id="playersModalBody">
+      <div class="modal-body" id="registeredModalBody">
         <div class="donor-empty">No registrations yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTIVE PLAYERS MODAL -->
+  <div class="modal-overlay" id="activeModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Active Players</h2>
+        <button class="modal-close" onclick="closeModal('activeModal')">&times;</button>
+      </div>
+      <div class="modal-body" id="activeModalBody">
+        <div class="donor-empty">No active players.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ELIMINATED PLAYERS MODAL -->
+  <div class="modal-overlay" id="eliminatedModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Eliminated Players</h2>
+        <button class="modal-close" onclick="closeModal('eliminatedModal')">&times;</button>
+      </div>
+      <div class="modal-body" id="eliminatedModalBody">
+        <div class="donor-empty">Nobody has been eliminated yet.</div>
       </div>
     </div>
   </div>
@@ -401,7 +414,7 @@
           <span class="enter-amount">$25,000,000</span>
           <p style="margin-top: 12px;">Send with message:</p>
           <span class="enter-message">Shootout Tournament Entry</span>
-          <p style="margin-top: 16px;">Then comment on the original thread to confirm. <strong>Registration closes Monday 25th May.</strong></p>
+          <p style="margin-top: 16px;">Then comment on the original thread to confirm. <strong>Tournament starts Friday 5th June.</strong></p>
         </div>
         <div class="modal-section">
           <div class="modal-section-title">Donations</div>
@@ -432,14 +445,25 @@
       openModal('enterModal');
     });
 
+    function openPlayersCategoryModal(category) {
+      renderPlayersCategoryModal(category);
+      openModal(category + 'Modal');
+    }
+
     document.getElementById('btnPlayers').addEventListener('click', function() {
-      renderPlayersModal();
-      openModal('playersModal');
+      openPlayersCategoryModal('registered');
     });
 
-    document.getElementById('infoPlayers').addEventListener('click', function() {
-      renderPlayersModal();
-      openModal('playersModal');
+    document.getElementById('infoRegistered').addEventListener('click', function() {
+      openPlayersCategoryModal('registered');
+    });
+
+    document.getElementById('infoActive').addEventListener('click', function() {
+      openPlayersCategoryModal('active');
+    });
+
+    document.getElementById('infoEliminated').addEventListener('click', function() {
+      openPlayersCategoryModal('eliminated');
     });
 
     document.getElementById('infoDonors').addEventListener('click', function() {
@@ -485,12 +509,12 @@
     function render() {
       renderPrizes();
       renderRegBanner();
-      renderPrizeSplits();
       renderStages();
     }
 
     function renderRegBanner() {
-      var raw = state && state.settings && state.settings.registration_closes;
+      var settings = (state && state.settings) || {};
+      var raw = settings.tournament_starts || settings.registration_closes;
       var banner = document.getElementById('regBanner');
       if (!raw) {
         banner.classList.add('hidden');
@@ -545,18 +569,26 @@
       return tables.filter(function(t) { return t.status === 'complete'; }).length;
     }
 
+    function getPlayerCountsByStatus() {
+      var players = (state && state.players) ? state.players : [];
+      var active = 0;
+      var eliminated = 0;
+      players.forEach(function(p) {
+        var s = (p.status || 'active').toLowerCase();
+        if (s === 'eliminated') eliminated++;
+        else active++;
+      });
+      return { registered: players.length, active: active, eliminated: eliminated };
+    }
+
     function renderPrizes() {
-      var playerCount = (state && state.players) ? state.players.length : 0;
+      var counts = getPlayerCountsByStatus();
       var donations = (state && state.donations) ? state.donations : [];
       var buyIn = (state && state.settings && state.settings.buy_in) ? Number(state.settings.buy_in) : 25000000;
-      var playerPool = playerCount * buyIn;
+      var playerPool = counts.registered * buyIn;
       var donationTotal = getDonationTotal();
       var rebuyStats = getRebuyStats();
       var pool = playerPool + donationTotal + rebuyStats.total;
-
-      var split1 = (state && state.settings && state.settings.prize_split_1st) ? Number(state.settings.prize_split_1st) : 0.5;
-      var split2 = (state && state.settings && state.settings.prize_split_2nd) ? Number(state.settings.prize_split_2nd) : 0.3;
-      var split3 = (state && state.settings && state.settings.prize_split_3rd) ? Number(state.settings.prize_split_3rd) : 0.2;
 
       document.getElementById('prizeTotal').textContent = formatMoney(pool);
 
@@ -570,38 +602,43 @@
       }
       document.getElementById('prizePoolBreakdown').textContent = breakdownParts.join(' + ');
 
-      document.getElementById('prize1st').textContent = formatMoney(Math.floor(pool * split1));
-      document.getElementById('prize2nd').textContent = formatMoney(Math.floor(pool * split2));
-      document.getElementById('prize3rd').textContent = formatMoney(Math.floor(pool * split3));
-
-      document.getElementById('infoPlayers').querySelector('.value-link').textContent = playerCount;
+      document.getElementById('infoRegistered').querySelector('.value-link').textContent = counts.registered;
+      document.getElementById('infoActive').querySelector('.value-link').textContent = counts.active;
+      document.getElementById('infoEliminated').querySelector('.value-link').textContent = counts.eliminated;
       document.getElementById('infoGames').textContent = getGamesCount();
       document.getElementById('infoRebuys').textContent = rebuyStats.count;
       document.getElementById('infoDonors').querySelector('.value-link').textContent = donations.length;
       document.getElementById('infoDonationTotal').textContent = formatMoney(donationTotal);
     }
 
-    function renderPrizeSplits() {
-      var split1 = (state && state.settings && state.settings.prize_split_1st) ? Number(state.settings.prize_split_1st) : 0.5;
-      var split2 = (state && state.settings && state.settings.prize_split_2nd) ? Number(state.settings.prize_split_2nd) : 0.3;
-      var split3 = (state && state.settings && state.settings.prize_split_3rd) ? Number(state.settings.prize_split_3rd) : 0.2;
+    function renderPlayersCategoryModal(category) {
+      var body = document.getElementById(category + 'ModalBody');
+      var all = (state && state.players) ? state.players : [];
 
-      document.getElementById('pct1st').textContent = Math.round(split1 * 100) + '%';
-      document.getElementById('pct2nd').textContent = Math.round(split2 * 100) + '%';
-      document.getElementById('pct3rd').textContent = Math.round(split3 * 100) + '%';
-    }
+      var filtered;
+      var emptyText;
+      var totalLabel;
+      if (category === 'active') {
+        filtered = all.filter(function(p) { return (p.status || 'active').toLowerCase() !== 'eliminated'; });
+        emptyText = 'No active players.';
+        totalLabel = 'Active';
+      } else if (category === 'eliminated') {
+        filtered = all.filter(function(p) { return (p.status || 'active').toLowerCase() === 'eliminated'; });
+        emptyText = 'Nobody has been eliminated yet.';
+        totalLabel = 'Eliminated';
+      } else {
+        filtered = all.slice();
+        emptyText = 'No registrations yet. Be the first to enter.';
+        totalLabel = 'Total Registered';
+      }
 
-    function renderPlayersModal() {
-      var body = document.getElementById('playersModalBody');
-      var players = (state && state.players) ? state.players : [];
-
-      if (players.length === 0) {
-        body.innerHTML = '<div class="donor-empty">No registrations yet. Be the first to enter.</div>';
+      if (filtered.length === 0) {
+        body.innerHTML = '<div class="donor-empty">' + emptyText + '</div>';
         return;
       }
 
       var html = '';
-      players.forEach(function(p) {
+      filtered.forEach(function(p) {
         var profileUrl = 'https://www.torn.com/profiles.php?XID=' + esc(p.tornId);
         html += '<div class="player-list-item">';
         html += '  <span class="player-list-name"><a href="' + profileUrl + '" target="_blank" rel="noopener">' + esc(p.name) + '</a></span>';
@@ -610,8 +647,8 @@
       });
 
       html += '<div class="donor-total-row">';
-      html += '  <span class="donor-total-label">Total Registered</span>';
-      html += '  <span class="donor-total-amount">' + players.length + '</span>';
+      html += '  <span class="donor-total-label">' + totalLabel + '</span>';
+      html += '  <span class="donor-total-amount">' + filtered.length + '</span>';
       html += '</div>';
 
       body.innerHTML = html;

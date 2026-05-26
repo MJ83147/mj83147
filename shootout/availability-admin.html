@@ -50,7 +50,7 @@
         <div class="section-title">
           <span>Generate tables from availability</span>
         </div>
-        <p class="section-blurb">Run the algorithm for a given stage. Players are seated at their 1st choice slot where possible, with overflow handled by group bumps to 2nd choices and non-submitters filling gaps to avoid short tables. Preview before committing.</p>
+        <p class="section-blurb">Run the algorithm for a given stage. Players are seated at a slot they marked available, with overflow handled by group bumps to alternate slots and non-submitters filling gaps to avoid short tables. Preview before committing.</p>
 
         <div class="generate-buttons">
           <button class="btn-generate" id="btnGenerateS1" data-stage="1" disabled>Generate Stage 1 tables</button>
@@ -82,7 +82,7 @@
           <span>Hours ranked by demand</span>
           <span class="section-title-count" id="ranking-count"></span>
         </div>
-        <p class="section-blurb">Hours sorted by total demand (1st choices count for 3, 2nd for 2, 3rd for 1). Expand any row to see who picked it.</p>
+        <p class="section-blurb">Hours sorted by total picks. Players can pick any number of slots they're available for. Expand any row to see who picked it.</p>
 
         <div id="hourList"></div>
       </div>
@@ -147,46 +147,37 @@
     }
 
     function computeStats() {
-      // For each 2-hour slot, count 1st, 2nd, and 3rd picks
+      // For each 2-hour slot, list everyone who marked themselves available
       var validHours = [];
       for (var hh = 0; hh < 24; hh += 2) validHours.push(hh);
 
       var hourCounts = {};
       validHours.forEach(function(h) {
-        hourCounts[h] = { firstPicks: [], secondPicks: [], thirdPicks: [] };
+        hourCounts[h] = { picks: [] };
       });
 
       state.availability.forEach(function(a) {
-        var firstHour = slotIdToHour(a.firstChoiceSlotId);
-        var secondHour = slotIdToHour(a.secondChoiceSlotId);
-        var thirdHour = slotIdToHour(a.thirdChoiceSlotId);
-
-        if (firstHour !== null && hourCounts[firstHour]) {
-          hourCounts[firstHour].firstPicks.push(a);
-        }
-        if (secondHour !== null && hourCounts[secondHour]) {
-          hourCounts[secondHour].secondPicks.push(a);
-        }
-        if (thirdHour !== null && hourCounts[thirdHour]) {
-          hourCounts[thirdHour].thirdPicks.push(a);
-        }
+        var ids = parseAvailableSlotIds(a.availableSlotIds);
+        var seenHours = {};
+        ids.forEach(function(slotId) {
+          var hr = slotIdToHour(slotId);
+          if (hr === null) return;
+          if (seenHours[hr]) return;
+          seenHours[hr] = true;
+          if (hourCounts[hr]) hourCounts[hr].picks.push(a);
+        });
       });
 
-      // Build sorted array
-      // Demand score: 1st × 3 + 2nd × 2 + 3rd × 1
+      // Build sorted array — demand is simply the number of players available
       var hours = [];
       validHours.forEach(function(hr) {
         var hc = hourCounts[hr];
         hours.push({
           hour: hr,
-          firstPicks: hc.firstPicks,
-          secondPicks: hc.secondPicks,
-          thirdPicks: hc.thirdPicks,
-          firstCount: hc.firstPicks.length,
-          secondCount: hc.secondPicks.length,
-          thirdCount: hc.thirdPicks.length,
-          score: hc.firstPicks.length * 3 + hc.secondPicks.length * 2 + hc.thirdPicks.length,
-          totalPicks: hc.firstPicks.length + hc.secondPicks.length + hc.thirdPicks.length
+          picks: hc.picks,
+          pickCount: hc.picks.length,
+          score: hc.picks.length,
+          totalPicks: hc.picks.length
         });
       });
 
@@ -213,6 +204,14 @@
         registeredCount: state.players.length,
         submittedCount: state.availability.length
       };
+    }
+
+    function parseAvailableSlotIds(value) {
+      if (Array.isArray(value)) return value.filter(Boolean);
+      if (typeof value === 'string' && value) {
+        return value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+      }
+      return [];
     }
 
     function renderStats(stats) {
@@ -267,22 +266,16 @@
       html += '  <span class="hour-time">' + pad2(h.hour) + ':00 TCT</span>';
       html += '  <span class="hour-local">= ' + localTime + ' local</span>';
 
-      // Demand bar (only if there's any demand)
+      // Demand bar
       html += '  <div class="hour-demand-bar">';
       if (maxScore > 0) {
-        var firstPct = (h.firstCount * 3 / maxScore) * 100;
-        var secondPct = (h.secondCount * 2 / maxScore) * 100;
-        var thirdPct = (h.thirdCount / maxScore) * 100;
-        html += '    <div class="demand-bar-first" style="width: ' + firstPct + '%"></div>';
-        html += '    <div class="demand-bar-second" style="width: ' + secondPct + '%"></div>';
-        html += '    <div class="demand-bar-third" style="width: ' + thirdPct + '%"></div>';
+        var pct = (h.pickCount / maxScore) * 100;
+        html += '    <div class="demand-bar-first" style="width: ' + pct + '%"></div>';
       }
       html += '  </div>';
 
       html += '  <div class="hour-counts">';
-      html += '    <span class="hour-count ' + (h.firstCount > 0 ? 'first' : 'zero') + '" title="1st choice picks">' + h.firstCount + ' × 1st</span>';
-      html += '    <span class="hour-count ' + (h.secondCount > 0 ? 'second' : 'zero') + '" title="2nd choice picks">' + h.secondCount + ' × 2nd</span>';
-      html += '    <span class="hour-count ' + (h.thirdCount > 0 ? 'third' : 'zero') + '" title="3rd choice picks">' + h.thirdCount + ' × 3rd</span>';
+      html += '    <span class="hour-count ' + (h.pickCount > 0 ? 'first' : 'zero') + '" title="Players available">' + h.pickCount + ' available</span>';
       html += '  </div>';
       html += '</div>';
 
@@ -291,42 +284,12 @@
         html += '<div class="hour-body">';
 
         html += '  <div class="pick-group">';
-        html += '    <div class="pick-group-label first">1st choice picks (' + h.firstCount + ')</div>';
-        if (h.firstCount === 0) {
-          html += '    <div class="pick-empty">No one picked this as their first choice.</div>';
-        } else {
-          html += '    <div class="pick-chips">';
-          h.firstPicks.forEach(function(a) {
-            html += '<span class="pick-chip first">' + esc(a.name) + '</span>';
-          });
-          html += '    </div>';
-        }
-        html += '  </div>';
-
-        html += '  <div class="pick-group">';
-        html += '    <div class="pick-group-label second">2nd choice picks (' + h.secondCount + ')</div>';
-        if (h.secondCount === 0) {
-          html += '    <div class="pick-empty">No one picked this as their second choice.</div>';
-        } else {
-          html += '    <div class="pick-chips">';
-          h.secondPicks.forEach(function(a) {
-            html += '<span class="pick-chip second">' + esc(a.name) + '</span>';
-          });
-          html += '    </div>';
-        }
-        html += '  </div>';
-
-        html += '  <div class="pick-group">';
-        html += '    <div class="pick-group-label third">3rd choice picks (' + h.thirdCount + ')</div>';
-        if (h.thirdCount === 0) {
-          html += '    <div class="pick-empty">No one picked this as their third choice.</div>';
-        } else {
-          html += '    <div class="pick-chips">';
-          h.thirdPicks.forEach(function(a) {
-            html += '<span class="pick-chip third">' + esc(a.name) + '</span>';
-          });
-          html += '    </div>';
-        }
+        html += '    <div class="pick-group-label first">Available (' + h.pickCount + ')</div>';
+        html += '    <div class="pick-chips">';
+        h.picks.forEach(function(a) {
+          html += '<span class="pick-chip first">' + esc(a.name) + '</span>';
+        });
+        html += '    </div>';
         html += '  </div>';
 
         html += '</div>';
@@ -465,8 +428,8 @@
       var statsHtml = '';
       statsHtml += renderStat('Players', stats.totalPlayers || 0);
       statsHtml += renderStat('Tables', totalTables);
-      statsHtml += renderStat('1st choice', stats.firstChoiceHits || 0);
-      statsHtml += renderStat('2nd / 3rd / bumped', (stats.secondChoiceHits || 0) + ' / ' + (stats.thirdChoiceHits || 0) + ' / ' + (stats.bumped || 0));
+      statsHtml += renderStat('Seated at picked slot', stats.availableHits || 0);
+      statsHtml += renderStat('Bumped', stats.bumped || 0);
       statsHtml += renderStat('Non-submitter seats', stats.nonSubmitterSeats || 0);
       document.getElementById('previewStats').innerHTML = statsHtml;
 
@@ -528,9 +491,7 @@
     }
 
     function sourceLabelFor(source) {
-      if (source === '1st') return '1st';
-      if (source === '2nd') return '2nd';
-      if (source === '3rd') return '3rd';
+      if (source === 'available') return 'available';
       if (source === 'bumped') return 'bumped';
       if (source === 'non') return 'no pick';
       return '';

@@ -922,16 +922,6 @@ body {
       height: 100%;
     }
 
-    body.avail-admin .demand-bar-second {
-      background: var(--green-dim);
-      height: 100%;
-    }
-
-    body.avail-admin .demand-bar-third {
-      background: #4a7ba8;
-      height: 100%;
-    }
-
     body.avail-admin .hour-counts {
       display: flex;
       gap: 10px;
@@ -952,18 +942,6 @@ body {
       background: var(--accent-glow);
       color: var(--accent);
       border: 1px solid var(--accent-dim);
-    }
-
-    body.avail-admin .hour-count.second {
-      background: rgba(61, 186, 106, 0.1);
-      color: var(--green);
-      border: 1px solid var(--green-dim);
-    }
-
-    body.avail-admin .hour-count.third {
-      background: rgba(100, 160, 220, 0.1);
-      color: #64a0dc;
-      border: 1px solid #4a7ba8;
     }
 
     body.avail-admin .hour-count.zero {
@@ -999,8 +977,6 @@ body {
     }
 
     body.avail-admin .pick-group-label.first { color: var(--accent); }
-    body.avail-admin .pick-group-label.second { color: var(--green); }
-    body.avail-admin .pick-group-label.third { color: #64a0dc; }
 
     body.avail-admin .pick-chips {
       display: flex;
@@ -1020,16 +996,6 @@ body {
     body.avail-admin .pick-chip.first {
       border-color: var(--accent-dim);
       background: var(--accent-glow);
-    }
-
-    body.avail-admin .pick-chip.second {
-      border-color: var(--green-dim);
-      background: rgba(61, 186, 106, 0.08);
-    }
-
-    body.avail-admin .pick-chip.third {
-      border-color: #4a7ba8;
-      background: rgba(100, 160, 220, 0.08);
     }
 
     body.avail-admin .pick-empty {
@@ -1632,27 +1598,10 @@ body {
       color: var(--text);
     }
 
-    body.avail .slot-cell.selected-first {
-      background: rgba(232, 168, 50, 0.15);
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    body.avail .slot-cell.selected-second {
-      background: rgba(61, 186, 106, 0.12);
+    body.avail .slot-cell.selected {
+      background: rgba(61, 186, 106, 0.15);
       border-color: var(--green);
       color: var(--green);
-    }
-
-    body.avail .slot-cell.selected-third {
-      background: rgba(100, 160, 220, 0.12);
-      border-color: #64a0dc;
-      color: #64a0dc;
-    }
-
-    body.avail .slot-cell.disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
     }
 
     body.avail .slot-tct {
@@ -1666,9 +1615,7 @@ body {
       opacity: 0.7;
     }
 
-    .slot-cell.selected-first .slot-local,
-    .slot-cell.selected-second .slot-local,
-    body.avail .slot-cell.selected-third .slot-local {
+    body.avail .slot-cell.selected .slot-local {
       opacity: 0.85;
     }
 
@@ -1932,57 +1879,6 @@ body {
       line-height: 1.4;
     }
 
-    body.leaderboard .prize-places {
-      display: flex;
-      align-items: stretch;
-    }
-
-    body.leaderboard .prize-place {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      padding: 12px 18px;
-      border-right: 1px solid var(--border);
-      min-width: 110px;
-    }
-
-    body.leaderboard .prize-place:last-child { border-right: none; }
-
-    body.leaderboard .prize-place-rank {
-      font-family: var(--font-body);
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 2px;
-    }
-
-    body.leaderboard .prize-place-rank.gold { color: var(--accent); }
-    body.leaderboard .prize-place-rank.silver { color: #a0a8b8; }
-    body.leaderboard .prize-place-rank.bronze { color: #b87333; }
-
-    body.leaderboard .prize-place-amount {
-      font-family: var(--font-mono);
-      font-size: 16px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    body.leaderboard .prize-place-pct {
-      font-family: var(--font-body);
-      font-size: 11px;
-      color: var(--text-dim);
-      margin-top: 1px;
-    }
-
-    body.leaderboard .prize-place-tentative {
-      font-family: var(--font-mono);
-      font-size: 9px;
-      color: var(--text-dim);
-      margin-top: 3px;
-      font-style: italic;
-    }
-
     body.leaderboard .prize-info {
       display: flex;
       align-items: stretch;
@@ -2058,7 +1954,6 @@ body {
       margin: 0 auto;
     }
 
-    /* --- PLAYERS GRID --- */
     /* --- PLAYERS LIST IN MODAL --- */
     body.leaderboard .player-list-item {
       display: flex;
@@ -2777,18 +2672,6 @@ body {
       }
 
       body.leaderboard .prize-pool-amount { font-size: 18px; }
-
-      body.leaderboard .prize-places { flex-direction: row; }
-
-      body.leaderboard .prize-place {
-        padding: 10px 12px;
-        align-items: center;
-        text-align: center;
-        flex: 1;
-      }
-
-      body.leaderboard .prize-place-amount { font-size: 13px; }
-      body.leaderboard .prize-place-tentative { display: none; }
 
       body.leaderboard .prize-info {
         flex-wrap: wrap;

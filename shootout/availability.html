@@ -19,7 +19,7 @@
 
   <section class="hero">
     <h1 class="hero-title">When can you play?</h1>
-    <p class="hero-blurb">Pick the three TCT start times that work best for you, ranked by preference. The more flexibility you give us, the more likely you'll get a slot that suits you. You can come back and change these any time before the tournament starts.</p>
+    <p class="hero-blurb">Pick every TCT start time you could play at. Pick as many as you can — the more flexibility you give us, the better we can schedule. You can come back and change these any time before the tournament starts.</p>
   </section>
 
   <section class="form-section">
@@ -63,42 +63,20 @@
         </div>
       </div>
 
-      <!-- STEP 2: Pick first choice -->
+      <!-- STEP 2: Pick all slots you can do -->
       <div class="form-step step-disabled" id="step2">
         <div class="form-step-header">
           <span class="form-step-num">02</span>
-          <span class="form-step-title">First choice</span>
+          <span class="form-step-title">Pick every time you could play</span>
         </div>
-        <p class="form-step-help">All times are TCT (UTC). Click a slot to pick it.</p>
+        <p class="form-step-help">All times are TCT (UTC). Tap a slot to select or deselect it. Pick as many as you can.</p>
 
-        <div class="slot-grid" id="slotGridFirst"></div>
-      </div>
-
-      <!-- STEP 3: Pick second choice -->
-      <div class="form-step step-disabled" id="step3">
-        <div class="form-step-header">
-          <span class="form-step-num">03</span>
-          <span class="form-step-title">Second choice</span>
-        </div>
-        <p class="form-step-help">Pick a different slot that also works for you.</p>
-
-        <div class="slot-grid" id="slotGridSecond"></div>
-      </div>
-
-      <!-- STEP 4: Pick third choice -->
-      <div class="form-step step-disabled" id="step4">
-        <div class="form-step-header">
-          <span class="form-step-num">04</span>
-          <span class="form-step-title">Third choice</span>
-        </div>
-        <p class="form-step-help">One more, to give us flexibility when scheduling.</p>
-
-        <div class="slot-grid" id="slotGridThird"></div>
+        <div class="slot-grid" id="slotGrid"></div>
       </div>
 
       <div class="submit-row">
         <div class="submit-summary" id="submitSummary">
-          Pick yourself and your three times to submit.
+          Pick yourself and your available times to submit.
         </div>
         <button class="btn-submit" id="btnSubmit" disabled>Submit Availability</button>
       </div>
@@ -124,9 +102,7 @@
 
     var selection = {
       player: null,        // { tornId, name }
-      firstSlotId: null,   // 'slot_0'..'slot_23'
-      secondSlotId: null,
-      thirdSlotId: null
+      slotIds: {}          // map of slotId -> true
     };
 
     // 12 fixed TCT slots: every 2 hours from 00:00 to 22:00
@@ -152,7 +128,7 @@
           state.availability = data.availability || [];
           document.getElementById('loadingState').classList.add('hidden');
           document.getElementById('formCard').classList.remove('hidden');
-          renderSlotGrids();
+          renderSlotGrid();
         })
         .catch(function(err) {
           document.getElementById('loadingState').innerHTML = 'Failed to load. Refresh the page.';
@@ -262,9 +238,7 @@
 
     function selectPlayer(player) {
       selection.player = player;
-      selection.firstSlotId = null;
-      selection.secondSlotId = null;
-      selection.thirdSlotId = null;
+      selection.slotIds = {};
 
       document.getElementById('playerInput').classList.add('hidden');
       document.getElementById('selectedPlayer').classList.add('show');
@@ -273,34 +247,37 @@
 
       closeDropdown();
 
-      // Check for existing picks
+      // Pre-select existing picks if any
       var existing = state.availability.filter(function(a) {
         return a.tornId === player.tornId;
       })[0];
 
       if (existing) {
-        selection.firstSlotId = existing.firstChoiceSlotId || null;
-        selection.secondSlotId = existing.secondChoiceSlotId || null;
-        selection.thirdSlotId = existing.thirdChoiceSlotId || null;
+        var ids = parseAvailableSlotIds(existing.availableSlotIds);
+        ids.forEach(function(id) { selection.slotIds[id] = true; });
         document.getElementById('existingNotice').classList.add('show');
       } else {
         document.getElementById('existingNotice').classList.remove('show');
       }
 
-      // Unlock steps 2, 3, 4
+      // Unlock step 2
       document.getElementById('step2').classList.remove('step-disabled');
-      document.getElementById('step3').classList.remove('step-disabled');
-      document.getElementById('step4').classList.remove('step-disabled');
 
-      renderSlotGrids();
+      renderSlotGrid();
       updateSubmitState();
+    }
+
+    function parseAvailableSlotIds(value) {
+      if (Array.isArray(value)) return value.filter(Boolean);
+      if (typeof value === 'string' && value) {
+        return value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+      }
+      return [];
     }
 
     function resetPlayerSelection() {
       selection.player = null;
-      selection.firstSlotId = null;
-      selection.secondSlotId = null;
-      selection.thirdSlotId = null;
+      selection.slotIds = {};
 
       document.getElementById('playerInput').classList.remove('hidden');
       document.getElementById('playerInput').value = '';
@@ -309,61 +286,29 @@
       document.getElementById('existingNotice').classList.remove('show');
 
       document.getElementById('step2').classList.add('step-disabled');
-      document.getElementById('step3').classList.add('step-disabled');
-      document.getElementById('step4').classList.add('step-disabled');
 
-      renderSlotGrids();
+      renderSlotGrid();
       updateSubmitState();
       hideMessage();
     }
 
     // ===== SLOTS =====
-    function renderSlotGrids() {
-      renderSlotGrid('slotGridFirst', 'first');
-      renderSlotGrid('slotGridSecond', 'second');
-      renderSlotGrid('slotGridThird', 'third');
-    }
-
-    function renderSlotGrid(elementId, which) {
-      var container = document.getElementById(elementId);
+    function renderSlotGrid() {
+      var container = document.getElementById('slotGrid');
       var html = '';
 
       SLOTS.forEach(function(slot) {
         var classes = ['slot-cell'];
-        var disabled = false;
-        var tag = '';
-
-        // Disable any slot already picked in another grid
-        var otherPicks = [];
-        if (which !== 'first') otherPicks.push(selection.firstSlotId);
-        if (which !== 'second') otherPicks.push(selection.secondSlotId);
-        if (which !== 'third') otherPicks.push(selection.thirdSlotId);
-
-        if (otherPicks.indexOf(slot.slotId) !== -1) {
-          disabled = true;
-        }
-
-        // Mark this grid's selection
-        if (which === 'first' && selection.firstSlotId === slot.slotId) {
-          classes.push('selected-first');
-          tag = '1st choice';
-        } else if (which === 'second' && selection.secondSlotId === slot.slotId) {
-          classes.push('selected-second');
-          tag = '2nd choice';
-        } else if (which === 'third' && selection.thirdSlotId === slot.slotId) {
-          classes.push('selected-third');
-          tag = '3rd choice';
-        }
-
-        if (disabled) classes.push('disabled');
+        var selected = !!selection.slotIds[slot.slotId];
+        if (selected) classes.push('selected');
 
         var localTime = formatLocalTime(slot.tctHour);
 
-        html += '<div class="' + classes.join(' ') + '" data-slot-id="' + slot.slotId + '" data-which="' + which + '">';
+        html += '<div class="' + classes.join(' ') + '" data-slot-id="' + slot.slotId + '">';
         html += '  <span class="slot-tct">' + pad2(slot.tctHour) + ':00 TCT</span>';
         html += '  <span class="slot-local">= ' + localTime + ' local</span>';
-        if (tag) {
-          html += '  <span class="slot-pick-tag">' + tag + '</span>';
+        if (selected) {
+          html += '  <span class="slot-pick-tag">selected</span>';
         }
         html += '</div>';
       });
@@ -372,21 +317,16 @@
 
       container.querySelectorAll('.slot-cell').forEach(function(cell) {
         cell.addEventListener('click', function() {
-          if (cell.classList.contains('disabled')) return;
           if (!selection.player) return;
 
           var slotId = cell.getAttribute('data-slot-id');
-          var which = cell.getAttribute('data-which');
-
-          if (which === 'first') {
-            selection.firstSlotId = (selection.firstSlotId === slotId) ? null : slotId;
-          } else if (which === 'second') {
-            selection.secondSlotId = (selection.secondSlotId === slotId) ? null : slotId;
+          if (selection.slotIds[slotId]) {
+            delete selection.slotIds[slotId];
           } else {
-            selection.thirdSlotId = (selection.thirdSlotId === slotId) ? null : slotId;
+            selection.slotIds[slotId] = true;
           }
 
-          renderSlotGrids();
+          renderSlotGrid();
           updateSubmitState();
         });
       });
@@ -409,6 +349,10 @@
       return n < 10 ? '0' + n : String(n);
     }
 
+    function selectedSlotIds() {
+      return Object.keys(selection.slotIds).filter(function(id) { return selection.slotIds[id]; });
+    }
+
     // ===== SUBMIT =====
     function updateSubmitState() {
       var btn = document.getElementById('btnSubmit');
@@ -416,40 +360,36 @@
 
       if (!selection.player) {
         btn.disabled = true;
-        summary.textContent = 'Pick yourself and your three times to submit.';
+        summary.textContent = 'Pick yourself and your available times to submit.';
         return;
       }
 
-      if (!selection.firstSlotId) {
+      var ids = selectedSlotIds();
+      if (ids.length === 0) {
         btn.disabled = true;
-        summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong> — pick your first choice.';
-        return;
-      }
-
-      if (!selection.secondSlotId) {
-        btn.disabled = true;
-        var firstHour = parseInt(selection.firstSlotId.replace('slot_', ''), 10);
-        summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong> — 1st: <strong>' + pad2(firstHour) + ':00 TCT</strong>. Pick your second choice.';
-        return;
-      }
-
-      if (!selection.thirdSlotId) {
-        btn.disabled = true;
-        var firstHour = parseInt(selection.firstSlotId.replace('slot_', ''), 10);
-        var secondHour = parseInt(selection.secondSlotId.replace('slot_', ''), 10);
-        summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong> — 1st: <strong>' + pad2(firstHour) + ':00 TCT</strong>, 2nd: <strong>' + pad2(secondHour) + ':00 TCT</strong>. Pick your third choice.';
+        summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong> — tap every time you could play.';
         return;
       }
 
       btn.disabled = false;
-      var firstHour = parseInt(selection.firstSlotId.replace('slot_', ''), 10);
-      var secondHour = parseInt(selection.secondSlotId.replace('slot_', ''), 10);
-      var thirdHour = parseInt(selection.thirdSlotId.replace('slot_', ''), 10);
-      summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong> — 1st: <strong>' + pad2(firstHour) + ':00 TCT</strong>, 2nd: <strong>' + pad2(secondHour) + ':00 TCT</strong>, 3rd: <strong>' + pad2(thirdHour) + ':00 TCT</strong>.';
+      var hours = ids.map(slotIdToHour).filter(function(h) { return h !== null; }).sort(function(a, b) { return a - b; });
+      var hourList = hours.map(function(h) { return pad2(h) + ':00'; }).join(', ');
+      summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong> — ' + ids.length + ' slot' + (ids.length === 1 ? '' : 's') + ' selected: <strong>' + hourList + ' TCT</strong>.';
+    }
+
+    function slotIdToHour(slotId) {
+      if (!slotId) return null;
+      var match = String(slotId).match(/^slot_(\d+)$/);
+      if (!match) return null;
+      var hr = parseInt(match[1], 10);
+      if (hr < 0 || hr > 23) return null;
+      return hr;
     }
 
     function submit() {
-      if (!selection.player || !selection.firstSlotId || !selection.secondSlotId || !selection.thirdSlotId) return;
+      if (!selection.player) return;
+      var ids = selectedSlotIds();
+      if (ids.length === 0) return;
 
       var btn = document.getElementById('btnSubmit');
       btn.disabled = true;
@@ -459,9 +399,7 @@
       var url = API_URL +
         '?action=submitAvailability' +
         '&tornId=' + encodeURIComponent(selection.player.tornId) +
-        '&firstChoiceSlotId=' + encodeURIComponent(selection.firstSlotId) +
-        '&secondChoiceSlotId=' + encodeURIComponent(selection.secondSlotId) +
-        '&thirdChoiceSlotId=' + encodeURIComponent(selection.thirdSlotId);
+        '&availableSlotIds=' + encodeURIComponent(ids.join(','));
 
       fetch(url)
         .then(function(res) { return res.json(); })
@@ -471,7 +409,7 @@
             showMessage(data.error, 'error');
             btn.disabled = false;
           } else {
-            showMessage(data.message + '. You can come back and change your picks any time.', 'success');
+            showMessage((data.message || 'Saved') + '. You can come back and change your picks any time.', 'success');
             toast('Availability saved', 'success');
             // Refresh state so the existing-picks notice shows up if they come back
             fetchState();
