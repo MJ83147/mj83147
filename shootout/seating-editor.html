@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Progressive Shootout // Seating Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="admin-auth.js"></script>
+  <style>
+    .editor-header {
+      padding: 14px 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .editor-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .editor-title {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .editor-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .editor-actions button {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 14px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .editor-actions button.primary {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+    .editor-actions button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .diag-strip {
+      padding: 10px 24px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 18px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+    .diag-stat {
+      display: flex;
+      gap: 6px;
+    }
+    .diag-stat-label {
+      color: var(--text-dim);
+    }
+    .diag-stat-val {
+      color: var(--text);
+      font-weight: 700;
+    }
+    .diag-stat-val.green { color: var(--green); }
+    .diag-stat-val.accent { color: var(--accent); }
+    .diag-stat-val.red { color: var(--red); }
+
+    .warnings-strip {
+      padding: 8px 24px;
+      background: rgba(217, 72, 72, 0.08);
+      border-bottom: 1px solid var(--red);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--red);
+      max-height: 100px;
+      overflow-y: auto;
+    }
+    .warning-item {
+      padding: 2px 0;
+    }
+
+    .editor-main {
+      padding: 16px 24px 80px;
+      overflow-x: auto;
+    }
+    .slots-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      min-width: min-content;
+    }
+
+    .slot-column {
+      flex: 0 0 240px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      min-height: 200px;
+      display: flex;
+      flex-direction: column;
+    }
+    .slot-column.short {
+      border-color: var(--accent-dim);
+      background: rgba(232, 168, 50, 0.04);
+    }
+    .slot-column.clean {
+      border-color: var(--green-dim);
+      background: rgba(61, 186, 106, 0.04);
+    }
+    .slot-column.non-pool {
+      border-color: var(--border-light, #3a404d);
+      background: var(--surface-2);
+      flex: 0 0 200px;
+    }
+    .slot-column.drag-over {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+
+    .slot-col-header {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .slot-col-time {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .slot-col-count {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .slot-col-status {
+      padding: 4px 10px;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .slot-col-status.clean { color: var(--green); background: rgba(61, 186, 106, 0.08); }
+    .slot-col-status.short { color: var(--accent); background: rgba(232, 168, 50, 0.08); }
+    .slot-col-status.dim { color: var(--text-dim); }
+
+    .slot-col-players {
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-height: 60px;
+    }
+
+    .player-pill {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: grab;
+      font-size: 12px;
+    }
+    .player-pill:hover {
+      border-color: var(--text-muted);
+    }
+    .player-pill.dragging {
+      opacity: 0.4;
+    }
+    .player-pill.stuck {
+      border-color: var(--red);
+      background: rgba(217, 72, 72, 0.06);
+    }
+    .player-pill.non {
+      background: var(--surface-2);
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    .player-pill-name {
+      font-family: var(--font-body);
+      font-weight: 500;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+      flex: 1;
+    }
+    .player-pill.stuck .player-pill-name { color: var(--red); }
+    .player-pill.non .player-pill-name { color: var(--text-muted); }
+
+    .player-pill-hint {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      padding: 1px 5px;
+      background: rgba(232, 168, 50, 0.15);
+      color: var(--accent);
+      border-radius: 2px;
+      flex: 0 0 auto;
+    }
+    .player-pill-hint.stuck-tag {
+      background: rgba(217, 72, 72, 0.15);
+      color: var(--red);
+    }
+
+    .empty-msg {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      font-style: italic;
+      text-align: center;
+      padding: 12px 4px;
+    }
+
+    .footer-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      z-index: 100;
+    }
+    .footer-msg {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .footer-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-footer {
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 9px 18px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .btn-footer.primary {
+      background: var(--accent);
+      color: var(--bg);
+      border-color: var(--accent);
+    }
+    .btn-footer:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .empty-state {
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body class="seating-editor">
+
+  <header class="header">
+    <h1><a href="index.html">PROGRESSIVE SHOOTOUT</a> // SEATING EDITOR</h1>
+    <div class="header-right">
+      <a class="btn-pill" href="availability-admin.html">Back to availability</a>
+    </div>
+  </header>
+
+  <div class="editor-header">
+    <div class="editor-header-left">
+      <span class="editor-title" id="stageTitle">Stage – seating</span>
+    </div>
+    <div class="editor-actions">
+      <button id="btnReset">Reset to algorithm output</button>
+    </div>
+  </div>
+
+  <div class="diag-strip" id="diagStrip"></div>
+  <div class="warnings-strip" id="warningsStrip" style="display:none;"></div>
+
+  <main class="editor-main" id="editorMain">
+    <div class="empty-state">Loading…</div>
+  </main>
+
+  <div class="footer-bar">
+    <div class="footer-msg" id="footerMsg"></div>
+    <div class="footer-actions">
+      <button class="btn-footer" id="btnCancel">Cancel</button>
+      <button class="btn-footer primary" id="btnCommit">Commit seating</button>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+  // ============================================================
+  // STATE
+  // ============================================================
+  var STAGE = '';
+  var TABLE_SIZE = 9;
+  var ORIGINAL_PLAN = null;   // pristine algorithm output (for reset)
+  var AVAIL_BY_TORN_ID = {};  // tornId -> list of slot ids the player picked
+  var STUCK_IDS = {};         // set of tornIds who only picked 1 slot
+
+  // Internal mutable state: slotId -> [player...] and a separate non-pool list
+  // Each player: { tornId, name, source, originalSlot (for warnings) }
+  var slots = {};   // slotId -> player[]
+  var nonPool = []; // player[] not assigned to any slot
+
+  var dragState = { tornId: null, fromSlot: null };
+
+  // ============================================================
+  // BOOT
+  // ============================================================
+  document.addEventListener('DOMContentLoaded', function() {
+    // Load plan from sessionStorage
+    var raw = sessionStorage.getItem('seatingEditor.plan');
+    if (!raw) {
+      document.getElementById('editorMain').innerHTML = '<div class="empty-state">No plan to edit. <a href="availability-admin.html">Go back</a> and generate a preview first.</div>';
+      return;
+    }
+    try {
+      var payload = JSON.parse(raw);
+      STAGE = String(payload.stage || '');
+      TABLE_SIZE = Number(payload.tableSize) || 9;
+      ORIGINAL_PLAN = payload.plan;
+      buildAvailabilityMap(payload.availability || []);
+      loadFromPlan(payload.plan);
+    } catch (e) {
+      document.getElementById('editorMain').innerHTML = '<div class="empty-state">Failed to load plan: ' + esc(e.message) + '</div>';
+      return;
+    }
+
+    document.getElementById('stageTitle').textContent = 'Stage ' + STAGE + ' — drag to refine';
+
+    document.getElementById('btnReset').addEventListener('click', resetToAlgorithm);
+    document.getElementById('btnCancel').addEventListener('click', function() {
+      window.location.href = 'availability-admin.html';
+    });
+    document.getElementById('btnCommit').addEventListener('click', commit);
+
+    render();
+  });
+
+  function buildAvailabilityMap(availArr) {
+    AVAIL_BY_TORN_ID = {};
+    STUCK_IDS = {};
+    availArr.forEach(function(a) {
+      var ids = parseSlotList(a.availableSlotIds);
+      AVAIL_BY_TORN_ID[a.tornId] = ids;
+      if (ids.length === 1) STUCK_IDS[a.tornId] = true;
+    });
+  }
+
+  function loadFromPlan(plan) {
+    slots = {};
+    nonPool = [];
+    plan.forEach(function(entry) {
+      var slotId = entry.slotId;
+      if (!slots[slotId]) slots[slotId] = [];
+      entry.tables.forEach(function(t) {
+        for (var i = 0; i < t.playerIds.length; i++) {
+          var player = {
+            tornId: t.playerIds[i],
+            name: t.playerNames[i],
+            source: t.sources[i],
+            originalSlot: slotId
+          };
+          slots[slotId].push(player);
+        }
+      });
+    });
+  }
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+  function render() {
+    renderDiag();
+    renderWarnings();
+    renderSlots();
+  }
+
+  function renderDiag() {
+    var totalPlayers = 0;
+    var fullTables = 0;
+    var shortTables = 0;
+    var emptySlots = 0;
+
+    Object.keys(slots).forEach(function(slotId) {
+      var n = slots[slotId].length;
+      totalPlayers += n;
+      if (n === 0) { emptySlots++; return; }
+      var sizes = layoutForCount(n, TABLE_SIZE);
+      sizes.forEach(function(s) {
+        if (s === TABLE_SIZE) fullTables++;
+        else shortTables++;
+      });
+    });
+
+    var shortClass = shortTables === 0 ? 'green' : (shortTables <= 2 ? 'accent' : 'red');
+
+    var html = '';
+    html += '<div class="diag-stat"><span class="diag-stat-label">Seated:</span> <span class="diag-stat-val">' + totalPlayers + '</span></div>';
+    html += '<div class="diag-stat"><span class="diag-stat-label">Full tables:</span> <span class="diag-stat-val green">' + fullTables + '</span></div>';
+    html += '<div class="diag-stat"><span class="diag-stat-label">Short tables:</span> <span class="diag-stat-val ' + shortClass + '">' + shortTables + '</span></div>';
+    html += '<div class="diag-stat"><span class="diag-stat-label">Non-pool:</span> <span class="diag-stat-val">' + nonPool.length + '</span></div>';
+
+    document.getElementById('diagStrip').innerHTML = html;
+  }
+
+  function renderWarnings() {
+    var warnings = computeWarnings();
+    var strip = document.getElementById('warningsStrip');
+    if (warnings.length === 0) {
+      strip.style.display = 'none';
+      return;
+    }
+    strip.style.display = '';
+    strip.innerHTML = warnings.map(function(w) { return '<div class="warning-item">⚠ ' + esc(w) + '</div>'; }).join('');
+  }
+
+  function computeWarnings() {
+    var warnings = [];
+    // For each player, check they're at a slot they picked (unless they're a non-submitter)
+    Object.keys(slots).forEach(function(slotId) {
+      slots[slotId].forEach(function(p) {
+        if (p.source === 'non') return;
+        var picks = AVAIL_BY_TORN_ID[p.tornId];
+        if (!picks || picks.length === 0) return; // no data, can't check
+        if (picks.indexOf(slotId) === -1) {
+          warnings.push(p.name + ' is at ' + fmtSlot(slotId) + ' but only picked ' + picks.map(fmtSlot).join(', '));
+        }
+      });
+    });
+    // Count short tables across the whole tournament
+    var shortTables = 0;
+    Object.keys(slots).forEach(function(slotId) {
+      var n = slots[slotId].length;
+      if (n === 0) return;
+      var sizes = layoutForCount(n, TABLE_SIZE);
+      sizes.forEach(function(s) { if (s !== TABLE_SIZE) shortTables++; });
+    });
+    if (shortTables > 2) {
+      warnings.push('More than 2 short tables across the tournament (' + shortTables + '). Try consolidating.');
+    }
+    return warnings;
+  }
+
+  function renderSlots() {
+    var slotIds = Object.keys(slots).sort(function(a, b) {
+      return slotHour(a) - slotHour(b);
+    });
+
+    // Identify currently-short slots so we can hint other players who could fix them
+    var shortSlotsSet = {};
+    slotIds.forEach(function(slotId) {
+      var n = slots[slotId].length;
+      if (n === 0) return;
+      var sizes = layoutForCount(n, TABLE_SIZE);
+      var hasShort = sizes.some(function(s) { return s !== TABLE_SIZE; });
+      if (hasShort) shortSlotsSet[slotId] = true;
+    });
+
+    var html = '<div class="slots-row">';
+    slotIds.forEach(function(slotId) {
+      html += renderSlotColumn(slotId, shortSlotsSet);
+    });
+    // Non-pool column
+    html += renderNonPoolColumn(shortSlotsSet);
+    html += '</div>';
+
+    document.getElementById('editorMain').innerHTML = html;
+    bindDragHandlers();
+  }
+
+  function renderSlotColumn(slotId, shortSlotsSet) {
+    var players = slots[slotId];
+    var n = players.length;
+
+    var statusClass = 'dim';
+    var statusText = '';
+    if (n === 0) {
+      statusText = 'empty';
+    } else if (n % TABLE_SIZE === 0) {
+      statusClass = 'clean';
+      var fullTables = n / TABLE_SIZE;
+      statusText = fullTables + ' full table' + (fullTables === 1 ? '' : 's');
+    } else {
+      statusClass = 'short';
+      var fullCount = Math.floor(n / TABLE_SIZE);
+      var rem = n % TABLE_SIZE;
+      if (fullCount > 0) {
+        statusText = fullCount + ' full + ' + rem + ' loose';
+      } else {
+        statusText = rem + '/' + TABLE_SIZE;
+      }
+    }
+
+    var colClasses = ['slot-column'];
+    if (n > 0 && n % TABLE_SIZE === 0) colClasses.push('clean');
+    else if (n > 0) colClasses.push('short');
+
+    var html = '<div class="' + colClasses.join(' ') + '" data-slot-id="' + esc(slotId) + '">';
+    html += '<div class="slot-col-header">';
+    html += '<span class="slot-col-time">' + fmtSlot(slotId) + ' TCT</span>';
+    html += '<span class="slot-col-count">' + n + '</span>';
+    html += '</div>';
+    html += '<div class="slot-col-status ' + statusClass + '">' + esc(statusText) + '</div>';
+    html += '<div class="slot-col-players" data-droppable-slot="' + esc(slotId) + '">';
+    if (players.length === 0) {
+      html += '<div class="empty-msg">empty</div>';
+    } else {
+      players.forEach(function(p) {
+        html += renderPlayerPill(p, slotId, shortSlotsSet);
+      });
+    }
+    html += '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderNonPoolColumn(shortSlotsSet) {
+    var html = '<div class="slot-column non-pool" data-slot-id="__non__">';
+    html += '<div class="slot-col-header">';
+    html += '<span class="slot-col-time">Non-pool</span>';
+    html += '<span class="slot-col-count">' + nonPool.length + '</span>';
+    html += '</div>';
+    html += '<div class="slot-col-status dim">unassigned</div>';
+    html += '<div class="slot-col-players" data-droppable-slot="__non__">';
+    if (nonPool.length === 0) {
+      html += '<div class="empty-msg">empty</div>';
+    } else {
+      nonPool.forEach(function(p) {
+        html += renderPlayerPill(p, '__non__', shortSlotsSet);
+      });
+    }
+    html += '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderPlayerPill(p, currentSlot, shortSlotsSet) {
+    var classes = ['player-pill'];
+    var isStuck = STUCK_IDS[p.tornId];
+    if (isStuck) classes.push('stuck');
+    if (p.source === 'non') classes.push('non');
+
+    // Hint: if this player picked any *other* slot that's currently short,
+    // show one of those as a "could go" hint.
+    var hint = '';
+    var hintClass = '';
+    if (isStuck) {
+      hint = 'stuck';
+      hintClass = 'stuck-tag';
+    } else if (p.source !== 'non') {
+      var picks = AVAIL_BY_TORN_ID[p.tornId] || [];
+      for (var i = 0; i < picks.length; i++) {
+        var pick = picks[i];
+        if (pick === currentSlot) continue;
+        if (shortSlotsSet[pick]) {
+          hint = '→ ' + fmtSlot(pick);
+          break;
+        }
+      }
+    }
+
+    var html = '<div class="' + classes.join(' ') + '" draggable="true" data-torn-id="' + esc(p.tornId) + '" data-current-slot="' + esc(currentSlot) + '">';
+    html += '<span class="player-pill-name">' + esc(p.name) + '</span>';
+    if (hint) html += '<span class="player-pill-hint ' + hintClass + '">' + esc(hint) + '</span>';
+    html += '</div>';
+    return html;
+  }
+
+  // ============================================================
+  // DRAG & DROP
+  // ============================================================
+  function bindDragHandlers() {
+    document.querySelectorAll('.player-pill').forEach(function(el) {
+      el.addEventListener('dragstart', onDragStart);
+      el.addEventListener('dragend', onDragEnd);
+    });
+    document.querySelectorAll('[data-droppable-slot]').forEach(function(el) {
+      el.addEventListener('dragover', onDragOver);
+      el.addEventListener('dragleave', onDragLeave);
+      el.addEventListener('drop', onDrop);
+    });
+  }
+
+  function onDragStart(e) {
+    var tornId = this.getAttribute('data-torn-id');
+    var fromSlot = this.getAttribute('data-current-slot');
+    dragState.tornId = tornId;
+    dragState.fromSlot = fromSlot;
+    this.classList.add('dragging');
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', tornId);
+    }
+  }
+
+  function onDragEnd(e) {
+    this.classList.remove('dragging');
+    dragState = { tornId: null, fromSlot: null };
+    document.querySelectorAll('.slot-column.drag-over').forEach(function(c) {
+      c.classList.remove('drag-over');
+    });
+  }
+
+  function onDragOver(e) {
+    if (!dragState.tornId) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    var col = this.closest('.slot-column');
+    if (col) col.classList.add('drag-over');
+  }
+
+  function onDragLeave(e) {
+    var col = this.closest('.slot-column');
+    if (col) col.classList.remove('drag-over');
+  }
+
+  function onDrop(e) {
+    e.preventDefault();
+    var toSlot = this.getAttribute('data-droppable-slot');
+    var fromSlot = dragState.fromSlot;
+    var tornId = dragState.tornId;
+    if (!tornId || !toSlot) return;
+    if (fromSlot === toSlot) return;
+
+    // Stuck-player check
+    if (STUCK_IDS[tornId]) {
+      var picks = AVAIL_BY_TORN_ID[tornId] || [];
+      var onlySlot = picks[0];
+      if (toSlot !== onlySlot && toSlot !== '__non__') {
+        var ok = confirm('This player is stuck — they only picked ' + fmtSlot(onlySlot) + '. Moving them to ' + fmtSlot(toSlot) + ' will mean they show up at a time they didn\'t pick. Continue?');
+        if (!ok) return;
+      }
+    }
+
+    // Perform move
+    var player = removePlayerFrom(fromSlot, tornId);
+    if (!player) return;
+    addPlayerTo(toSlot, player);
+    render();
+  }
+
+  function removePlayerFrom(slotId, tornId) {
+    var arr;
+    if (slotId === '__non__') arr = nonPool;
+    else arr = slots[slotId];
+    if (!arr) return null;
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i].tornId === tornId) {
+        return arr.splice(i, 1)[0];
+      }
+    }
+    return null;
+  }
+
+  function addPlayerTo(slotId, player) {
+    if (slotId === '__non__') {
+      nonPool.push(player);
+    } else {
+      if (!slots[slotId]) slots[slotId] = [];
+      slots[slotId].push(player);
+    }
+  }
+
+  // ============================================================
+  // ACTIONS
+  // ============================================================
+  function resetToAlgorithm() {
+    if (!confirm('Reset all changes and revert to the algorithm output?')) return;
+    loadFromPlan(ORIGINAL_PLAN);
+    render();
+  }
+
+  function commit() {
+    if (nonPool.length > 0) {
+      if (!confirm(nonPool.length + ' player(s) are still in the non-pool. They won\'t be seated. Continue?')) return;
+    }
+
+    var warnings = computeWarnings();
+    if (warnings.length > 0) {
+      if (!confirm(warnings.length + ' warning(s) on this seating. Commit anyway?')) return;
+    }
+
+    var plan = buildPlanForCommit();
+    var totalTables = 0;
+    plan.forEach(function(s) { totalTables += s.tables.length; });
+
+    if (!confirm('Create ' + totalTables + ' Stage ' + STAGE + ' tables? Players will be locked in and tables will go live.')) return;
+
+    var commitBtn = document.getElementById('btnCommit');
+    commitBtn.disabled = true;
+    commitBtn.textContent = 'Committing…';
+
+    var planJson = JSON.stringify(plan);
+    var url = API_URL + '?action=commitStageTables&stage=' + encodeURIComponent(STAGE) + '&plan=' + encodeURIComponent(planJson);
+
+    fetch(url)
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        commitBtn.disabled = false;
+        commitBtn.textContent = 'Commit seating';
+        if (data.error) {
+          alert('Commit failed: ' + data.error);
+          return;
+        }
+        sessionStorage.removeItem('seatingEditor.plan');
+        alert(data.message || 'Tables created');
+        window.location.href = 'availability-admin.html';
+      })
+      .catch(function(err) {
+        commitBtn.disabled = false;
+        commitBtn.textContent = 'Commit seating';
+        alert('Commit failed: ' + err.message);
+      });
+  }
+
+  function buildPlanForCommit() {
+    // For each slot, layout into actual tables
+    var slotIds = Object.keys(slots).filter(function(s) { return slots[s].length > 0; }).sort(function(a, b) {
+      return slotHour(a) - slotHour(b);
+    });
+
+    var tableCounter = 1;
+    var plan = [];
+    slotIds.forEach(function(slotId) {
+      var seated = slots[slotId];
+      var sizes = layoutForCount(seated.length, TABLE_SIZE);
+      var tables = [];
+      var cursor = 0;
+      sizes.forEach(function(size) {
+        var slice = seated.slice(cursor, cursor + size);
+        cursor += size;
+        tables.push({
+          tableId: 'S' + STAGE + '-T' + tableCounter,
+          size: size,
+          playerIds: slice.map(function(s) { return s.tornId; }),
+          playerNames: slice.map(function(s) { return s.name; }),
+          sources: slice.map(function(s) { return s.source; })
+        });
+        tableCounter++;
+      });
+      plan.push({ slotId: slotId, tables: tables });
+    });
+    return plan;
+  }
+
+  // ============================================================
+  // HELPERS
+  // ============================================================
+  function parseSlotList(value) {
+    if (Array.isArray(value)) return value.filter(Boolean);
+    if (typeof value === 'string' && value) {
+      return value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    }
+    return [];
+  }
+
+  function slotHour(slotId) {
+    var m = String(slotId).match(/^slot_(\d+)$/);
+    return m ? parseInt(m[1], 10) : 999;
+  }
+
+  function fmtSlot(slotId) {
+    var hr = slotHour(slotId);
+    if (hr === 999) return slotId;
+    return (hr < 10 ? '0' + hr : hr) + ':00';
+  }
+
+  function layoutForCount(n, baseSize) {
+    if (n <= 0) return [];
+    if (n <= baseSize) return [n];
+
+    var full = Math.floor(n / baseSize);
+    var leftover = n % baseSize;
+
+    if (leftover === 0) {
+      var out = [];
+      for (var i = 0; i < full; i++) out.push(baseSize);
+      return out;
+    }
+
+    if (leftover >= 5) {
+      var out2 = [];
+      for (var i2 = 0; i2 < full; i2++) out2.push(baseSize);
+      out2.push(leftover);
+      return out2;
+    }
+
+    var splitTotal = baseSize + leftover;
+    var a = Math.ceil(splitTotal / 2);
+    var b = Math.floor(splitTotal / 2);
+    var result = [];
+    for (var j = 0; j < full - 1; j++) result.push(baseSize);
+    result.push(a, b);
+    return result;
+  }
+
+  function esc(str) {
+    if (str === null || str === undefined) return '';
+    var div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+  }
+  </script>
+
+</body>
+</html>
