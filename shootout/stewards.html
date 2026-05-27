@@ -6,7 +6,7 @@
   <title>Progressive Shootout // Stewards</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=3">
   <script src="config.js"></script>
   <script src="steward-auth.js"></script>
 </head>
@@ -16,8 +16,6 @@
     <h1><a href="index.html">PROGRESSIVE SHOOTOUT</a> // STEWARDS</h1>
     <div class="header-right">
       <span id="signedInAs" class="signed-in-pill hidden"></span>
-      <a class="btn-pill" href="admin.html">Tournament admin</a>
-      <a class="btn-pill" href="availability-admin.html">Availability admin</a>
     </div>
   </header>
 
@@ -62,7 +60,7 @@
               <span class="section-title-count" id="tablesCount"></span>
             </div>
           </div>
-          <p class="section-blurb">Tables are created in the <a href="availability-admin.html">availability admin</a> and appear here grouped by their time slot. Assign one steward per table from those who marked this slot available, or click <em>Auto-assign stewards</em> to fill unassigned tables in one go (existing assignments are kept). The Copy button puts the table's Torn IDs on your clipboard as a comma-separated list, ready to paste into Torn's poker invite.</p>
+          <p class="section-blurb">Tables appear here once they've been generated and grouped by their time slot. Assign one steward per table from those who marked this slot available, or click <em>Auto-assign stewards</em> to fill unassigned tables in one go (existing assignments are kept). The Copy button puts the table's Torn IDs on your clipboard as a comma-separated list, ready to paste into Torn's poker invite.</p>
           <div id="tablesBySlot"></div>
         </section>
 

@@ -2801,23 +2801,36 @@ body.stewards .section-title-actions {
   gap: 12px;
 }
 
-body.stewards .btn-auto-assign {
+body.stewards .btn-auto-assign,
+body.stewards button.btn-auto-assign {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-block;
   font-family: var(--font-body);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 8px 16px;
   border-radius: 4px;
-  border: 1px solid var(--accent-dim);
-  background: rgba(232, 168, 50, 0.12);
-  color: var(--accent);
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--bg);
   cursor: pointer;
   text-transform: none;
   letter-spacing: 0;
-  transition: background 0.15s;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+  white-space: nowrap;
 }
 
-body.stewards .btn-auto-assign:hover { background: rgba(232, 168, 50, 0.22); }
-body.stewards .btn-auto-assign:disabled { opacity: 0.5; cursor: wait; }
+body.stewards button.btn-auto-assign:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent-dim);
+}
+
+body.stewards button.btn-auto-assign:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
 
 body.stewards .section-blurb {
   font-size: 13px;
