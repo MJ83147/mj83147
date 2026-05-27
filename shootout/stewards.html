@@ -30,20 +30,13 @@
 
     <div id="content" class="hidden">
 
-      <!-- 1. Steward roster -->
+      <!-- 1. Steward roster (managed via the Google Sheet) -->
       <section class="stewards-section">
         <div class="section-title">
           <span>Stewards</span>
-          <span class="section-title-count" id="stewardCount">0 / 4</span>
+          <span class="section-title-count" id="stewardCount"></span>
         </div>
-        <p class="section-blurb">Add the four people running the games. Torn ID is required so we can link to profiles and avoid duplicates.</p>
-
-        <div class="steward-add-form" id="addForm">
-          <input type="text" name="name" id="inputStewardName" placeholder="Steward name" autocomplete="off">
-          <input type="text" name="tornId" id="inputStewardTornId" placeholder="Torn ID" autocomplete="off" inputmode="numeric">
-          <button class="btn-add" id="btnAddSteward">Add steward</button>
-        </div>
-        <div class="cap-notice hidden" id="capNotice">Four stewards already added. Remove one to add another.</div>
+        <p class="section-blurb">Managed directly in the <code>Stewards</code> tab of the spreadsheet. Each steward signs in with their Torn ID.</p>
 
         <div class="steward-list" id="stewardList"></div>
       </section>
@@ -90,13 +83,6 @@
 
     document.addEventListener('DOMContentLoaded', function() {
       renderSignedInPill();
-      document.getElementById('btnAddSteward').addEventListener('click', addSteward);
-      document.getElementById('inputStewardName').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') document.getElementById('inputStewardTornId').focus();
-      });
-      document.getElementById('inputStewardTornId').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') addSteward();
-      });
       fetchState();
     });
 
@@ -154,30 +140,6 @@
     }
 
     // ===== STEWARD ACTIONS =====
-    function addSteward() {
-      var name = document.getElementById('inputStewardName').value.trim();
-      var tornId = document.getElementById('inputStewardTornId').value.trim();
-      if (!name) return toast('Name required', 'error');
-      if (!tornId) return toast('Torn ID required', 'error');
-      if (state.stewards.length >= 4) return toast('Four stewards already added', 'error');
-
-      apiCall('addSteward', { name: name, tornId: tornId }, function(data) {
-        toast(data.message, 'success');
-        document.getElementById('inputStewardName').value = '';
-        document.getElementById('inputStewardTornId').value = '';
-        document.getElementById('inputStewardName').focus();
-        fetchState();
-      });
-    }
-
-    function removeSteward(stewardId, name) {
-      if (!confirm('Remove ' + name + '? Their availability and any table assignments will be cleared.')) return;
-      apiCall('removeSteward', { stewardId: stewardId }, function(data) {
-        toast(data.message, 'success');
-        fetchState();
-      });
-    }
-
     function toggleSlot(stewardId, slotId) {
       if (!localAvailability[stewardId]) localAvailability[stewardId] = {};
       if (localAvailability[stewardId][slotId]) {
@@ -266,21 +228,11 @@
     function renderStewards() {
       var list = document.getElementById('stewardList');
       var count = document.getElementById('stewardCount');
-      var addBtn = document.getElementById('btnAddSteward');
-      var nameIn = document.getElementById('inputStewardName');
-      var idIn = document.getElementById('inputStewardTornId');
-      var cap = document.getElementById('capNotice');
 
-      count.textContent = state.stewards.length + ' / 4';
-
-      var atCap = state.stewards.length >= 4;
-      addBtn.disabled = atCap;
-      nameIn.disabled = atCap;
-      idIn.disabled = atCap;
-      cap.classList.toggle('hidden', !atCap);
+      count.textContent = state.stewards.length + ' steward' + (state.stewards.length === 1 ? '' : 's');
 
       if (state.stewards.length === 0) {
-        list.innerHTML = '<div class="empty-list">No stewards added yet.</div>';
+        list.innerHTML = '<div class="empty-list">No stewards in the sheet yet. Add rows to the <code>Stewards</code> tab.</div>';
         return;
       }
 
@@ -291,16 +243,9 @@
         html += '    <span class="steward-row-name">' + esc(s.name) + '</span>';
         html += '    <span class="steward-row-id"><a href="https://www.torn.com/profiles.php?XID=' + esc(s.tornId) + '" target="_blank" rel="noopener">#' + esc(s.tornId) + '</a></span>';
         html += '  </div>';
-        html += '  <button class="btn-remove" data-steward-id="' + esc(s.stewardId) + '" data-steward-name="' + esc(s.name) + '">Remove</button>';
         html += '</div>';
       });
       list.innerHTML = html;
-
-      list.querySelectorAll('.btn-remove').forEach(function(b) {
-        b.addEventListener('click', function() {
-          removeSteward(b.getAttribute('data-steward-id'), b.getAttribute('data-steward-name'));
-        });
-      });
     }
 
     function renderAvailability() {
