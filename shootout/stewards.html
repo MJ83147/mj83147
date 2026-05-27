@@ -57,9 +57,12 @@
         <section class="stewards-section">
           <div class="section-title">
             <span>Tables by time slot</span>
-            <span class="section-title-count" id="tablesCount"></span>
+            <div class="section-title-actions">
+              <button class="btn-auto-assign" id="btnAutoAssign">Auto-assign stewards</button>
+              <span class="section-title-count" id="tablesCount"></span>
+            </div>
           </div>
-          <p class="section-blurb">Assign one steward per table from those who marked this slot available. The Copy button puts the table's Torn IDs on your clipboard as a comma-separated list, ready to paste into Torn's poker invite.</p>
+          <p class="section-blurb">Tables are created in the <a href="availability-admin.html">availability admin</a> and appear here grouped by their time slot. Assign one steward per table from those who marked this slot available, or click <em>Auto-assign stewards</em> to fill unassigned tables in one go (existing assignments are kept). The Copy button puts the table's Torn IDs on your clipboard as a comma-separated list, ready to paste into Torn's poker invite.</p>
           <div id="tablesBySlot"></div>
         </section>
 
@@ -85,6 +88,7 @@
 
     document.addEventListener('DOMContentLoaded', function() {
       renderSignedInPill();
+      document.getElementById('btnAutoAssign').addEventListener('click', autoAssignStewards);
       fetchState();
     });
 
@@ -174,6 +178,96 @@
         }
         fetchState();
       });
+    }
+
+    async function autoAssignStewards() {
+      var tables = (state.tables || []).filter(function(t) { return t.timeSlotId; });
+      if (tables.length === 0) return toast('No tables to assign yet', 'error');
+      if (state.stewards.length === 0) return toast('No stewards in the sheet', 'error');
+
+      var assignByTable = {};
+      state.stewardAssignments.forEach(function(a) { assignByTable[a.tableId] = a.stewardId; });
+
+      // Group tables by slot
+      var bySlot = {};
+      tables.forEach(function(t) {
+        if (!bySlot[t.timeSlotId]) bySlot[t.timeSlotId] = [];
+        bySlot[t.timeSlotId].push(t);
+      });
+
+      // Current load + per-slot reservation map
+      var load = {};
+      state.stewards.forEach(function(s) { load[s.stewardId] = 0; });
+      state.stewardAssignments.forEach(function(a) {
+        if (load[a.stewardId] !== undefined) load[a.stewardId]++;
+      });
+
+      var slotMap = {}; // stewardId -> { slotId: true }
+      state.stewardAssignments.forEach(function(a) {
+        var t = tables.filter(function(tt) { return tt.tableId === a.tableId; })[0];
+        if (!t) return;
+        if (!slotMap[a.stewardId]) slotMap[a.stewardId] = {};
+        slotMap[a.stewardId][t.timeSlotId] = true;
+      });
+
+      // Build plan
+      var plan = [];
+      var noEligible = 0;
+      Object.keys(bySlot).forEach(function(slotId) {
+        var slotTables = bySlot[slotId];
+        var eligibleAtSlot = state.stewards.filter(function(s) {
+          return localAvailability[s.stewardId] && localAvailability[s.stewardId][slotId];
+        });
+
+        slotTables.forEach(function(t) {
+          if (assignByTable[t.tableId]) return; // already assigned, skip
+          var candidates = eligibleAtSlot.filter(function(s) {
+            return !(slotMap[s.stewardId] && slotMap[s.stewardId][slotId]);
+          });
+          if (candidates.length === 0) { noEligible++; return; }
+          candidates.sort(function(a, b) { return load[a.stewardId] - load[b.stewardId]; });
+          var pick = candidates[0];
+          plan.push({ tableId: t.tableId, stewardId: pick.stewardId });
+          if (!slotMap[pick.stewardId]) slotMap[pick.stewardId] = {};
+          slotMap[pick.stewardId][slotId] = true;
+          load[pick.stewardId]++;
+        });
+      });
+
+      if (plan.length === 0) {
+        var msg = noEligible > 0
+          ? noEligible + ' table(s) had no eligible steward available'
+          : 'Everything already assigned';
+        return toast(msg, 'error');
+      }
+
+      if (!confirm('Auto-assign ' + plan.length + ' table' + (plan.length === 1 ? '' : 's') +
+        '? Existing assignments are kept.' +
+        (noEligible > 0 ? ' (' + noEligible + ' table(s) have no eligible steward and will be skipped.)' : ''))) return;
+
+      var btn = document.getElementById('btnAutoAssign');
+      var origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Assigning…';
+
+      var ok = 0, fail = 0;
+      for (var i = 0; i < plan.length; i++) {
+        var p = plan[i];
+        var url = API_URL + '?action=assignSteward' +
+          '&tableId=' + encodeURIComponent(p.tableId) +
+          '&stewardId=' + encodeURIComponent(p.stewardId);
+        try {
+          var res = await fetch(url);
+          var data = await res.json();
+          if (data && !data.error) ok++; else fail++;
+        } catch (_) { fail++; }
+      }
+
+      btn.disabled = false;
+      btn.textContent = origText;
+      toast('Auto-assigned ' + ok + (fail ? ' · ' + fail + ' failed' : '') +
+        (noEligible ? ' · ' + noEligible + ' skipped' : ''), fail ? 'error' : 'success');
+      fetchState();
     }
 
     function changeAssignment(tableId, stewardId) {
