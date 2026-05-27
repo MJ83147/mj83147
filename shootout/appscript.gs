@@ -33,7 +33,16 @@ var SHEETS = {
   ELIMINATIONS: 'Eliminations',
   QUEUES: 'StageQueues',
   TIMESLOTS: 'TimeSlots',
-  AVAILABILITY: 'Availability'
+  AVAILABILITY: 'Availability',
+  STEWARDS: 'Stewards',
+  STEWARD_AVAILABILITY: 'StewardAvailability',
+  STEWARD_ASSIGNMENTS: 'StewardAssignments'
+};
+
+var STEWARD_SHEET_HEADERS = {
+  Stewards: ['stewardId', 'name', 'tornId', 'createdAt'],
+  StewardAvailability: ['stewardId', 'slotId', 'addedAt'],
+  StewardAssignments: ['tableId', 'stewardId', 'assignedAt']
 };
 
 var STATUS = {
@@ -77,6 +86,12 @@ function doGet(e) {
       case 'submitAvailability':    result = submitAvailability(params); break;
       case 'previewStageTables':    result = previewStageTables(params); break;
       case 'commitStageTables':     result = commitStageTables(params); break;
+      case 'addSteward':            result = addSteward(params); break;
+      case 'removeSteward':         result = removeSteward(params); break;
+      case 'setStewardAvailability': result = setStewardAvailability(params); break;
+      case 'assignSteward':         result = assignSteward(params); break;
+      case 'unassignSteward':       result = unassignSteward(params); break;
+      case 'verifyStewardLogin':    result = verifyStewardLogin(params); break;
       default:
         result = { error: 'Unknown action: ' + action };
     }
@@ -102,7 +117,10 @@ function getState() {
     eliminations: readEliminations(),
     queues: readQueues(),
     timeSlots: readTimeSlots(),
-    availability: readAvailability()
+    availability: readAvailability(),
+    stewards: readStewards(),
+    stewardAvailability: readStewardAvailability(),
+    stewardAssignments: readStewardAssignments()
   };
 }
 
@@ -1167,10 +1185,255 @@ function slotHour_(slotId) {
   return m ? parseInt(m[1], 10) : 999;
 }
 
+// =============================================================================
+// STEWARDS
+// =============================================================================
+
+function readStewards() {
+  ensureStewardSheets_();
+  return readSheet(SHEETS.STEWARDS).map(function(r) {
+    return {
+      stewardId: String(r.stewardId || ''),
+      name: r.name || '',
+      tornId: String(r.tornId || ''),
+      createdAt: formatDate(r.createdAt)
+    };
+  }).filter(function(s) { return s.stewardId; });
+}
+
+function readStewardAvailability() {
+  ensureStewardSheets_();
+  return readSheet(SHEETS.STEWARD_AVAILABILITY).map(function(r) {
+    return {
+      stewardId: String(r.stewardId || ''),
+      slotId: String(r.slotId || ''),
+      addedAt: formatDate(r.addedAt)
+    };
+  }).filter(function(r) { return r.stewardId && r.slotId; });
+}
+
+function readStewardAssignments() {
+  ensureStewardSheets_();
+  return readSheet(SHEETS.STEWARD_ASSIGNMENTS).map(function(r) {
+    return {
+      tableId: String(r.tableId || ''),
+      stewardId: String(r.stewardId || ''),
+      assignedAt: formatDate(r.assignedAt)
+    };
+  }).filter(function(r) { return r.tableId && r.stewardId; });
+}
+
+function addSteward(params) {
+  ensureStewardSheets_();
+  var name = String(params.name || '').trim();
+  var tornId = String(params.tornId || '').trim();
+  if (!name) return { error: 'Name required' };
+  if (!tornId) return { error: 'Torn ID required' };
+  if (!/^\d+$/.test(tornId)) return { error: 'Torn ID must be numeric' };
+
+  var existing = readStewards();
+  if (existing.some(function(s) { return s.tornId === tornId; })) {
+    return { error: 'A steward with that Torn ID already exists' };
+  }
+
+  var maxNum = 0;
+  existing.forEach(function(s) {
+    var m = String(s.stewardId).match(/^steward_(\d+)$/);
+    if (m) {
+      var n = parseInt(m[1], 10);
+      if (n > maxNum) maxNum = n;
+    }
+  });
+  var newId = 'steward_' + (maxNum + 1);
+
+  getSheet(SHEETS.STEWARDS).appendRow([newId, name, tornId, new Date()]);
+  return { message: name + ' added as steward', stewardId: newId };
+}
+
+function removeSteward(params) {
+  ensureStewardSheets_();
+  var stewardId = String(params.stewardId || '').trim();
+  if (!stewardId) return { error: 'stewardId required' };
+
+  var stewardsSheet = getSheet(SHEETS.STEWARDS);
+  var sData = stewardsSheet.getDataRange().getValues();
+  var removedName = '';
+  for (var i = sData.length - 1; i >= 1; i--) {
+    if (String(sData[i][0]) === stewardId) {
+      removedName = sData[i][1];
+      stewardsSheet.deleteRow(i + 1);
+    }
+  }
+  if (!removedName) return { error: 'Steward not found' };
+
+  deleteRowsWhere_(SHEETS.STEWARD_AVAILABILITY, 0, stewardId);
+  deleteRowsWhere_(SHEETS.STEWARD_ASSIGNMENTS, 1, stewardId);
+
+  return { message: removedName + ' removed' };
+}
+
+function setStewardAvailability(params) {
+  ensureStewardSheets_();
+  var stewardId = String(params.stewardId || '').trim();
+  if (!stewardId) return { error: 'stewardId required' };
+
+  var stewards = readStewards();
+  if (!stewards.some(function(s) { return s.stewardId === stewardId; })) {
+    return { error: 'Steward not found' };
+  }
+
+  var raw = String(params.slotIds || '').trim();
+  var slotIds = raw ? raw.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [];
+
+  var validSlotIds = {};
+  readTimeSlots().forEach(function(s) { validSlotIds[s.slotId] = true; });
+  for (var i = 0; i < slotIds.length; i++) {
+    if (!validSlotIds[slotIds[i]]) return { error: 'Not a valid time slot: ' + slotIds[i] };
+  }
+  var seen = {};
+  var deduped = [];
+  slotIds.forEach(function(id) {
+    if (!seen[id]) { seen[id] = true; deduped.push(id); }
+  });
+
+  deleteRowsWhere_(SHEETS.STEWARD_AVAILABILITY, 0, stewardId);
+
+  var now = new Date();
+  if (deduped.length > 0) {
+    var rows = deduped.map(function(slotId) { return [stewardId, slotId, now]; });
+    var sheet = getSheet(SHEETS.STEWARD_AVAILABILITY);
+    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 3).setValues(rows);
+  }
+
+  // Cascade: remove assignments where this steward is assigned to a table
+  // whose time slot is no longer in the picks.
+  var keepSet = {};
+  deduped.forEach(function(s) { keepSet[s] = true; });
+
+  var tables = readTables();
+  var tableSlotById = {};
+  tables.forEach(function(t) { tableSlotById[t.tableId] = t.timeSlotId; });
+
+  var assignmentsSheet = getSheet(SHEETS.STEWARD_ASSIGNMENTS);
+  var aData = assignmentsSheet.getDataRange().getValues();
+  var removed = [];
+  for (var j = aData.length - 1; j >= 1; j--) {
+    var tableId = String(aData[j][0]);
+    var sid = String(aData[j][1]);
+    if (sid !== stewardId) continue;
+    var slot = tableSlotById[tableId];
+    if (slot && keepSet[slot]) continue;
+    removed.push(tableId);
+    assignmentsSheet.deleteRow(j + 1);
+  }
+
+  return {
+    message: 'Availability saved (' + deduped.length + ' slot' + (deduped.length === 1 ? '' : 's') + ')',
+    slots: deduped.length,
+    removedAssignments: removed
+  };
+}
+
+function assignSteward(params) {
+  ensureStewardSheets_();
+  var tableId = String(params.tableId || '').trim();
+  var stewardId = String(params.stewardId || '').trim();
+  if (!tableId) return { error: 'tableId required' };
+  if (!stewardId) return { error: 'stewardId required' };
+
+  var table = readTables().filter(function(t) { return t.tableId === tableId; })[0];
+  if (!table) return { error: 'Table not found' };
+  if (!table.timeSlotId) return { error: 'Table has no time slot; cannot assign a steward' };
+
+  var steward = readStewards().filter(function(s) { return s.stewardId === stewardId; })[0];
+  if (!steward) return { error: 'Steward not found' };
+
+  var availability = readStewardAvailability().filter(function(r) { return r.stewardId === stewardId; });
+  var available = availability.some(function(r) { return r.slotId === table.timeSlotId; });
+  if (!available) return { error: steward.name + ' is not available for this time slot' };
+
+  var tables = readTables();
+  var tableSlotById = {};
+  tables.forEach(function(t) { tableSlotById[t.tableId] = t.timeSlotId; });
+
+  var conflict = readStewardAssignments().filter(function(a) {
+    return a.stewardId === stewardId &&
+           a.tableId !== tableId &&
+           tableSlotById[a.tableId] === table.timeSlotId;
+  })[0];
+  if (conflict) {
+    return { error: steward.name + ' is already assigned to ' + conflict.tableId + ' at the same time slot' };
+  }
+
+  var sheet = getSheet(SHEETS.STEWARD_ASSIGNMENTS);
+  var data = sheet.getDataRange().getValues();
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][0]) === tableId) sheet.deleteRow(i + 1);
+  }
+  sheet.appendRow([tableId, stewardId, new Date()]);
+
+  return { message: steward.name + ' assigned to ' + tableId };
+}
+
+function unassignSteward(params) {
+  ensureStewardSheets_();
+  var tableId = String(params.tableId || '').trim();
+  if (!tableId) return { error: 'tableId required' };
+
+  var removed = deleteRowsWhere_(SHEETS.STEWARD_ASSIGNMENTS, 0, tableId);
+  if (removed === 0) return { error: 'No assignment for ' + tableId };
+  return { message: 'Cleared steward for ' + tableId };
+}
+
+// Returns { ok: true, stewardId, name } if the supplied password matches any
+// steward's Torn ID in the Stewards sheet. Used by the stewards page login
+// gate so each steward can sign in with their own Torn ID.
+function verifyStewardLogin(params) {
+  ensureStewardSheets_();
+  var password = String(params.password || '').trim();
+  if (!password) return { ok: false };
+
+  var match = readStewards().filter(function(s) { return s.tornId === password; })[0];
+  if (!match) return { ok: false };
+
+  return { ok: true, stewardId: match.stewardId, name: match.name };
+}
+
+function ensureStewardSheets_() {
+  getOrCreateSheet_(SHEETS.STEWARDS, STEWARD_SHEET_HEADERS.Stewards);
+  getOrCreateSheet_(SHEETS.STEWARD_AVAILABILITY, STEWARD_SHEET_HEADERS.StewardAvailability);
+  getOrCreateSheet_(SHEETS.STEWARD_ASSIGNMENTS, STEWARD_SHEET_HEADERS.StewardAssignments);
+}
+
+function deleteRowsWhere_(sheetName, colIdxZeroBased, value) {
+  var sheet = getSheet(sheetName);
+  var data = sheet.getDataRange().getValues();
+  var removed = 0;
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (String(data[i][colIdxZeroBased]) === String(value)) {
+      sheet.deleteRow(i + 1);
+      removed++;
+    }
+  }
+  return removed;
+}
+
 // ===== SHEET HELPERS =====
 function getSheet(name) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(name);
   if (!sheet) throw new Error('Sheet not found: ' + name);
+  return sheet;
+}
+
+function getOrCreateSheet_(name, headers) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(name);
+  if (sheet) return sheet;
+  sheet = ss.insertSheet(name);
+  if (headers && headers.length > 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.setFrozenRows(1);
+  }
   return sheet;
 }
 

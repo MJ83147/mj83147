@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Progressive Shootout // Stewards</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <script src="steward-auth.js"></script>
+</head>
+<body class="stewards">
+
+  <header class="header">
+    <h1><a href="index.html">PROGRESSIVE SHOOTOUT</a> // STEWARDS</h1>
+    <div class="header-right">
+      <span id="signedInAs" class="signed-in-pill hidden"></span>
+      <a class="btn-pill" href="admin.html">Tournament admin</a>
+      <a class="btn-pill" href="availability-admin.html">Availability admin</a>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <div id="loadingState" style="text-align:center;padding:60px 20px;color:var(--text-muted);">
+      <div class="spinner"></div>
+      <div>Loading…</div>
+    </div>
+
+    <div id="content" class="hidden">
+
+      <!-- 1. Steward roster -->
+      <section class="stewards-section">
+        <div class="section-title">
+          <span>Stewards</span>
+          <span class="section-title-count" id="stewardCount">0 / 4</span>
+        </div>
+        <p class="section-blurb">Add the four people running the games. Torn ID is required so we can link to profiles and avoid duplicates.</p>
+
+        <div class="steward-add-form" id="addForm">
+          <input type="text" name="name" id="inputStewardName" placeholder="Steward name" autocomplete="off">
+          <input type="text" name="tornId" id="inputStewardTornId" placeholder="Torn ID" autocomplete="off" inputmode="numeric">
+          <button class="btn-add" id="btnAddSteward">Add steward</button>
+        </div>
+        <div class="cap-notice hidden" id="capNotice">Four stewards already added. Remove one to add another.</div>
+
+        <div class="steward-list" id="stewardList"></div>
+      </section>
+
+      <!-- 2. Availability -->
+      <section class="stewards-section">
+        <div class="section-title">
+          <span>Steward availability</span>
+          <span class="section-title-count" id="availSlotsCount"></span>
+        </div>
+        <p class="section-blurb">Click a slot to toggle whether the steward can cover it. Only slots that have tables are shown. Removing a slot will automatically unassign the steward from any table at that slot.</p>
+
+        <div id="availGrid" class="avail-grid"></div>
+      </section>
+
+      <!-- 3. Tables by slot -->
+      <section class="stewards-section">
+        <div class="section-title">
+          <span>Tables by time slot</span>
+          <span class="section-title-count" id="tablesCount"></span>
+        </div>
+        <p class="section-blurb">Assign one steward per table. The dropdown lists stewards who marked this slot available; a steward already assigned at this slot is greyed out. The Copy button puts the table's Torn IDs on your clipboard as a comma-separated list, ready to paste into Torn's poker invite.</p>
+
+        <div id="tablesBySlot"></div>
+      </section>
+
+    </div>
+  </main>
+
+  <div class="toast-container" id="toasts" style="position:fixed;bottom:24px;right:24px;z-index:1000;display:flex;flex-direction:column;gap:8px;"></div>
+
+  <script>
+    var state = {
+      players: [],
+      tables: [],
+      timeSlots: [],
+      stewards: [],
+      stewardAvailability: [],
+      stewardAssignments: []
+    };
+
+    var availSaveTimers = {}; // stewardId -> setTimeout handle (debounce saves)
+    var localAvailability = {}; // stewardId -> Set of slotIds (optimistic state)
+
+    document.addEventListener('DOMContentLoaded', function() {
+      renderSignedInPill();
+      document.getElementById('btnAddSteward').addEventListener('click', addSteward);
+      document.getElementById('inputStewardName').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') document.getElementById('inputStewardTornId').focus();
+      });
+      document.getElementById('inputStewardTornId').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') addSteward();
+      });
+      fetchState();
+    });
+
+    // ===== API =====
+    function apiCall(action, params, callback) {
+      var url = API_URL + '?action=' + encodeURIComponent(action);
+      if (params) {
+        Object.keys(params).forEach(function(key) {
+          url += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
+        });
+      }
+      return fetch(url)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data.error) {
+            toast(data.error, 'error');
+            return null;
+          }
+          if (callback) callback(data);
+          return data;
+        })
+        .catch(function(err) {
+          toast('Request failed: ' + err.message, 'error');
+          return null;
+        });
+    }
+
+    function fetchState() {
+      fetch(API_URL + '?action=getState')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          state.players = data.players || [];
+          state.tables = data.tables || [];
+          state.timeSlots = data.timeSlots || [];
+          state.stewards = data.stewards || [];
+          state.stewardAvailability = data.stewardAvailability || [];
+          state.stewardAssignments = data.stewardAssignments || [];
+          rebuildLocalAvailability();
+          document.getElementById('loadingState').classList.add('hidden');
+          document.getElementById('content').classList.remove('hidden');
+          renderAll();
+        })
+        .catch(function(err) {
+          document.getElementById('loadingState').innerHTML = 'Failed to load. Refresh the page.';
+        });
+    }
+
+    function rebuildLocalAvailability() {
+      localAvailability = {};
+      state.stewards.forEach(function(s) { localAvailability[s.stewardId] = {}; });
+      state.stewardAvailability.forEach(function(r) {
+        if (!localAvailability[r.stewardId]) localAvailability[r.stewardId] = {};
+        localAvailability[r.stewardId][r.slotId] = true;
+      });
+    }
+
+    // ===== STEWARD ACTIONS =====
+    function addSteward() {
+      var name = document.getElementById('inputStewardName').value.trim();
+      var tornId = document.getElementById('inputStewardTornId').value.trim();
+      if (!name) return toast('Name required', 'error');
+      if (!tornId) return toast('Torn ID required', 'error');
+      if (state.stewards.length >= 4) return toast('Four stewards already added', 'error');
+
+      apiCall('addSteward', { name: name, tornId: tornId }, function(data) {
+        toast(data.message, 'success');
+        document.getElementById('inputStewardName').value = '';
+        document.getElementById('inputStewardTornId').value = '';
+        document.getElementById('inputStewardName').focus();
+        fetchState();
+      });
+    }
+
+    function removeSteward(stewardId, name) {
+      if (!confirm('Remove ' + name + '? Their availability and any table assignments will be cleared.')) return;
+      apiCall('removeSteward', { stewardId: stewardId }, function(data) {
+        toast(data.message, 'success');
+        fetchState();
+      });
+    }
+
+    function toggleSlot(stewardId, slotId) {
+      if (!localAvailability[stewardId]) localAvailability[stewardId] = {};
+      if (localAvailability[stewardId][slotId]) {
+        delete localAvailability[stewardId][slotId];
+      } else {
+        localAvailability[stewardId][slotId] = true;
+      }
+      renderAvailability();
+      scheduleAvailSave(stewardId);
+    }
+
+    function scheduleAvailSave(stewardId) {
+      if (availSaveTimers[stewardId]) clearTimeout(availSaveTimers[stewardId]);
+      availSaveTimers[stewardId] = setTimeout(function() {
+        saveAvailability(stewardId);
+      }, 400);
+    }
+
+    function saveAvailability(stewardId) {
+      var picks = Object.keys(localAvailability[stewardId] || {});
+      apiCall('setStewardAvailability', {
+        stewardId: stewardId,
+        slotIds: picks.join(',')
+      }, function(data) {
+        var steward = state.stewards.filter(function(s) { return s.stewardId === stewardId; })[0];
+        var name = steward ? steward.name : 'Steward';
+        toast(name + ': ' + data.message, 'success');
+        if (data.removedAssignments && data.removedAssignments.length > 0) {
+          toast('Unassigned from: ' + data.removedAssignments.join(', '), 'error');
+        }
+        fetchState();
+      });
+    }
+
+    function changeAssignment(tableId, stewardId) {
+      if (!stewardId) {
+        apiCall('unassignSteward', { tableId: tableId }, function(data) {
+          toast(data.message, 'success');
+          fetchState();
+        });
+      } else {
+        apiCall('assignSteward', { tableId: tableId, stewardId: stewardId }, function(data) {
+          toast(data.message, 'success');
+          fetchState();
+        });
+      }
+    }
+
+    function copyTornIds(btn, tornIds) {
+      var text = tornIds.join(',');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() { flashCopied(btn); }, function() { fallbackCopy(text, btn); });
+      } else {
+        fallbackCopy(text, btn);
+      }
+    }
+
+    function fallbackCopy(text, btn) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); flashCopied(btn); } catch (_) { toast('Copy failed', 'error'); }
+      document.body.removeChild(ta);
+    }
+
+    function flashCopied(btn) {
+      var orig = btn.textContent;
+      btn.classList.add('copied');
+      btn.textContent = 'Copied!';
+      setTimeout(function() {
+        btn.classList.remove('copied');
+        btn.textContent = orig;
+      }, 1400);
+    }
+
+    // ===== RENDER =====
+    function renderAll() {
+      renderStewards();
+      renderAvailability();
+      renderTablesBySlot();
+    }
+
+    function renderStewards() {
+      var list = document.getElementById('stewardList');
+      var count = document.getElementById('stewardCount');
+      var addBtn = document.getElementById('btnAddSteward');
+      var nameIn = document.getElementById('inputStewardName');
+      var idIn = document.getElementById('inputStewardTornId');
+      var cap = document.getElementById('capNotice');
+
+      count.textContent = state.stewards.length + ' / 4';
+
+      var atCap = state.stewards.length >= 4;
+      addBtn.disabled = atCap;
+      nameIn.disabled = atCap;
+      idIn.disabled = atCap;
+      cap.classList.toggle('hidden', !atCap);
+
+      if (state.stewards.length === 0) {
+        list.innerHTML = '<div class="empty-list">No stewards added yet.</div>';
+        return;
+      }
+
+      var html = '';
+      state.stewards.forEach(function(s) {
+        html += '<div class="steward-row">';
+        html += '  <div class="steward-row-info">';
+        html += '    <span class="steward-row-name">' + esc(s.name) + '</span>';
+        html += '    <span class="steward-row-id"><a href="https://www.torn.com/profiles.php?XID=' + esc(s.tornId) + '" target="_blank" rel="noopener">#' + esc(s.tornId) + '</a></span>';
+        html += '  </div>';
+        html += '  <button class="btn-remove" data-steward-id="' + esc(s.stewardId) + '" data-steward-name="' + esc(s.name) + '">Remove</button>';
+        html += '</div>';
+      });
+      list.innerHTML = html;
+
+      list.querySelectorAll('.btn-remove').forEach(function(b) {
+        b.addEventListener('click', function() {
+          removeSteward(b.getAttribute('data-steward-id'), b.getAttribute('data-steward-name'));
+        });
+      });
+    }
+
+    function renderAvailability() {
+      var container = document.getElementById('availGrid');
+      var countLabel = document.getElementById('availSlotsCount');
+
+      var slotsWithTables = getSlotsWithTables();
+      countLabel.textContent = slotsWithTables.length + ' slot' + (slotsWithTables.length === 1 ? '' : 's') + ' with tables';
+
+      if (state.stewards.length === 0) {
+        container.innerHTML = '<div class="empty-list">Add stewards above to set availability.</div>';
+        return;
+      }
+      if (slotsWithTables.length === 0) {
+        container.innerHTML = '<div class="empty-list">No tables generated yet. Generate tables in the availability admin first.</div>';
+        return;
+      }
+
+      var html = '';
+      state.stewards.forEach(function(s) {
+        html += '<div class="avail-row">';
+        html += '  <div class="avail-row-name">' + esc(s.name) +
+                '<span class="avail-row-name-meta">#' + esc(s.tornId) + '</span></div>';
+        html += '  <div class="avail-chips">';
+        slotsWithTables.forEach(function(slot) {
+          var selected = !!(localAvailability[s.stewardId] && localAvailability[s.stewardId][slot.slotId]);
+          html += '<span class="slot-chip' + (selected ? ' selected' : '') + '"' +
+                  ' data-steward-id="' + esc(s.stewardId) + '"' +
+                  ' data-slot-id="' + esc(slot.slotId) + '">' +
+                  pad2(slot.hour) + ':00' +
+                  '<span class="slot-chip-local">(' + esc(formatLocalTime(slot.hour)) + ')</span>' +
+                  '</span>';
+        });
+        html += '  </div>';
+        html += '</div>';
+      });
+      container.innerHTML = html;
+
+      container.querySelectorAll('.slot-chip').forEach(function(chip) {
+        chip.addEventListener('click', function() {
+          toggleSlot(chip.getAttribute('data-steward-id'), chip.getAttribute('data-slot-id'));
+        });
+      });
+    }
+
+    function renderTablesBySlot() {
+      var container = document.getElementById('tablesBySlot');
+      var countLabel = document.getElementById('tablesCount');
+
+      var tables = (state.tables || []).filter(function(t) { return t.timeSlotId; });
+      countLabel.textContent = tables.length + ' table' + (tables.length === 1 ? '' : 's');
+
+      if (tables.length === 0) {
+        container.innerHTML = '<div class="no-tables">No tables with a time slot yet. Generate Stage 1 tables in the availability admin first.</div>';
+        return;
+      }
+
+      // Group by slot
+      var bySlot = {};
+      tables.forEach(function(t) {
+        if (!bySlot[t.timeSlotId]) bySlot[t.timeSlotId] = [];
+        bySlot[t.timeSlotId].push(t);
+      });
+
+      // Assignment map: tableId -> stewardId
+      var assignByTable = {};
+      state.stewardAssignments.forEach(function(a) { assignByTable[a.tableId] = a.stewardId; });
+
+      // Sort slot keys by hour
+      var slotKeys = Object.keys(bySlot).sort(function(a, b) {
+        return slotIdToHour(a) - slotIdToHour(b);
+      });
+
+      var html = '';
+      slotKeys.forEach(function(slotId) {
+        var hour = slotIdToHour(slotId);
+        var slotTables = bySlot[slotId];
+
+        // Sort tables by tableId numeric suffix
+        slotTables.sort(function(a, b) {
+          var na = parseInt(String(a.tableId).replace(/[^0-9]/g, ''), 10) || 0;
+          var nb = parseInt(String(b.tableId).replace(/[^0-9]/g, ''), 10) || 0;
+          return na - nb;
+        });
+
+        // Stewards already taken at this slot
+        var takenAtSlot = {}; // stewardId -> tableId
+        slotTables.forEach(function(t) {
+          if (assignByTable[t.tableId]) takenAtSlot[assignByTable[t.tableId]] = t.tableId;
+        });
+
+        // Stewards eligible (have this slot in their availability)
+        var eligible = state.stewards.filter(function(s) {
+          return localAvailability[s.stewardId] && localAvailability[s.stewardId][slotId];
+        });
+
+        var timeLabel = (hour === null) ? '(unknown slot)' :
+          pad2(hour) + ':00 TCT — ' + formatLocalTime(hour) + ' local';
+
+        html += '<div class="slot-block">';
+        html += '  <div class="slot-block-header">';
+        html += '    <span class="slot-block-time">' + esc(timeLabel) + '</span>';
+        html += '    <span class="slot-block-meta">' + slotTables.length + ' table' + (slotTables.length === 1 ? '' : 's') +
+                ' &middot; ' + eligible.length + ' steward' + (eligible.length === 1 ? '' : 's') + ' available</span>';
+        html += '  </div>';
+        html += '  <div class="slot-block-body">';
+
+        slotTables.forEach(function(t) {
+          var currentAssign = assignByTable[t.tableId] || '';
+          html += renderTableCard(t, currentAssign, eligible, takenAtSlot);
+        });
+
+        html += '  </div>';
+        html += '</div>';
+      });
+      container.innerHTML = html;
+
+      container.querySelectorAll('select.steward-assign-select').forEach(function(sel) {
+        sel.addEventListener('change', function() {
+          changeAssignment(sel.getAttribute('data-table-id'), sel.value);
+        });
+      });
+
+      container.querySelectorAll('.btn-copy').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var ids = (btn.getAttribute('data-torn-ids') || '').split(',').filter(Boolean);
+          copyTornIds(btn, ids);
+        });
+      });
+    }
+
+    function renderTableCard(t, currentAssign, eligible, takenAtSlot) {
+      var statusCls = (t.status === 'complete') ? 'complete' : 'live';
+      var stage = String(t.stage);
+      var stageLabel = (stage === '1' || stage === '2' || stage === '3') ? 'Stage ' + stage : stage;
+
+      var playerCells = '';
+      var tornIds = [];
+      t.players.forEach(function(pid) {
+        var player = state.players.filter(function(p) { return p.tornId === pid; })[0];
+        var name = player ? player.name : '(unknown)';
+        tornIds.push(pid);
+        playerCells += '<div class="steward-table-player">' +
+          '<span>' + esc(name) + '</span>' +
+          '<span class="steward-table-player-id">#' + esc(pid) + '</span>' +
+          '</div>';
+      });
+
+      var html = '<div class="steward-table-card">';
+      html += '  <div class="steward-table-card-header">';
+      html += '    <span class="steward-table-card-id">' + esc(t.tableId) + '</span>';
+      html += '    <span class="steward-table-card-stage">' + esc(stageLabel) + '</span>';
+      html += '    <span class="steward-table-card-status ' + statusCls + '">' + esc(t.status) + '</span>';
+      html += '  </div>';
+
+      html += '  <div class="steward-table-assign">';
+      html += '    <span class="steward-table-assign-label">Steward</span>';
+      var assignedCls = currentAssign ? ' assigned' : '';
+      html += '    <select class="steward-assign-select' + assignedCls + '" data-table-id="' + esc(t.tableId) + '">';
+      html += '      <option value="">— Unassigned —</option>';
+      eligible.forEach(function(s) {
+        var taken = takenAtSlot[s.stewardId];
+        var isThisTable = (taken === t.tableId);
+        var disabled = !!taken && !isThisTable ? ' disabled' : '';
+        var selected = (currentAssign === s.stewardId) ? ' selected' : '';
+        var label = s.name + (taken && !isThisTable ? ' (on ' + taken + ')' : '');
+        html += '      <option value="' + esc(s.stewardId) + '"' + disabled + selected + '>' + esc(label) + '</option>';
+      });
+      // If current assignment is for a steward no longer eligible, still show them so it isn't silently dropped.
+      if (currentAssign && !eligible.some(function(s) { return s.stewardId === currentAssign; })) {
+        var orphan = state.stewards.filter(function(s) { return s.stewardId === currentAssign; })[0];
+        var orphanName = orphan ? orphan.name + ' (no longer available)' : '(unknown steward)';
+        html += '      <option value="' + esc(currentAssign) + '" selected>' + esc(orphanName) + '</option>';
+      }
+      html += '    </select>';
+      html += '  </div>';
+
+      html += '  <div class="steward-table-players">' + playerCells + '</div>';
+
+      html += '  <div class="steward-table-footer">';
+      html += '    <button class="btn-copy" data-torn-ids="' + esc(tornIds.join(',')) + '">Copy Torn IDs (' + tornIds.length + ')</button>';
+      html += '  </div>';
+      html += '</div>';
+      return html;
+    }
+
+    // ===== HELPERS =====
+    function getSlotsWithTables() {
+      var hours = {};
+      (state.tables || []).forEach(function(t) {
+        if (!t.timeSlotId) return;
+        var hr = slotIdToHour(t.timeSlotId);
+        if (hr === null) return;
+        hours[t.timeSlotId] = { slotId: t.timeSlotId, hour: hr };
+      });
+      var arr = Object.keys(hours).map(function(k) { return hours[k]; });
+      arr.sort(function(a, b) { return a.hour - b.hour; });
+      return arr;
+    }
+
+    function slotIdToHour(slotId) {
+      var m = String(slotId).match(/^slot_(\d+)$/);
+      if (!m) return null;
+      return parseInt(m[1], 10);
+    }
+
+    function formatLocalTime(tctHour) {
+      var d = new Date();
+      d.setUTCHours(tctHour, 0, 0, 0);
+      var h = d.getHours();
+      var m = d.getMinutes();
+      var ampm = h >= 12 ? 'pm' : 'am';
+      var displayHour = h % 12;
+      if (displayHour === 0) displayHour = 12;
+      var minStr = m === 0 ? '' : ':' + pad2(m);
+      return displayHour + minStr + ampm;
+    }
+
+    function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+    function toast(message, type) {
+      var container = document.getElementById('toasts');
+      var el = document.createElement('div');
+      el.style.cssText = 'font-family:var(--font-body);font-size:13px;font-weight:500;padding:10px 18px;border-radius:5px;max-width:360px;color:#fff;background:' + (type === 'error' ? 'var(--red)' : 'var(--green)') + ';box-shadow:0 4px 12px rgba(0,0,0,0.4);';
+      el.textContent = message;
+      container.appendChild(el);
+      setTimeout(function() { el.remove(); }, 3200);
+    }
+
+    function esc(str) {
+      if (str === null || str === undefined) return '';
+      var div = document.createElement('div');
+      div.textContent = String(str);
+      return div.innerHTML;
+    }
+
+    function renderSignedInPill() {
+      var name = '';
+      try { name = sessionStorage.getItem('shootout_steward_name') || ''; } catch (_) {}
+      var pill = document.getElementById('signedInAs');
+      if (!pill) return;
+      if (!name) {
+        pill.classList.add('hidden');
+        pill.innerHTML = '';
+        return;
+      }
+      pill.classList.remove('hidden');
+      pill.innerHTML = 'Signed in as <strong>' + esc(name) + '</strong>' +
+        ' <a href="#" id="signOutLink" style="margin-left:8px;color:inherit;opacity:0.7;text-decoration:underline;">sign out</a>';
+      var link = document.getElementById('signOutLink');
+      if (link) link.addEventListener('click', function(e) {
+        e.preventDefault();
+        try {
+          sessionStorage.removeItem('shootout_steward_authed');
+          sessionStorage.removeItem('shootout_steward_id');
+          sessionStorage.removeItem('shootout_steward_name');
+        } catch (_) {}
+        location.reload();
+      });
+    }
+  </script>
+</body>
+</html>
