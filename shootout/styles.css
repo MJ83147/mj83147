@@ -2736,12 +2736,32 @@ body.stewards .signed-in-pill strong {
 body.stewards .hidden { display: none; }
 
 body.stewards .main {
-  padding: 28px 32px 60px;
+  padding: 24px 28px 60px;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+body.stewards #content {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+body.stewards .sidebar {
+  position: sticky;
+  top: 20px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  max-width: 1200px;
-  margin: 0 auto;
+  gap: 18px;
+  min-width: 0;
+}
+
+body.stewards .panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
 }
 
 body.stewards .stewards-section {
@@ -3129,6 +3149,63 @@ body.stewards .no-tables {
   padding: 28px 16px;
   border: 1px dashed var(--border);
   border-radius: 6px;
+}
+
+/* Chip variant for slots that don't yet have any tables — dimmed but still clickable */
+body.stewards .slot-chip.no-tables {
+  opacity: 0.55;
+  border-style: dashed;
+  border-color: var(--border);
+  background: transparent;
+  padding: 6px 12px;
+  text-align: inherit;
+}
+
+body.stewards .slot-chip.no-tables.selected {
+  opacity: 1;
+  border-style: solid;
+}
+
+body.stewards .slot-chip.no-tables:hover {
+  opacity: 0.85;
+}
+
+/* Sidebar steward rows stack vertically and stay compact */
+body.stewards .sidebar .steward-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 12px;
+}
+
+body.stewards .sidebar .steward-row-info {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+body.stewards .sidebar .section-blurb {
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 1000px) {
+  body.stewards #content {
+    grid-template-columns: 1fr;
+  }
+  body.stewards .sidebar {
+    position: static;
+    top: auto;
+  }
+  body.stewards .sidebar .steward-row {
+    flex-direction: row;
+    align-items: center;
+  }
+  body.stewards .sidebar .steward-row-info {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 12px;
+  }
 }
 
 @media (max-width: 700px) {

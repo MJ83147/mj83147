@@ -30,38 +30,40 @@
 
     <div id="content" class="hidden">
 
-      <!-- 1. Steward roster (managed via the Google Sheet) -->
-      <section class="stewards-section">
-        <div class="section-title">
-          <span>Stewards</span>
-          <span class="section-title-count" id="stewardCount"></span>
-        </div>
-        <p class="section-blurb">Managed directly in the <code>Stewards</code> tab of the spreadsheet. Each steward signs in with their Torn ID.</p>
+      <!-- LEFT: Steward roster sidebar -->
+      <aside class="sidebar">
+        <section class="stewards-section">
+          <div class="section-title">
+            <span>Stewards</span>
+            <span class="section-title-count" id="stewardCount"></span>
+          </div>
+          <p class="section-blurb">Managed in the <code>Stewards</code> tab. Each signs in with their Torn ID.</p>
+          <div class="steward-list" id="stewardList"></div>
+        </section>
+      </aside>
 
-        <div class="steward-list" id="stewardList"></div>
-      </section>
+      <!-- RIGHT: Availability + tables -->
+      <div class="panel">
 
-      <!-- 2. Availability -->
-      <section class="stewards-section">
-        <div class="section-title">
-          <span>Steward availability</span>
-          <span class="section-title-count" id="availSlotsCount"></span>
-        </div>
-        <p class="section-blurb">Click a slot to toggle whether the steward can cover it. Only slots that have tables are shown. Removing a slot will automatically unassign the steward from any table at that slot.</p>
+        <section class="stewards-section">
+          <div class="section-title">
+            <span>Steward availability</span>
+            <span class="section-title-count" id="availSlotsCount"></span>
+          </div>
+          <p class="section-blurb">Click a slot to toggle whether the steward can cover it. Slots without tables yet are dimmed but still pickable so stewards can plan ahead. Removing a slot will auto-unassign the steward from any table at that slot.</p>
+          <div id="availGrid" class="avail-grid"></div>
+        </section>
 
-        <div id="availGrid" class="avail-grid"></div>
-      </section>
+        <section class="stewards-section">
+          <div class="section-title">
+            <span>Tables by time slot</span>
+            <span class="section-title-count" id="tablesCount"></span>
+          </div>
+          <p class="section-blurb">Assign one steward per table from those who marked this slot available. The Copy button puts the table's Torn IDs on your clipboard as a comma-separated list, ready to paste into Torn's poker invite.</p>
+          <div id="tablesBySlot"></div>
+        </section>
 
-      <!-- 3. Tables by slot -->
-      <section class="stewards-section">
-        <div class="section-title">
-          <span>Tables by time slot</span>
-          <span class="section-title-count" id="tablesCount"></span>
-        </div>
-        <p class="section-blurb">Assign one steward per table. The dropdown lists stewards who marked this slot available; a steward already assigned at this slot is greyed out. The Copy button puts the table's Torn IDs on your clipboard as a comma-separated list, ready to paste into Torn's poker invite.</p>
-
-        <div id="tablesBySlot"></div>
-      </section>
+      </div>
 
     </div>
   </main>
@@ -252,15 +254,22 @@
       var container = document.getElementById('availGrid');
       var countLabel = document.getElementById('availSlotsCount');
 
-      var slotsWithTables = getSlotsWithTables();
-      countLabel.textContent = slotsWithTables.length + ' slot' + (slotsWithTables.length === 1 ? '' : 's') + ' with tables';
+      var allSlots = getAllSlots();
+      var slotsWithTables = {};
+      (state.tables || []).forEach(function(t) {
+        if (t.timeSlotId) slotsWithTables[t.timeSlotId] = true;
+      });
+      var withTableCount = Object.keys(slotsWithTables).length;
+
+      countLabel.textContent = allSlots.length + ' slot' + (allSlots.length === 1 ? '' : 's') +
+        ' (' + withTableCount + ' with tables)';
 
       if (state.stewards.length === 0) {
-        container.innerHTML = '<div class="empty-list">Add stewards above to set availability.</div>';
+        container.innerHTML = '<div class="empty-list">No stewards in the sheet yet.</div>';
         return;
       }
-      if (slotsWithTables.length === 0) {
-        container.innerHTML = '<div class="empty-list">No tables generated yet. Generate tables in the availability admin first.</div>';
+      if (allSlots.length === 0) {
+        container.innerHTML = '<div class="empty-list">No time slots configured yet.</div>';
         return;
       }
 
@@ -270,11 +279,16 @@
         html += '  <div class="avail-row-name">' + esc(s.name) +
                 '<span class="avail-row-name-meta">#' + esc(s.tornId) + '</span></div>';
         html += '  <div class="avail-chips">';
-        slotsWithTables.forEach(function(slot) {
+        allSlots.forEach(function(slot) {
           var selected = !!(localAvailability[s.stewardId] && localAvailability[s.stewardId][slot.slotId]);
-          html += '<span class="slot-chip' + (selected ? ' selected' : '') + '"' +
+          var hasTables = !!slotsWithTables[slot.slotId];
+          var classes = ['slot-chip'];
+          if (selected) classes.push('selected');
+          if (!hasTables) classes.push('no-tables');
+          html += '<span class="' + classes.join(' ') + '"' +
                   ' data-steward-id="' + esc(s.stewardId) + '"' +
-                  ' data-slot-id="' + esc(slot.slotId) + '">' +
+                  ' data-slot-id="' + esc(slot.slotId) + '"' +
+                  ' title="' + (hasTables ? 'Has tables at this slot' : 'No tables at this slot yet') + '">' +
                   pad2(slot.hour) + ':00' +
                   '<span class="slot-chip-local">(' + esc(formatLocalTime(slot.hour)) + ')</span>' +
                   '</span>';
@@ -433,15 +447,11 @@
     }
 
     // ===== HELPERS =====
-    function getSlotsWithTables() {
-      var hours = {};
-      (state.tables || []).forEach(function(t) {
-        if (!t.timeSlotId) return;
-        var hr = slotIdToHour(t.timeSlotId);
-        if (hr === null) return;
-        hours[t.timeSlotId] = { slotId: t.timeSlotId, hour: hr };
-      });
-      var arr = Object.keys(hours).map(function(k) { return hours[k]; });
+    function getAllSlots() {
+      var arr = (state.timeSlots || []).map(function(s) {
+        var hr = slotIdToHour(s.slotId);
+        return hr === null ? null : { slotId: s.slotId, hour: hr };
+      }).filter(Boolean);
       arr.sort(function(a, b) { return a.hour - b.hour; });
       return arr;
     }
