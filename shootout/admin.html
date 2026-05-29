@@ -415,12 +415,6 @@
 
     function renderTournamentPanel() {
       var container = document.getElementById('panelContent');
-      var status = (state.settings && state.settings.tournament_status) || 'setup';
-
-      if (status === 'setup') {
-        container.innerHTML = renderStartCta();
-        return;
-      }
 
       var html = '<div class="stage-tabs">';
       STAGE_TABS.forEach(function(tab) {
@@ -466,16 +460,21 @@
       }
 
       if (tables.length === 0) {
-        var gate = gateForStage(stage);
-        html += '<div class="stage-empty">';
-        if (gate.ok) {
-          html += '<p>No tables generated yet.</p>';
-          html += '<button class="btn-generate" data-gen-stage="' + esc(stage) + '">Generate ' + esc(stageLabel(stage)) + ' tables</button>';
+        if (stage === '1') {
+          // Stage 1 seating is generated from availability in the availability admin.
+          html += renderStartCta();
         } else {
-          html += '<p class="stage-pending"><span class="pending-tag">Pending</span> ' + esc(gate.reason || 'Not available yet') + '</p>';
+          var gate = gateForStage(stage);
+          html += '<div class="stage-empty">';
+          if (gate.ok) {
+            html += '<p>No tables generated yet.</p>';
+            html += '<button class="btn-generate" data-gen-stage="' + esc(stage) + '">Generate ' + esc(stageLabel(stage)) + ' tables</button>';
+          } else {
+            html += '<p class="stage-pending"><span class="pending-tag">Pending</span> ' + esc(gate.reason || 'Not available yet') + '</p>';
+          }
+          html += '</div>';
+          html += renderQueueFor(stage);
         }
-        html += '</div>';
-        html += renderQueueFor(stage);
       } else {
         html += '<div class="stage-block-body">';
         tables.forEach(function(t) { html += renderTableCard(t, hasDownstream); });
