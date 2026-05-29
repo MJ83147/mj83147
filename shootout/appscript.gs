@@ -612,17 +612,27 @@ function createTestStage1Table() {
     getSheet(SHEETS.TIMESLOTS).appendRow([slotId, dt, new Date()]);
   }
 
-  // 3. The live Stage 1 table row (20 columns; see TABLE layout)
-  var row = new Array(20);
-  for (var c = 0; c < 20; c++) row[c] = '';
-  row[0] = TEST_TABLE_ID; // tableId
-  row[1] = '1';           // stage
-  row[2] = 9;             // tableSize
-  row[3] = 'live';        // status
-  row[4] = new Date();    // firedAt
-  for (var pi = 0; pi < testIds.length; pi++) row[6 + pi] = testIds[pi]; // players G..O
-  row[19] = slotId;       // timeSlotId
-  getSheet(SHEETS.TABLES).appendRow(row);
+  // 3. The live Stage 1 table row. Build it against the sheet's actual header
+  //    row (mapping by column name) so every value lands in the right column
+  //    regardless of column order.
+  var tablesSheet = getSheet(SHEETS.TABLES);
+  var headers = tablesSheet.getDataRange().getValues()[0].map(function(h) { return String(h).trim(); });
+  var values = {
+    tableId: TEST_TABLE_ID,
+    stage: '1',
+    tableSize: 9,
+    status: 'live',
+    firedAt: new Date(),
+    completedAt: '',
+    place_1_id: '',
+    place_2_id: '',
+    place_3_id: '',
+    notes: '',
+    timeSlotId: slotId
+  };
+  testIds.forEach(function(id, idx) { values['player' + (idx + 1) + '_id'] = id; });
+  var row = headers.map(function(h) { return values.hasOwnProperty(h) ? values[h] : ''; });
+  tablesSheet.appendRow(row);
 
   return {
     message: 'Test Stage 1 table ' + TEST_TABLE_ID + ' created at ' + slotId,
