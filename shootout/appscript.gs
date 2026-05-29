@@ -676,6 +676,12 @@ function createTestStage1Table() {
   var row = headers.map(function(h) { return values.hasOwnProperty(h) ? values[h] : ''; });
   tablesSheet.appendRow(row);
 
+  // Flip the tournament active so the admin stage tabs render (the live admin
+  // panel hides everything while status is 'setup').
+  if ((readSettings().tournament_status || STATUS.SETUP) === STATUS.SETUP) {
+    updateSetting({ key: 'tournament_status', value: STATUS.ACTIVE });
+  }
+
   return {
     message: 'Test Stage 1 table ' + TEST_TABLE_ID + ' created at ' + slotId,
     tableId: TEST_TABLE_ID,
