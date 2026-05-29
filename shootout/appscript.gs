@@ -617,6 +617,14 @@ function createTestStage1Table() {
   //    regardless of column order.
   var tablesSheet = getSheet(SHEETS.TABLES);
   var headers = tablesSheet.getDataRange().getValues()[0].map(function(h) { return String(h).trim(); });
+  // Heal a Tables sheet that is missing the timeSlotId header (placed right
+  // after notes, matching the column commitStageTables writes by position).
+  if (headers.indexOf('timeSlotId') === -1) {
+    var notesIdx = headers.indexOf('notes');
+    var col = (notesIdx >= 0 ? notesIdx + 2 : headers.length + 1);
+    tablesSheet.getRange(1, col).setValue('timeSlotId');
+    headers = tablesSheet.getDataRange().getValues()[0].map(function(h) { return String(h).trim(); });
+  }
   var values = {
     tableId: TEST_TABLE_ID,
     stage: '1',
