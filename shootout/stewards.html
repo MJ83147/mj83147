@@ -7,6 +7,29 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=3">
+  <style>
+    .steward-result { margin-top: 10px; border-top: 1px solid var(--border, rgba(255,255,255,0.1)); padding-top: 10px; }
+    .steward-result-summary { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; margin-bottom: 8px; }
+    .steward-result-summary .srs-place { font-weight: 700; color: var(--green, #4caf50); margin-right: 4px; }
+    .steward-result-bar { display: flex; }
+    .btn-result-toggle, .btn-result-submit, .btn-result-cancel {
+      font-family: var(--font-body); font-size: 12px; font-weight: 600; cursor: pointer;
+      border-radius: 5px; padding: 7px 12px; border: 1px solid var(--border, rgba(255,255,255,0.15));
+      background: rgba(255,255,255,0.04); color: inherit;
+    }
+    .btn-result-submit { background: var(--green, #4caf50); color: #fff; border-color: transparent; }
+    .btn-result-toggle:hover, .btn-result-cancel:hover { background: rgba(255,255,255,0.1); }
+    .steward-result-form { margin-top: 10px; }
+    .steward-result-form.hidden { display: none; }
+    .steward-result-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+    .steward-result-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .steward-result-row .srr-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .steward-result-row .srr-id { opacity: 0.5; }
+    .steward-result-row .srr-place { font-family: var(--font-body); font-size: 12px; padding: 4px 6px; border-radius: 4px; }
+    .steward-result-row .srr-rebuy { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .steward-result-row .srr-rebuy input[disabled] + span, .steward-result-row .srr-rebuy.disabled { opacity: 0.4; }
+    .steward-result-actions { display: flex; gap: 8px; }
+  </style>
   <script src="config.js"></script>
   <script src="steward-auth.js"></script>
 </head>
@@ -78,7 +101,8 @@
       timeSlots: [],
       stewards: [],
       stewardAvailability: [],
-      stewardAssignments: []
+      stewardAssignments: [],
+      eliminations: []
     };
 
     var availSaveTimers = {}; // stewardId -> setTimeout handle (debounce saves)
@@ -124,6 +148,7 @@
           state.stewards = data.stewards || [];
           state.stewardAvailability = data.stewardAvailability || [];
           state.stewardAssignments = data.stewardAssignments || [];
+          state.eliminations = data.eliminations || [];
           rebuildLocalAvailability();
           document.getElementById('loadingState').classList.add('hidden');
           document.getElementById('content').classList.remove('hidden');
@@ -481,6 +506,100 @@
           copyTornIds(btn, ids);
         });
       });
+
+      container.querySelectorAll('.steward-result').forEach(function(box) {
+        wireResultBox(box);
+      });
+    }
+
+    function wireResultBox(box) {
+      var form = box.querySelector('.steward-result-form');
+      var toggle = box.querySelector('.btn-result-toggle');
+      toggle.addEventListener('click', function() {
+        form.classList.toggle('hidden');
+      });
+      box.querySelector('.btn-result-cancel').addEventListener('click', function() {
+        form.classList.add('hidden');
+      });
+      box.querySelectorAll('.srr-place').forEach(function(sel) {
+        sel.addEventListener('change', function() { onPlaceChange(box, sel); });
+      });
+      box.querySelector('.btn-result-submit').addEventListener('click', function() {
+        submitResult(box);
+      });
+    }
+
+    // Keep places unique across rows and sync the rebuy checkbox state.
+    function onPlaceChange(box, changed) {
+      var val = changed.value;
+      if (val) {
+        box.querySelectorAll('.srr-place').forEach(function(sel) {
+          if (sel !== changed && sel.value === val) sel.value = '';
+        });
+      }
+      box.querySelectorAll('.steward-result-row').forEach(function(row) {
+        var sel = row.querySelector('.srr-place');
+        var cb = row.querySelector('.srr-rebuy-cb');
+        var label = row.querySelector('.srr-rebuy');
+        if (sel.value) {
+          cb.checked = false;
+          cb.disabled = true;
+          if (label) label.classList.add('disabled');
+        } else {
+          cb.disabled = false;
+          if (label) label.classList.remove('disabled');
+        }
+      });
+    }
+
+    function submitResult(box) {
+      var tableId = box.getAttribute('data-table-id');
+      var stage = box.getAttribute('data-stage');
+      var isComplete = box.getAttribute('data-complete') === '1';
+
+      var rows = box.querySelectorAll('.steward-result-row');
+      var placeByNum = {};
+      var rebuys = [];
+      for (var i = 0; i < rows.length; i++) {
+        var pid = rows[i].getAttribute('data-pid');
+        var place = rows[i].querySelector('.srr-place').value;
+        var cb = rows[i].querySelector('.srr-rebuy-cb');
+        if (place) {
+          if (placeByNum[place]) { toast('Two players selected for the same place', 'error'); return; }
+          placeByNum[place] = pid;
+        } else if (cb.checked) {
+          rebuys.push(pid);
+        }
+      }
+
+      var place1 = placeByNum['1'] || '';
+      var place2 = placeByNum['2'] || '';
+      var place3 = placeByNum['3'] || '';
+      var playerCount = rows.length;
+
+      if (!place1) { toast('Pick a 1st place', 'error'); return; }
+      if (stage === '1') {
+        if (playerCount >= 4 && !place2) { toast('2nd place required', 'error'); return; }
+        if (playerCount >= 7 && !place3) { toast('3rd place required', 'error'); return; }
+      } else if (stage === '2') {
+        if (playerCount >= 2 && !place2) { toast('2nd place required', 'error'); return; }
+      }
+
+      var action = isComplete ? 'editTableResult' : 'recordTableResult';
+      var submitBtn = box.querySelector('.btn-result-submit');
+      submitBtn.disabled = true;
+      apiCall(action, {
+        tableId: tableId,
+        place1: place1,
+        place2: place2,
+        place3: place3,
+        rebuys: rebuys.join(',')
+      }, function(data) {
+        toast(data.message || 'Result saved', 'success');
+        fetchState();
+      }).then(function() {
+        if (submitBtn) submitBtn.disabled = false;
+      });
     }
 
     function renderTableCard(t, currentAssign, eligible, takenAtSlot) {
@@ -534,8 +653,78 @@
       html += '  <div class="steward-table-footer">';
       html += '    <button class="btn-copy" data-torn-ids="' + esc(tornIds.join(',')) + '">Copy Torn IDs (' + tornIds.length + ')</button>';
       html += '  </div>';
+
+      if (stage === '1' || stage === '2' || stage === '3') {
+        html += renderResultSection(t, stage);
+      }
+
       html += '</div>';
       return html;
+    }
+
+    function renderResultSection(t, stage) {
+      var isComplete = (t.status === 'complete');
+      var html = '<div class="steward-result" data-table-id="' + esc(t.tableId) + '" data-stage="' + esc(stage) + '" data-complete="' + (isComplete ? '1' : '0') + '">';
+
+      if (isComplete) {
+        html += '<div class="steward-result-summary">';
+        html += resultSummaryItem('1st', t.place1);
+        if (t.place2) html += resultSummaryItem('2nd', t.place2);
+        if (t.place3) html += resultSummaryItem('3rd', t.place3);
+        html += '</div>';
+      }
+
+      html += '<div class="steward-result-bar">';
+      html += '<button class="btn-result-toggle">' + (isComplete ? 'Edit result' : 'Record result') + '</button>';
+      html += '</div>';
+
+      html += '<div class="steward-result-form hidden">';
+      html += '<div class="steward-result-rows">';
+      t.players.forEach(function(pid) {
+        var player = state.players.filter(function(p) { return p.tornId === pid; })[0];
+        var name = player ? player.name : '(unknown)';
+        var sel = '';
+        if (t.place1 === pid) sel = '1';
+        else if (t.place2 === pid && (stage === '1' || stage === '2')) sel = '2';
+        else if (t.place3 === pid && stage === '1') sel = '3';
+        var rebuyChecked = isComplete && isRebuyTicked(t.tableId, pid);
+
+        html += '<div class="steward-result-row" data-pid="' + esc(pid) + '">';
+        html += '<span class="srr-name">' + esc(name) + ' <span class="srr-id">#' + esc(pid) + '</span></span>';
+        html += '<select class="srr-place">';
+        html += '<option value="">—</option>';
+        html += '<option value="1"' + (sel === '1' ? ' selected' : '') + '>1st</option>';
+        if (stage === '1' || stage === '2') html += '<option value="2"' + (sel === '2' ? ' selected' : '') + '>2nd</option>';
+        if (stage === '1') html += '<option value="3"' + (sel === '3' ? ' selected' : '') + '>3rd</option>';
+        html += '</select>';
+        var disabled = sel ? ' disabled' : '';
+        html += '<label class="srr-rebuy' + (sel ? ' disabled' : '') + '"><input type="checkbox" class="srr-rebuy-cb"' + (rebuyChecked ? ' checked' : '') + disabled + '> <span>rebuy</span></label>';
+        html += '</div>';
+      });
+      html += '</div>';
+      html += '<div class="steward-result-actions">';
+      html += '<button class="btn-result-submit">' + (isComplete ? 'Save changes' : 'Submit result') + '</button>';
+      html += '<button class="btn-result-cancel">Cancel</button>';
+      html += '</div>';
+      html += '</div>';
+
+      html += '</div>';
+      return html;
+    }
+
+    function resultSummaryItem(label, pid) {
+      if (!pid) return '';
+      var player = state.players.filter(function(p) { return p.tornId === pid; })[0];
+      var name = player ? player.name : ('#' + pid);
+      return '<span><span class="srs-place">' + label + '</span>' + esc(name) + '</span>';
+    }
+
+    function isRebuyTicked(tableId, pid) {
+      return state.eliminations.some(function(e) {
+        return String(e.tableId) === String(tableId) &&
+               String(e.tornId) === String(pid) &&
+               String(e.rebuyTaken).toLowerCase() === 'yes';
+      });
     }
 
     // ===== HELPERS =====

@@ -385,11 +385,22 @@ function recordTableResult(params) {
   var size = Number(rowData[2]);
   var status = String(rowData[3]);
 
-  if (stage !== '1') return { error: 'recordTableResult only handles Stage 1 tables' };
+  if (stage !== '1' && stage !== '2' && stage !== '3') {
+    return { error: 'recordTableResult only handles Stage 1, 2 and 3 tables (got: ' + stage + ')' };
+  }
   if (status !== 'live') return { error: 'Table is not live (status: ' + status + ')' };
 
-  if (size >= 4 && !place2) return { error: '2nd place required for tables of 4+' };
-  if (size >= 7 && !place3) return { error: '3rd place required for tables of 7+' };
+  if (stage === '1') {
+    if (size >= 4 && !place2) return { error: '2nd place required for tables of 4+' };
+    if (size >= 7 && !place3) return { error: '3rd place required for tables of 7+' };
+  } else if (stage === '2') {
+    if (size >= 2 && !place2) return { error: '2nd place required for Stage 2 tables' };
+    place3 = '';
+  } else if (stage === '3') {
+    // Knockout: only the winner advances; ignore any 2nd/3rd input.
+    place2 = '';
+    place3 = '';
+  }
 
   var picks = [place1];
   if (place2) picks.push(place2);
@@ -411,20 +422,40 @@ function recordTableResult(params) {
     }
   }
 
+  // Per-stage advancement destinations, keyed by finishing place.
+  var DEST_BY_STAGE = {
+    '1': { 1: 'stage_4', 2: 'stage_3', 3: 'stage_2' },
+    '2': { 1: 'stage_4', 2: 'stage_3' },
+    '3': { 1: 'stage_4' }
+  };
+  var destMap = DEST_BY_STAGE[stage];
+  var shortWalkover = (stage === '1' && size < 4);
+
   var advancers = [];
-  if (size >= 7) {
-    advancers.push({ tornId: place1, dest: 'stage_4', source: tableId + ' 1st' });
-    advancers.push({ tornId: place2, dest: 'stage_3', source: tableId + ' 2nd' });
-    advancers.push({ tornId: place3, dest: 'stage_2', source: tableId + ' 3rd' });
-  } else if (size >= 4) {
-    advancers.push({ tornId: place1, dest: 'stage_4', source: tableId + ' 1st' });
-    advancers.push({ tornId: place2, dest: 'stage_3', source: tableId + ' 2nd' });
-  } else {
-    advancers.push({ tornId: place1, dest: 'stage_4', source: tableId + ' 1st (short table walkover)' });
+  if (place1 && destMap[1]) {
+    advancers.push({ tornId: place1, dest: destMap[1], source: tableId + ' 1st' + (shortWalkover ? ' (short table walkover)' : '') });
+  }
+  if (place2 && destMap[2]) {
+    advancers.push({ tornId: place2, dest: destMap[2], source: tableId + ' 2nd' });
+  }
+  if (place3 && destMap[3]) {
+    advancers.push({ tornId: place3, dest: destMap[3], source: tableId + ' 3rd' });
   }
 
   var advancerIds = advancers.map(function(a) { return a.tornId; });
   var losers = tablePlayerIds.filter(function(pid) { return advancerIds.indexOf(pid) === -1; });
+
+  // Players (among the losers) the steward ticked as wanting a rebuy.
+  var rebuyIds = parseSlotList_(params.rebuys);
+  var loserSet = {};
+  losers.forEach(function(pid) { loserSet[pid] = true; });
+  for (var ri = 0; ri < rebuyIds.length; ri++) {
+    if (!loserSet[rebuyIds[ri]]) {
+      return { error: 'Rebuy player ' + rebuyIds[ri] + ' is not an eliminated player at this table' };
+    }
+  }
+  var rebuySet = {};
+  rebuyIds.forEach(function(pid) { rebuySet[pid] = true; });
 
   var allPlayers = readPlayers();
   function findPlayer(tornId) {
@@ -448,9 +479,10 @@ function recordTableResult(params) {
   }
 
   var elimSheet = getSheet(SHEETS.ELIMINATIONS);
+  var stageNum = Number(stage);
   var elimRows = losers.map(function(pid) {
     var pl = findPlayer(pid);
-    return [pid, pl ? pl.name : '', tableId, 1, new Date(), 'no', ''];
+    return [pid, pl ? pl.name : '', tableId, stageNum, new Date(), rebuySet[pid] ? 'yes' : 'no', ''];
   });
   if (elimRows.length > 0) {
     elimSheet.getRange(elimSheet.getLastRow() + 1, 1, elimRows.length, 7).setValues(elimRows);
@@ -471,7 +503,8 @@ function recordTableResult(params) {
     message: 'Result recorded for ' + tableId,
     tableId: tableId,
     advancers: advancers.length,
-    eliminated: losers.length
+    eliminated: losers.length,
+    rebuys: rebuyIds.length
   };
 }
 
@@ -485,13 +518,18 @@ function editTableResult(params) {
   if (!thisTable) return { error: 'Table not found' };
   if (thisTable.status !== 'complete') return { error: 'Table is not complete; nothing to edit' };
 
-  if (String(thisTable.stage) === '1') {
-    var hasDownstream = allTables.some(function(t) { return String(t.stage) !== '1'; });
-    if (hasDownstream) {
-      return { error: 'Cannot edit: downstream tables already exist. Reset the tournament if you need to redo this.' };
-    }
-  } else {
-    return { error: 'editTableResult currently only supports Stage 1 tables' };
+  var stage = String(thisTable.stage);
+  if (stage !== '1' && stage !== '2' && stage !== '3') {
+    return { error: 'editTableResult only supports Stage 1, 2 and 3 tables' };
+  }
+  var STAGE_RANK = { '1': 0, 'rebuy_25': 1, '2': 2, 'rebuy_50': 3, '3': 4, 'rebuy_75': 5, '4': 6 };
+  var myRank = STAGE_RANK[stage];
+  var hasDownstream = allTables.some(function(t) {
+    var r = STAGE_RANK[String(t.stage)];
+    return r !== undefined && r > myRank;
+  });
+  if (hasDownstream) {
+    return { error: 'Cannot edit: later-stage tables already exist. Reset the tournament if you need to redo this.' };
   }
 
   var queuesSheet = getSheet(SHEETS.QUEUES);
@@ -523,7 +561,7 @@ function editTableResult(params) {
     for (var pi = 1; pi < pData.length; pi++) {
       if (restoredIds.indexOf(String(pData[pi][0])) !== -1) {
         playersSheet.getRange(pi + 1, 4).setValue('active');
-        playersSheet.getRange(pi + 1, 5).setValue(1);
+        playersSheet.getRange(pi + 1, 5).setValue(Number(stage));
       }
     }
   }
@@ -542,6 +580,79 @@ function editTableResult(params) {
   }
 
   return recordTableResult(params);
+}
+
+// ===== TEST HELPERS =====
+// Run createTestStage1Table() from the Apps Script editor to seed a live Stage 1
+// table (9 test players) so the steward result-entry UI can be exercised end to end.
+// Re-running it resets the same test table. Run removeTestStage1Table() to clean up.
+var TEST_TABLE_ID = 'TEST-S1';
+var TEST_PLAYER_PREFIX = '9000'; // test torn ids: 9000001 .. 9000009
+
+function createTestStage1Table() {
+  removeTestStage1Table(); // idempotent: clear any prior test data first
+
+  // 1. Test players
+  var playersSheet = getSheet(SHEETS.PLAYERS);
+  var testIds = [];
+  for (var i = 1; i <= 9; i++) {
+    var tornId = TEST_PLAYER_PREFIX + '0' + i; // -> 900001 .. 900009
+    testIds.push(tornId);
+    playersSheet.appendRow([tornId, 'Test Player ' + i, new Date(), 'active', 1, 0]);
+  }
+
+  // 2. A time slot for the table (reuse the first existing one, else create slot_20)
+  var slots = readTimeSlots();
+  var slotId;
+  if (slots.length > 0) {
+    slotId = slots[0].slotId;
+  } else {
+    slotId = 'slot_20';
+    var dt = new Date(); dt.setUTCHours(20, 0, 0, 0);
+    getSheet(SHEETS.TIMESLOTS).appendRow([slotId, dt, new Date()]);
+  }
+
+  // 3. The live Stage 1 table row (20 columns; see TABLE layout)
+  var row = new Array(20);
+  for (var c = 0; c < 20; c++) row[c] = '';
+  row[0] = TEST_TABLE_ID; // tableId
+  row[1] = '1';           // stage
+  row[2] = 9;             // tableSize
+  row[3] = 'live';        // status
+  row[4] = new Date();    // firedAt
+  for (var pi = 0; pi < testIds.length; pi++) row[6 + pi] = testIds[pi]; // players G..O
+  row[19] = slotId;       // timeSlotId
+  getSheet(SHEETS.TABLES).appendRow(row);
+
+  return {
+    message: 'Test Stage 1 table ' + TEST_TABLE_ID + ' created at ' + slotId,
+    tableId: TEST_TABLE_ID,
+    slotId: slotId,
+    players: testIds
+  };
+}
+
+function removeTestStage1Table() {
+  // Remove the test table and any results it produced.
+  deleteRowsWhere_(SHEETS.TABLES, 0, TEST_TABLE_ID);
+  deleteRowsWhere_(SHEETS.ELIMINATIONS, 2, TEST_TABLE_ID); // col C = tableId
+
+  // Remove queue rows sourced from the test table (col E source starts with tableId + ' ').
+  var qSheet = getSheet(SHEETS.QUEUES);
+  var qData = qSheet.getDataRange().getValues();
+  for (var qi = qData.length - 1; qi >= 1; qi--) {
+    if (String(qData[qi][4] || '').indexOf(TEST_TABLE_ID + ' ') === 0) qSheet.deleteRow(qi + 1);
+  }
+
+  // Remove the test players (exact torn ids 900001 .. 900009).
+  var testIds = {};
+  for (var i = 1; i <= 9; i++) testIds[TEST_PLAYER_PREFIX + '0' + i] = true;
+  var pSheet = getSheet(SHEETS.PLAYERS);
+  var pData = pSheet.getDataRange().getValues();
+  for (var pi2 = pData.length - 1; pi2 >= 1; pi2--) {
+    if (testIds[String(pData[pi2][0])]) pSheet.deleteRow(pi2 + 1);
+  }
+  return { message: 'Test Stage 1 table data removed' };
 }
 
 // ===== RE-SEAT STAGE 1 (LEGACY RANDOM) =====
