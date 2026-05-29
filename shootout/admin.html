@@ -7,6 +7,38 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .stage-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; border-bottom: 1px solid var(--border-light, rgba(255,255,255,0.12)); padding-bottom: 12px; }
+    .stage-tab { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono, monospace); font-size: 12px; font-weight: 600; padding: 8px 12px; border-radius: 5px; cursor: pointer; border: 1px solid var(--border-light, rgba(255,255,255,0.15)); background: var(--surface-2, rgba(255,255,255,0.03)); color: var(--text-muted, #aaa); }
+    .stage-tab.active { background: var(--accent, #e0a92e); color: var(--bg, #111); border-color: transparent; }
+    .stage-tab-dot { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 6px; border-radius: 3px; font-weight: 700; }
+    .stage-tab-dot.pending { background: rgba(255,255,255,0.12); color: #ccc; }
+    .stage-tab-dot.live { background: #d9822b; color: #fff; }
+    .stage-tab-dot.complete { background: #3a9d5d; color: #fff; }
+    .stage-tab.active .stage-tab-dot { background: rgba(0,0,0,0.18); color: var(--bg, #111); }
+    .stage-head { margin-bottom: 14px; }
+    .stage-head-title { display: block; font-family: var(--font-mono, monospace); font-size: 16px; font-weight: 700; }
+    .stage-head-desc { display: block; font-size: 12px; color: var(--text-muted, #999); margin-top: 3px; }
+    .stage-head-actions { margin-top: 8px; }
+    .stage-empty { padding: 24px; text-align: center; color: var(--text-muted, #999); border: 1px dashed var(--border-light, rgba(255,255,255,0.15)); border-radius: 8px; }
+    .stage-pending { font-size: 14px; }
+    .pending-tag { display: inline-block; font-family: var(--font-mono, monospace); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 8px; border-radius: 4px; background: rgba(255,255,255,0.12); color: #ddd; margin-right: 6px; }
+    .btn-generate, .btn-confirm-rebuy, .btn-reseat-tab { font-family: var(--font-body, sans-serif); font-size: 13px; font-weight: 700; padding: 9px 18px; border-radius: 5px; border: none; cursor: pointer; background: var(--accent, #e0a92e); color: var(--bg, #111); }
+    .btn-reseat-tab { background: var(--surface-2, rgba(255,255,255,0.06)); color: var(--text-muted, #ccc); border: 1px solid var(--border-light, rgba(255,255,255,0.15)); font-weight: 600; font-size: 12px; }
+    .queue-list-box { margin-top: 16px; }
+    .queue-list-title { font-family: var(--font-mono, monospace); font-size: 12px; font-weight: 700; color: var(--text-muted, #999); margin-bottom: 8px; }
+    .queue-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .queue-chip { font-size: 12px; padding: 4px 10px; border-radius: 4px; background: var(--surface-2, rgba(255,255,255,0.05)); border: 1px solid var(--border-light, rgba(255,255,255,0.12)); }
+    .rebuy-admin { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+    .rebuy-admin-col { background: var(--surface-2, rgba(255,255,255,0.03)); border: 1px solid var(--border-light, rgba(255,255,255,0.1)); border-radius: 8px; padding: 12px; }
+    .rebuy-admin-title { font-family: var(--font-mono, monospace); font-size: 12px; font-weight: 700; margin-bottom: 10px; }
+    .rebuy-admin-empty { font-size: 12px; color: var(--text-muted, #888); }
+    .rebuy-req { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; font-size: 13px; border-top: 1px solid var(--border-light, rgba(255,255,255,0.07)); }
+    .rebuy-req:first-of-type { border-top: none; }
+    .btn-confirm-rebuy { padding: 5px 12px; font-size: 12px; }
+    .paid-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #3a9d5d; }
+    @media (max-width: 640px) { .rebuy-admin { grid-template-columns: 1fr; } }
+  </style>
   <script src="admin-auth.js"></script>
 </head>
 <body class="admin">
@@ -301,7 +333,86 @@
       totalEl.textContent = formatMoney(total);
     }
 
-    // --- TOURNAMENT PANEL (Stage 1) ---
+    // --- TOURNAMENT PANEL (tabbed: all stages + rebuy tiers) ---
+    var STAGE_TABS = [
+      { key: '1', label: 'Stage 1' },
+      { key: 'rebuy_25', label: '25M Rebuy' },
+      { key: '2', label: 'Stage 2' },
+      { key: 'rebuy_50', label: '50M Rebuy' },
+      { key: '3', label: 'Stage 3' },
+      { key: 'rebuy_75', label: '75M Rebuy' },
+      { key: '4', label: 'Stage 4' }
+    ];
+    var STAGE_RANK = { '1': 0, 'rebuy_25': 1, '2': 2, 'rebuy_50': 3, '3': 4, 'rebuy_75': 5, '4': 6 };
+    var currentTab = '1';
+
+    function tablesForStage(stage) {
+      return (state.tables || []).filter(function(t) { return String(t.stage) === stage; }).sort(function(a, b) {
+        var an = parseInt(String(a.tableId).replace(/[^0-9]/g, ''), 10) || 0;
+        var bn = parseInt(String(b.tableId).replace(/[^0-9]/g, ''), 10) || 0;
+        return an - bn;
+      });
+    }
+
+    function stageStatus(stage) {
+      var tabs = tablesForStage(stage);
+      if (tabs.length === 0) return 'pending';
+      return tabs.every(function(t) { return t.status === 'complete'; }) ? 'complete' : 'live';
+    }
+
+    function stageLabel(stage) {
+      for (var i = 0; i < STAGE_TABS.length; i++) if (STAGE_TABS[i].key === stage) return STAGE_TABS[i].label;
+      return stage;
+    }
+
+    function stageDescription(stage) {
+      switch (stage) {
+        case '1': return '9-player tables — 1st to Stage 4, 2nd to Stage 3, 3rd to Stage 2';
+        case '2': return '6-player tables — 1st to Stage 4, 2nd to Stage 3';
+        case '3': return '6-player tables — winner advances to Stage 4';
+        case '4': return '9-player tables — the final run';
+        case 'rebuy_25': return '3-player tables — winner enters Stage 2';
+        case 'rebuy_50': return '3-player tables — winner enters Stage 3';
+        case 'rebuy_75': return '3-player tables — winner enters Stage 4';
+      }
+      return '';
+    }
+
+    // Client-side mirror of checkStageGate_ — returns {ok:true} or {reason:'...'}.
+    function gateForStage(stage) {
+      function allComplete(s) { var t = tablesForStage(s); return t.length > 0 && t.every(function(x) { return x.status === 'complete'; }); }
+      function exists(s) { return tablesForStage(s).length > 0; }
+      if (stage === '2') {
+        if (!exists('1')) return { reason: 'Stage 1 not generated yet' };
+        if (!allComplete('1')) return { reason: 'All Stage 1 tables must be complete first' };
+        if (exists('rebuy_25') && !allComplete('rebuy_25')) return { reason: 'All 25M rebuy tables must be complete first' };
+        return { ok: true };
+      }
+      if (stage === '3') {
+        if (!exists('2')) return { reason: 'Stage 2 not generated yet' };
+        if (!allComplete('2')) return { reason: 'All Stage 2 tables must be complete first' };
+        if (exists('rebuy_50') && !allComplete('rebuy_50')) return { reason: 'All 50M rebuy tables must be complete first' };
+        return { ok: true };
+      }
+      if (stage === 'rebuy_25') {
+        if (!exists('1')) return { reason: 'Stage 1 not generated yet' };
+        if (!allComplete('1')) return { reason: 'All Stage 1 tables must be complete first' };
+        return { ok: true };
+      }
+      if (stage === 'rebuy_50') {
+        if (!exists('2')) return { reason: 'Stage 2 not generated yet' };
+        if (!allComplete('2')) return { reason: 'All Stage 2 tables must be complete first' };
+        return { ok: true };
+      }
+      if (stage === 'rebuy_75') {
+        if (!exists('3')) return { reason: 'Stage 3 not generated yet' };
+        if (!allComplete('3')) return { reason: 'All Stage 3 tables must be complete first' };
+        return { ok: true };
+      }
+      if (stage === '4') return { reason: 'Stage 4 table generation is not available yet' };
+      return { reason: '' };
+    }
+
     function renderTournamentPanel() {
       var container = document.getElementById('panelContent');
       var status = (state.settings && state.settings.tournament_status) || 'setup';
@@ -311,33 +422,155 @@
         return;
       }
 
-      // Tournament is active or complete — render Stage 1 block
-      container.innerHTML = renderStage1Block();
+      var html = '<div class="stage-tabs">';
+      STAGE_TABS.forEach(function(tab) {
+        var st = stageStatus(tab.key);
+        var active = (tab.key === currentTab) ? ' active' : '';
+        html += '<button class="stage-tab' + active + '" data-tab="' + tab.key + '">' +
+          esc(tab.label) + '<span class="stage-tab-dot ' + st + '">' + st + '</span></button>';
+      });
+      html += '</div>';
+      html += '<div class="stage-tab-body" id="stageTabBody"></div>';
+      container.innerHTML = html;
 
-      // Wire up buttons
+      container.querySelectorAll('.stage-tab').forEach(function(b) {
+        b.addEventListener('click', function() {
+          currentTab = b.getAttribute('data-tab');
+          renderTournamentPanel();
+        });
+      });
+
+      renderStageTab(currentTab);
+    }
+
+    function renderStageTab(stage) {
+      var body = document.getElementById('stageTabBody');
+      var tables = tablesForStage(stage);
+      var anyComplete = tables.some(function(t) { return t.status === 'complete'; });
+      var hasDownstream = (state.tables || []).some(function(t) {
+        var r = STAGE_RANK[String(t.stage)];
+        return r !== undefined && r > STAGE_RANK[stage];
+      });
+
+      var html = '';
+      html += '<div class="stage-head">';
+      html += '<span class="stage-head-title">' + esc(stageLabel(stage)) + '</span>';
+      html += '<span class="stage-head-desc">' + esc(stageDescription(stage)) + '</span>';
+      if (stage === '1' && tables.length > 0 && !anyComplete) {
+        html += '<div class="stage-head-actions"><button class="btn-reseat-tab" id="btnReseat">Re-randomise seating</button></div>';
+      }
+      html += '</div>';
+
+      if (/^rebuy_/.test(stage)) {
+        html += renderRebuySection(stage);
+      }
+
+      if (tables.length === 0) {
+        var gate = gateForStage(stage);
+        html += '<div class="stage-empty">';
+        if (gate.ok) {
+          html += '<p>No tables generated yet.</p>';
+          html += '<button class="btn-generate" data-gen-stage="' + esc(stage) + '">Generate ' + esc(stageLabel(stage)) + ' tables</button>';
+        } else {
+          html += '<p class="stage-pending"><span class="pending-tag">Pending</span> ' + esc(gate.reason || 'Not available yet') + '</p>';
+        }
+        html += '</div>';
+        html += renderQueueFor(stage);
+      } else {
+        html += '<div class="stage-block-body">';
+        tables.forEach(function(t) { html += renderTableCard(t, hasDownstream); });
+        html += '</div>';
+      }
+
+      body.innerHTML = html;
+      wireStageTab(stage);
+    }
+
+    function renderQueueFor(stage) {
+      var key = /^rebuy_/.test(stage) ? stage : ('stage_' + stage);
+      var queued = (state.queues || []).filter(function(q) { return q.queuedFor === key; });
+      if (queued.length === 0) return '';
+      var html = '<div class="queue-list-box"><div class="queue-list-title">Qualified / waiting (' + queued.length + ')</div><div class="queue-list">';
+      queued.forEach(function(q) { html += '<span class="queue-chip">' + esc(q.name || q.tornId) + '</span>'; });
+      html += '</div></div>';
+      return html;
+    }
+
+    function renderRebuySection(stage) {
+      var lossStage = (stage === 'rebuy_25') ? 1 : (stage === 'rebuy_50') ? 2 : 3;
+      var confirmedIds = {};
+      (state.queues || []).forEach(function(q) { if (q.queuedFor === stage) confirmedIds[q.tornId] = true; });
+
+      var requests = (state.eliminations || []).filter(function(e) {
+        return Number(e.stageLostAt) === lossStage && String(e.rebuyTaken).toLowerCase() === 'yes' && !confirmedIds[e.tornId];
+      });
+      var confirmed = (state.queues || []).filter(function(q) { return q.queuedFor === stage; });
+
+      var html = '<div class="rebuy-admin">';
+      html += '<div class="rebuy-admin-col">';
+      html += '<div class="rebuy-admin-title">Requests — awaiting payment (' + requests.length + ')</div>';
+      if (requests.length === 0) {
+        html += '<p class="rebuy-admin-empty">No pending requests.</p>';
+      } else {
+        requests.forEach(function(r) {
+          html += '<div class="rebuy-req"><span>' + esc(r.name || r.tornId) + '</span>' +
+            '<button class="btn-confirm-rebuy" data-torn-id="' + esc(r.tornId) + '">Confirm paid</button></div>';
+        });
+      }
+      html += '</div>';
+      html += '<div class="rebuy-admin-col">';
+      html += '<div class="rebuy-admin-title">Confirmed / paid (' + confirmed.length + ')</div>';
+      if (confirmed.length === 0) {
+        html += '<p class="rebuy-admin-empty">None confirmed yet.</p>';
+      } else {
+        confirmed.forEach(function(c) {
+          html += '<div class="rebuy-req"><span>' + esc(c.name || c.tornId) + '</span><span class="paid-tag">paid</span></div>';
+        });
+      }
+      html += '</div></div>';
+      return html;
+    }
+
+    function wireStageTab(stage) {
+      var body = document.getElementById('stageTabBody');
+      if (!body) return;
       var reseatBtn = document.getElementById('btnReseat');
       if (reseatBtn) reseatBtn.addEventListener('click', reseatStage1);
+      var genBtn = body.querySelector('.btn-generate');
+      if (genBtn) genBtn.addEventListener('click', function() { generateStage(genBtn.getAttribute('data-gen-stage')); });
+      body.querySelectorAll('.btn-confirm-rebuy').forEach(function(b) {
+        b.addEventListener('click', function() { confirmRebuy(b.getAttribute('data-torn-id')); });
+      });
+      body.querySelectorAll('.btn-record').forEach(function(b) {
+        b.addEventListener('click', function() { submitResult(b.getAttribute('data-table-id'), false); });
+      });
+      body.querySelectorAll('.btn-edit').forEach(function(b) {
+        b.addEventListener('click', function() { enterEditMode(b.getAttribute('data-table-id')); });
+      });
+      body.querySelectorAll('.result-form select').forEach(function(sel) {
+        sel.addEventListener('change', function() { updateDropdownDisables(sel.getAttribute('data-table-id')); });
+      });
+    }
 
-      document.querySelectorAll('.btn-record').forEach(function(b) {
-        b.addEventListener('click', function() {
-          var tableId = b.getAttribute('data-table-id');
-          submitResult(tableId, false);
+    function generateStage(stage) {
+      apiCall('previewStageTables', { stage: stage }, function(preview) {
+        if (!preview || !preview.plan) { toast('Nothing to generate', 'error'); return; }
+        var count = 0;
+        preview.plan.forEach(function(e) { count += e.tables.length; });
+        if (count === 0) { toast('No players available to seat', 'error'); return; }
+        showConfirm('Generate ' + count + ' table(s) for ' + stageLabel(stage) + '?', function() {
+          apiCall('commitStageTables', { stage: stage, plan: JSON.stringify(preview.plan) }, function(data) {
+            toast(data.message || 'Generated', 'success');
+            fetchState();
+          });
         });
       });
+    }
 
-      document.querySelectorAll('.btn-edit').forEach(function(b) {
-        b.addEventListener('click', function() {
-          var tableId = b.getAttribute('data-table-id');
-          enterEditMode(tableId);
-        });
-      });
-
-      // Wire up dropdown change handlers (disable selected players in other slots)
-      document.querySelectorAll('.result-form select').forEach(function(sel) {
-        sel.addEventListener('change', function() {
-          var tableId = sel.getAttribute('data-table-id');
-          updateDropdownDisables(tableId);
-        });
+    function confirmRebuy(tornId) {
+      apiCall('confirmRebuy', { tornId: tornId }, function(data) {
+        toast(data.message || 'Rebuy confirmed', 'success');
+        fetchState();
       });
     }
 
@@ -351,39 +584,6 @@
         '<p style="margin-top: 16px;">Once players are registered, go to the availability admin to generate Stage 1 tables. Committing the tables will lock the roster and start the tournament.</p>' +
         '<a href="availability-admin.html" style="display: inline-block; margin-top: 8px; font-family: var(--font-body); font-size: 14px; font-weight: 700; padding: 10px 24px; border-radius: 5px; background: var(--accent); color: var(--bg); text-decoration: none;' + (enoughPlayers ? '' : ' opacity: 0.4; pointer-events: none;') + '">Open availability admin</a>' +
         '</div>';
-    }
-
-    function renderStage1Block() {
-      var stage1Tables = (state.tables || []).filter(function(t) { return String(t.stage) === '1'; });
-      stage1Tables.sort(function(a, b) {
-        // Sort by table number
-        var aNum = parseInt(a.tableId.replace(/[^0-9]/g, ''), 10) || 0;
-        var bNum = parseInt(b.tableId.replace(/[^0-9]/g, ''), 10) || 0;
-        return aNum - bNum;
-      });
-
-      var allComplete = stage1Tables.length > 0 && stage1Tables.every(function(t) { return t.status === 'complete'; });
-      var anyComplete = stage1Tables.some(function(t) { return t.status === 'complete'; });
-      var hasDownstream = (state.tables || []).some(function(t) { return String(t.stage) !== '1'; });
-
-      var html = '<div class="stage-block">';
-      html += '<div class="stage-block-header">';
-      html += '<span class="stage-block-title">Stage 1 — 9-player tables, top 3 advance</span>';
-      html += '<div class="stage-block-meta">';
-      if (!anyComplete) {
-        html += '<button class="btn-reseat" id="btnReseat">Re-randomise seating</button>';
-      }
-      html += '<span class="stage-block-status ' + (allComplete ? 'complete' : 'live') + '">' + (allComplete ? 'Complete' : 'Live') + '</span>';
-      html += '</div>';
-      html += '</div>';
-
-      html += '<div class="stage-block-body">';
-      stage1Tables.forEach(function(t) {
-        html += renderTableCard(t, hasDownstream);
-      });
-      html += '</div></div>';
-
-      return html;
     }
 
     function renderTableCard(t, hasDownstream) {
@@ -433,23 +633,36 @@
       return html;
     }
 
+    // Which finishing places a stage records:
+    //   Stage 1: 1st (+2nd if 4+, +3rd if 7+).  Stage 2: 1st + 2nd.
+    //   Stage 3 and all rebuy tiers: 1st only (knockout).
+    function placesForStage(stage, size) {
+      if (stage === '1') {
+        var p = ['1'];
+        if (size >= 4) p.push('2');
+        if (size >= 7) p.push('3');
+        return p;
+      }
+      if (stage === '2') return ['1', '2'];
+      return ['1']; // stage 3, rebuy_25/50/75
+    }
+
     function renderResultForm(t) {
       var size = Number(t.tableSize);
+      var stage = String(t.stage);
       var optionsList = t.players.map(function(pid) {
         var p = findPlayerById(pid);
         return p ? { tornId: pid, name: p.name } : null;
       }).filter(Boolean);
 
+      var labels = { '1': '1st', '2': '2nd', '3': '3rd' };
       var html = '<div class="result-form" data-table-form="' + esc(t.tableId) + '">';
-
-      html += renderResultFormRow(t.tableId, '1st', '1', optionsList);
-      if (size >= 4) html += renderResultFormRow(t.tableId, '2nd', '2', optionsList);
-      if (size >= 7) html += renderResultFormRow(t.tableId, '3rd', '3', optionsList);
-
+      placesForStage(stage, size).forEach(function(slot) {
+        html += renderResultFormRow(t.tableId, labels[slot], slot, optionsList);
+      });
       html += '<div class="result-form-actions">';
       html += '<button class="btn-record" data-table-id="' + esc(t.tableId) + '">Record Result</button>';
       html += '</div>';
-
       html += '</div>';
       return html;
     }
@@ -513,12 +726,14 @@
       var p3 = p3El ? p3El.value : '';
 
       if (!p1) return toast('Pick a 1st place', 'error');
-      // Find table to know size
+      // Find table to know stage and size
       var t = (state.tables || []).filter(function(tt) { return tt.tableId === tableId; })[0];
       if (!t) return toast('Table not found in state', 'error');
       var size = Number(t.tableSize);
-      if (size >= 4 && !p2) return toast('Pick a 2nd place', 'error');
-      if (size >= 7 && !p3) return toast('Pick a 3rd place', 'error');
+      var stage = String(t.stage);
+      var needed = placesForStage(stage, size);
+      if (needed.indexOf('2') !== -1 && !p2) return toast('Pick a 2nd place', 'error');
+      if (needed.indexOf('3') !== -1 && !p3) return toast('Pick a 3rd place', 'error');
 
       // Build a confirm summary
       var name = function(id) { var pl = findPlayerById(id); return pl ? pl.name : id; };

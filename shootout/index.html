@@ -542,23 +542,23 @@
     }
 
     function getRebuyStats() {
-      // Rebuys are tracked via the Eliminations sheet (rebuyTaken === 'yes')
-      // Each rebuy's $ amount depends on which stage it was at: 25/50/75M
-      var eliminations = (state && state.eliminations) ? state.eliminations : [];
+      // A rebuy counts toward the pool once an admin has CONFIRMED it — i.e. the
+      // player has been queued into a rebuy tier (queuedFor rebuy_25/50/75).
+      // A steward's tick alone (rebuyTaken='yes' in Eliminations) is just a request.
+      var queues = (state && state.queues) ? state.queues : [];
       var settings = (state && state.settings) ? state.settings : {};
-      var amount25 = Number(settings.rebuy_25m_amount) || 25000000;
-      var amount50 = Number(settings.rebuy_50m_amount) || 50000000;
-      var amount75 = Number(settings.rebuy_75m_amount) || 75000000;
+      var amountByTier = {
+        rebuy_25: Number(settings.rebuy_25m_amount) || 25000000,
+        rebuy_50: Number(settings.rebuy_50m_amount) || 50000000,
+        rebuy_75: Number(settings.rebuy_75m_amount) || 75000000
+      };
 
       var count = 0;
       var total = 0;
-      eliminations.forEach(function(e) {
-        if (String(e.rebuyTaken).toLowerCase() === 'yes') {
+      queues.forEach(function(q) {
+        if (amountByTier.hasOwnProperty(q.queuedFor)) {
           count++;
-          var stage = Number(e.stageLostAt);
-          if (stage === 1) total += amount25;
-          else if (stage === 2) total += amount50;
-          else if (stage === 3) total += amount75;
+          total += amountByTier[q.queuedFor];
         }
       });
       return { count: count, total: total };

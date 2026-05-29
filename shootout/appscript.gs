@@ -80,6 +80,7 @@ function doGet(e) {
       case 'startTournament':       result = startTournament(); break;
       case 'recordTableResult':     result = recordTableResult(params); break;
       case 'editTableResult':       result = editTableResult(params); break;
+      case 'confirmRebuy':          result = confirmRebuy(params); break;
       case 'reseatStage1':          result = reseatStage1(); break;
       case 'addTimeSlot':           result = addTimeSlot(params); break;
       case 'removeTimeSlot':        result = removeTimeSlot(params); break;
@@ -385,8 +386,10 @@ function recordTableResult(params) {
   var size = Number(rowData[2]);
   var status = String(rowData[3]);
 
-  if (stage !== '1' && stage !== '2' && stage !== '3') {
-    return { error: 'recordTableResult only handles Stage 1, 2 and 3 tables (got: ' + stage + ')' };
+  var REBUY_DEST = { 'rebuy_25': 'stage_2', 'rebuy_50': 'stage_3', 'rebuy_75': 'stage_4' };
+  var isRebuy = REBUY_DEST.hasOwnProperty(stage);
+  if (stage !== '1' && stage !== '2' && stage !== '3' && !isRebuy) {
+    return { error: 'recordTableResult: unsupported stage ' + stage };
   }
   if (status !== 'live') return { error: 'Table is not live (status: ' + status + ')' };
 
@@ -396,8 +399,8 @@ function recordTableResult(params) {
   } else if (stage === '2') {
     if (size >= 2 && !place2) return { error: '2nd place required for Stage 2 tables' };
     place3 = '';
-  } else if (stage === '3') {
-    // Knockout: only the winner advances; ignore any 2nd/3rd input.
+  } else {
+    // Stage 3 and all rebuy tables are knockouts: only the winner advances.
     place2 = '';
     place3 = '';
   }
@@ -426,7 +429,10 @@ function recordTableResult(params) {
   var DEST_BY_STAGE = {
     '1': { 1: 'stage_4', 2: 'stage_3', 3: 'stage_2' },
     '2': { 1: 'stage_4', 2: 'stage_3' },
-    '3': { 1: 'stage_4' }
+    '3': { 1: 'stage_4' },
+    'rebuy_25': { 1: 'stage_2' },
+    'rebuy_50': { 1: 'stage_3' },
+    'rebuy_75': { 1: 'stage_4' }
   };
   var destMap = DEST_BY_STAGE[stage];
   var shortWalkover = (stage === '1' && size < 4);
@@ -446,7 +452,8 @@ function recordTableResult(params) {
   var losers = tablePlayerIds.filter(function(pid) { return advancerIds.indexOf(pid) === -1; });
 
   // Players (among the losers) the steward ticked as wanting a rebuy.
-  var rebuyIds = parseSlotList_(params.rebuys);
+  // Rebuy-table losers are out for good, so no re-rebuy is offered there.
+  var rebuyIds = isRebuy ? [] : parseSlotList_(params.rebuys);
   var loserSet = {};
   losers.forEach(function(pid) { loserSet[pid] = true; });
   for (var ri = 0; ri < rebuyIds.length; ri++) {
@@ -479,7 +486,7 @@ function recordTableResult(params) {
   }
 
   var elimSheet = getSheet(SHEETS.ELIMINATIONS);
-  var stageNum = Number(stage);
+  var stageNum = isRebuy ? '' : Number(stage);
   var elimRows = losers.map(function(pid) {
     var pl = findPlayer(pid);
     return [pid, pl ? pl.name : '', tableId, stageNum, new Date(), rebuySet[pid] ? 'yes' : 'no', ''];
@@ -519,10 +526,10 @@ function editTableResult(params) {
   if (thisTable.status !== 'complete') return { error: 'Table is not complete; nothing to edit' };
 
   var stage = String(thisTable.stage);
-  if (stage !== '1' && stage !== '2' && stage !== '3') {
-    return { error: 'editTableResult only supports Stage 1, 2 and 3 tables' };
-  }
   var STAGE_RANK = { '1': 0, 'rebuy_25': 1, '2': 2, 'rebuy_50': 3, '3': 4, 'rebuy_75': 5, '4': 6 };
+  if (STAGE_RANK[stage] === undefined || stage === '4') {
+    return { error: 'editTableResult does not support stage ' + stage };
+  }
   var myRank = STAGE_RANK[stage];
   var hasDownstream = allTables.some(function(t) {
     var r = STAGE_RANK[String(t.stage)];
@@ -561,7 +568,7 @@ function editTableResult(params) {
     for (var pi = 1; pi < pData.length; pi++) {
       if (restoredIds.indexOf(String(pData[pi][0])) !== -1) {
         playersSheet.getRange(pi + 1, 4).setValue('active');
-        playersSheet.getRange(pi + 1, 5).setValue(Number(stage));
+        playersSheet.getRange(pi + 1, 5).setValue((stage === '1' || stage === '2' || stage === '3') ? Number(stage) : '');
       }
     }
   }
@@ -580,6 +587,33 @@ function editTableResult(params) {
   }
 
   return recordTableResult(params);
+}
+
+// ===== REBUY CONFIRMATION =====
+// A steward ticks who wants to rebuy (rebuyTaken='yes' in Eliminations). An admin
+// then confirms payment, which queues the player into the matching rebuy tier so
+// they show in the rebuy queue and can be seated when rebuy tables are generated.
+var REBUY_STAGE_BY_LOSS = { '1': 'rebuy_25', '2': 'rebuy_50', '3': 'rebuy_75' };
+
+function confirmRebuy(params) {
+  var tornId = String(params.tornId || '').trim();
+  if (!tornId) return { error: 'tornId required' };
+
+  var elim = readEliminations().filter(function(e) {
+    return e.tornId === tornId && String(e.rebuyTaken).toLowerCase() === 'yes';
+  })[0];
+  if (!elim) return { error: 'No pending rebuy request for that player' };
+
+  var rebuyStage = REBUY_STAGE_BY_LOSS[String(elim.stageLostAt)];
+  if (!rebuyStage) return { error: 'No rebuy tier for stage lost at: ' + elim.stageLostAt };
+
+  var already = readQueues().some(function(q) {
+    return q.tornId === tornId && q.queuedFor === rebuyStage;
+  });
+  if (already) return { error: 'Rebuy already confirmed for that player' };
+
+  getSheet(SHEETS.QUEUES).appendRow([tornId, elim.name || '', rebuyStage, new Date(), 'rebuy confirmed']);
+  return { message: 'Rebuy confirmed for ' + (elim.name || tornId), tornId: tornId, queuedFor: rebuyStage };
 }
 
 // ===== TEST HELPERS =====
@@ -913,17 +947,19 @@ function submitAvailability(params) {
  */
 function previewStageTables(params) {
   var stage = String(params.stage || '').trim();
-  if (['1', '2', '3'].indexOf(stage) === -1) {
-    return { error: "stage must be '1', '2' or '3'" };
+  if (VALID_GEN_STAGES.indexOf(stage) === -1) {
+    return { error: 'Invalid stage: ' + stage };
   }
 
   var gate = checkStageGate_(stage);
   if (gate.error) return gate;
 
   var pool = getStagePool_(stage);
-  if (pool.length < 2) return { error: 'Not enough players to generate Stage ' + stage + ' tables' };
+  var minPool = /^rebuy_/.test(stage) ? 1 : 2;
+  if (pool.length < minPool) return { error: 'Not enough players to generate tables for stage ' + stage };
 
-  var tableSize = (stage === '1') ? 9 : 6;
+  var tableSize = stageBaseSize_(stage);
+  var idPrefix = stageTablePrefix_(stage);
   var maxPerSlot = 4 * tableSize;
 
   var availability = readAvailability();
@@ -1062,7 +1098,7 @@ function previewStageTables(params) {
       var slice = seated.slice(cursor, cursor + size);
       cursor += size;
       tablesForSlot.push({
-        tableId: 'S' + stage + '-T' + tableCounter,
+        tableId: idPrefix + tableCounter,
         size: size,
         playerIds: slice.map(function(s) { return s.tornId; }),
         playerNames: slice.map(function(s) { return s.name; }),
@@ -1098,7 +1134,7 @@ function previewStageTables(params) {
       var slice = nonSubmitters.slice(cursor, cursor + size);
       cursor += size;
       targetSlotEntry.tables.push({
-        tableId: 'S' + stage + '-T' + tableCounter,
+        tableId: idPrefix + tableCounter,
         size: size,
         playerIds: slice.map(function(s) { return s.tornId; }),
         playerNames: slice.map(function(s) { return s.name; }),
@@ -1135,8 +1171,8 @@ function previewStageTables(params) {
  */
 function commitStageTables(params) {
   var stage = String(params.stage || '').trim();
-  if (['1', '2', '3'].indexOf(stage) === -1) {
-    return { error: "stage must be '1', '2' or '3'" };
+  if (VALID_GEN_STAGES.indexOf(stage) === -1) {
+    return { error: 'Invalid stage: ' + stage };
   }
 
   var planRaw = params.plan;
@@ -1188,7 +1224,7 @@ function commitStageTables(params) {
       row[15] = '';
       row[16] = '';
       row[17] = '';
-      row[18] = ((t.size < (stage === '1' ? 9 : 6)) ? 'short table (' + t.size + ' players)' : '');
+      row[18] = ((t.size < stageBaseSize_(stage)) ? 'short table (' + t.size + ' players)' : '');
       row[19] = entry.slotId || '';
       rows.push(row);
     });
@@ -1264,6 +1300,35 @@ function checkStageGate_(stage) {
     return { ok: true };
   }
 
+  // Rebuy tiers can be generated once the stage they branch off is fully played,
+  // so the eliminated/rebuy pool for that tier is known.
+  if (stage === 'rebuy_25') {
+    var s1 = tables.filter(function(t) { return String(t.stage) === '1'; });
+    if (s1.length === 0) return { error: 'No Stage 1 tables exist yet' };
+    if (s1.some(function(t) { return t.status !== 'complete'; })) {
+      return { error: 'All Stage 1 tables must be complete before generating 25M rebuy tables' };
+    }
+    return { ok: true };
+  }
+
+  if (stage === 'rebuy_50') {
+    var s2g = tables.filter(function(t) { return String(t.stage) === '2'; });
+    if (s2g.length === 0) return { error: 'No Stage 2 tables exist yet' };
+    if (s2g.some(function(t) { return t.status !== 'complete'; })) {
+      return { error: 'All Stage 2 tables must be complete before generating 50M rebuy tables' };
+    }
+    return { ok: true };
+  }
+
+  if (stage === 'rebuy_75') {
+    var s3g = tables.filter(function(t) { return String(t.stage) === '3'; });
+    if (s3g.length === 0) return { error: 'No Stage 3 tables exist yet' };
+    if (s3g.some(function(t) { return t.status !== 'complete'; })) {
+      return { error: 'All Stage 3 tables must be complete before generating 75M rebuy tables' };
+    }
+    return { ok: true };
+  }
+
   return { error: 'Unknown stage: ' + stage };
 }
 
@@ -1273,7 +1338,7 @@ function getStagePool_(stage) {
   }
 
   var queues = readQueues();
-  var queueKey = 'stage_' + stage;
+  var queueKey = /^rebuy_/.test(stage) ? stage : ('stage_' + stage);
   var queuedIds = queues.filter(function(q) { return q.queuedFor === queueKey; }).map(function(q) { return q.tornId; });
 
   var players = readPlayers();
@@ -1313,6 +1378,23 @@ function slotHour_(slotId) {
   var m = String(slotId).match(/^slot_(\d+)$/);
   return m ? parseInt(m[1], 10) : 999;
 }
+
+// Base (full) table size per stage. Rebuy tables are 3-handed knockouts.
+function stageBaseSize_(stage) {
+  if (stage === '1') return 9;
+  if (/^rebuy_/.test(stage)) return 3;
+  return 6;
+}
+
+// tableId prefix per stage, e.g. 'S1-T', 'R25-T'.
+function stageTablePrefix_(stage) {
+  if (stage === 'rebuy_25') return 'R25-T';
+  if (stage === 'rebuy_50') return 'R50-T';
+  if (stage === 'rebuy_75') return 'R75-T';
+  return 'S' + stage + '-T';
+}
+
+var VALID_GEN_STAGES = ['1', '2', '3', 'rebuy_25', 'rebuy_50', 'rebuy_75'];
 
 // =============================================================================
 // STEWARDS
