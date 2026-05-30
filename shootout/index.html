@@ -24,10 +24,11 @@
   </div>
 
   <div class="prize-strip">
-    <div class="prize-pool-total">
+    <div class="prize-pool-total clickable" id="prizePoolTotal" title="View payout structure">
       <div class="prize-pool-label">Prize Pool</div>
       <div class="prize-pool-amount" id="prizeTotal">$0</div>
       <div class="prize-pool-sub" id="prizePoolBreakdown">0 players</div>
+      <div class="prize-pool-payout-link"><span class="value-link">View payout structure</span></div>
     </div>
     <div class="prize-info">
       <div class="prize-info-item">
@@ -362,6 +363,17 @@
     </div>
   </div>
 
+  <!-- PAYOUT STRUCTURE MODAL -->
+  <div class="modal-overlay" id="payoutModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Payout Structure</h2>
+        <button class="modal-close" onclick="closeModal('payoutModal')">&times;</button>
+      </div>
+      <div class="modal-body" id="payoutModalBody"></div>
+    </div>
+  </div>
+
   <!-- REGISTERED PLAYERS MODAL -->
   <div class="modal-overlay" id="registeredModal">
     <div class="modal">
@@ -469,6 +481,11 @@
     document.getElementById('infoDonors').addEventListener('click', function() {
       renderDonorsModal();
       openModal('donorsModal');
+    });
+
+    document.getElementById('prizePoolTotal').addEventListener('click', function() {
+      renderPayoutModal();
+      openModal('payoutModal');
     });
 
     document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
@@ -581,14 +598,45 @@
       return { registered: players.length, active: active, eliminated: eliminated };
     }
 
-    function renderPrizes() {
+    // Payout split for the top finishers (percent of total prize pool).
+    var PAYOUT_STRUCTURE = [
+      { place: 1, pct: 30 },
+      { place: 2, pct: 18 },
+      { place: 3, pct: 12 },
+      { place: 4, pct: 9 },
+      { place: 5, pct: 7 },
+      { place: 6, pct: 6 },
+      { place: 7, pct: 5 },
+      { place: 8, pct: 4.5 },
+      { place: 9, pct: 4 },
+      { place: 10, pct: 1.75 },
+      { place: 11, pct: 1.5 },
+      { place: 12, pct: 1.25 }
+    ];
+
+    function getPrizePool() {
       var counts = getPlayerCountsByStatus();
-      var donations = (state && state.donations) ? state.donations : [];
       var buyIn = (state && state.settings && state.settings.buy_in) ? Number(state.settings.buy_in) : 25000000;
       var playerPool = counts.registered * buyIn;
       var donationTotal = getDonationTotal();
       var rebuyStats = getRebuyStats();
-      var pool = playerPool + donationTotal + rebuyStats.total;
+      return {
+        playerPool: playerPool,
+        donationTotal: donationTotal,
+        rebuyTotal: rebuyStats.total,
+        rebuyCount: rebuyStats.count,
+        total: playerPool + donationTotal + rebuyStats.total
+      };
+    }
+
+    function renderPrizes() {
+      var counts = getPlayerCountsByStatus();
+      var donations = (state && state.donations) ? state.donations : [];
+      var p = getPrizePool();
+      var playerPool = p.playerPool;
+      var donationTotal = p.donationTotal;
+      var rebuyStats = { total: p.rebuyTotal, count: p.rebuyCount };
+      var pool = p.total;
 
       document.getElementById('prizeTotal').textContent = formatMoney(pool);
 
@@ -936,6 +984,38 @@
       if (amount >= 1000000) return '$' + (amount / 1000000).toFixed(0) + 'M';
       if (amount >= 1000) return '$' + (amount / 1000).toFixed(0) + 'K';
       return '$' + amount;
+    }
+
+    function formatMoneyPrecise(amount) {
+      if (!amount) return '$0';
+      if (amount >= 1000000000) return '$' + (amount / 1000000000).toFixed(2).replace(/\.?0+$/, '') + 'B';
+      if (amount >= 1000000) return '$' + (amount / 1000000).toFixed(2).replace(/\.?0+$/, '') + 'M';
+      if (amount >= 1000) return '$' + (amount / 1000).toFixed(2).replace(/\.?0+$/, '') + 'K';
+      return '$' + Math.round(amount);
+    }
+
+    function renderPayoutModal() {
+      var body = document.getElementById('payoutModalBody');
+      var pool = getPrizePool().total;
+
+      var html = '<p class="payout-intro">How the <strong>' + formatMoney(pool) + '</strong> prize pool is split among the top ' + PAYOUT_STRUCTURE.length + ' finishers. Amounts update as the pool grows.</p>';
+
+      PAYOUT_STRUCTURE.forEach(function(row) {
+        var amount = pool * (row.pct / 100);
+        html += '<div class="donor-list-item">';
+        html += '  <span class="payout-place">' + ordinal(row.place) + '</span>';
+        html += '  <span class="payout-pct">' + row.pct + '%</span>';
+        html += '  <span class="donor-list-amount">' + formatMoneyPrecise(amount) + '</span>';
+        html += '</div>';
+      });
+
+      body.innerHTML = html;
+    }
+
+    function ordinal(n) {
+      var s = ['th', 'st', 'nd', 'rd'];
+      var v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
     }
 
     function renderDonorsModal() {
