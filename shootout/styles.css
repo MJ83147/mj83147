@@ -1913,7 +1913,6 @@ body {
       display: flex;
       align-items: stretch;
       flex: 1;
-      justify-content: flex-end;
     }
 
     body.leaderboard .prize-info-item {
@@ -1922,6 +1921,7 @@ body {
       justify-content: center;
       padding: 12px 20px;
       border-left: 1px solid var(--border);
+      flex: 1;
       min-width: 90px;
     }
 
