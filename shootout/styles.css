@@ -2284,6 +2284,15 @@ body {
       margin-left: 6px;
     }
 
+    body.leaderboard .pub-table-card-time {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-left: 8px;
+      letter-spacing: 0.3px;
+    }
+
     body.leaderboard .pub-table-status {
       font-family: var(--font-mono);
       font-size: 9px;

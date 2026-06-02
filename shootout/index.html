@@ -800,11 +800,20 @@
       return aNum - bNum;
     }
 
+    function fmtSlotTime(slotId) {
+      var m = String(slotId || '').match(/^slot_(\d+)$/);
+      if (!m) return '';
+      var hr = parseInt(m[1], 10);
+      return (hr < 10 ? '0' + hr : hr) + ':00 TCT';
+    }
+
     function renderPubTableCard(t) {
       var isComplete = t.status === 'complete';
       var html = '<div class="pub-table-card">';
       html += '<div class="pub-table-card-header">';
       html += '<span class="pub-table-card-id">' + esc(t.tableId);
+      var timeLabel = fmtSlotTime(t.timeSlotId);
+      if (timeLabel) html += '<span class="pub-table-card-time">' + esc(timeLabel) + '</span>';
       if (t.notes) html += '<span class="pub-table-card-id-note">' + esc(t.notes) + '</span>';
       html += '</span>';
       html += '<span class="pub-table-status ' + esc(t.status) + '">' + esc(t.status) + '</span>';
