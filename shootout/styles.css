@@ -2293,6 +2293,17 @@ body {
       letter-spacing: 0.3px;
     }
 
+    body.leaderboard .pub-table-steward {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    body.leaderboard .pub-table-steward span {
+      color: var(--text);
+      font-weight: 700;
+    }
+
     body.leaderboard .pub-table-status {
       font-family: var(--font-mono);
       font-size: 9px;

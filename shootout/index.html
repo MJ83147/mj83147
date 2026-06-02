@@ -807,6 +807,15 @@
       return (hr < 10 ? '0' + hr : hr) + ':00 TCT';
     }
 
+    function findStewardForTable(tableId) {
+      var assigns = (state && state.stewardAssignments) ? state.stewardAssignments : [];
+      var stewards = (state && state.stewards) ? state.stewards : [];
+      var a = assigns.filter(function(x) { return x.tableId === tableId; })[0];
+      if (!a) return null;
+      var s = stewards.filter(function(x) { return x.stewardId === a.stewardId; })[0];
+      return s ? s.name : null;
+    }
+
     function renderPubTableCard(t) {
       var isComplete = t.status === 'complete';
       var html = '<div class="pub-table-card">';
@@ -814,10 +823,14 @@
       html += '<span class="pub-table-card-id">' + esc(t.tableId);
       var timeLabel = fmtSlotTime(t.timeSlotId);
       if (timeLabel) html += '<span class="pub-table-card-time">' + esc(timeLabel) + '</span>';
-      if (t.notes) html += '<span class="pub-table-card-id-note">' + esc(t.notes) + '</span>';
       html += '</span>';
       html += '<span class="pub-table-status ' + esc(t.status) + '">' + esc(t.status) + '</span>';
       html += '</div>';
+
+      var stewardName = findStewardForTable(t.tableId);
+      if (stewardName) {
+        html += '<div class="pub-table-steward">Steward: <span>' + esc(stewardName) + '</span></div>';
+      }
 
       html += '<div class="pub-table-players">';
       (t.players || []).forEach(function(pid) {
