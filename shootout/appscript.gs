@@ -934,15 +934,22 @@ function submitAvailability(params) {
  * previewStageTables: runs the seating algorithm for a given stage and returns
  * the proposed plan WITHOUT writing anything to the Tables sheet.
  *
- * Algorithm (multi-select):
- *   1. Build availability sets: each pool player has an array of slots they marked.
- *   2. Greedy: repeatedly pick the slot with the most unseated demand, seat up to
- *      4 × tableSize of those players there. Prefer players with the fewest other
- *      options (so flexible players save space for inflexible ones).
- *   3. Any player whose slots all filled up before they got seated falls into
- *      the most-populated slot among the ones they had marked. Tagged 'bumped'.
- *   4. Top up each slot with non-submitters to round out short tables.
- *   5. Any non-submitters left get bundled into the most-popular slot.
+ * A time slot IS the time those tables play; a player may only be seated at a
+ * slot they personally marked. No more than 4 tables run at any one slot.
+ *
+ * The whole field's table sizes come from layoutForCount_(N): fill as many full
+ * tables as possible, and turn the leftover into at most 2 BALANCED short tables
+ * — never a runt of 1-3 (e.g. 84 -> 8x9 + 2x6, 83 -> 8x9 + 6 + 5). Sizes are
+ * decided globally, then distributed across slots — never recomputed per slot.
+ *
+ * Packing is driven off the most-constrained players. A player who marked only
+ * one time MUST sit at that time, so they anchor a table before anyone with
+ * options. Each round takes the most-constrained unseated player, opens a table
+ * at the busiest slot they can still play, and fills it with the next-most-
+ * constrained players available there. We build exactly the template's full-
+ * table count, then drop the flexible remainder into the balanced short table(s).
+ * Non-submitters are wildcards (any slot, seated last) so they fill gaps without
+ * stranding a real player.
  *
  * Returns:
  *   {
@@ -966,190 +973,192 @@ function previewStageTables(params) {
 
   var tableSize = stageBaseSize_(stage);
   var idPrefix = stageTablePrefix_(stage);
-  var maxPerSlot = 4 * tableSize;
+  var MAX_TABLES_PER_SLOT = 4;
+
+  var ALL_SLOTS = [];
+  for (var h = 0; h < 24; h += 2) ALL_SLOTS.push('slot_' + h);
 
   var availability = readAvailability();
   var availByTornId = {};
   availability.forEach(function(a) { availByTornId[a.tornId] = a; });
 
-  // Separate pool into players with picks vs non-submitters
-  var unseated = []; // [{ tornId, name, availableSlots: [slotId, ...] }]
-  var nonSubmitters = [];
+  // Build player objects: { tornId, name, slots:{slotId:true}, flex, wild }.
+  // Non-submitters are wildcards: available for any slot, seated last.
+  var players = [];
   pool.forEach(function(p) {
     var a = availByTornId[p.tornId];
-    var slots = a ? parseSlotList_(a.availableSlotIds) : [];
-    if (slots.length > 0) {
-      unseated.push({ tornId: p.tornId, name: p.name, availableSlots: slots.slice() });
-    } else {
-      nonSubmitters.push({ tornId: p.tornId, name: p.name });
-    }
+    var picks = a ? parseSlotList_(a.availableSlotIds) : [];
+    var set = {};
+    var wild = picks.length === 0;
+    (wild ? ALL_SLOTS : picks).forEach(function(s) { set[s] = true; });
+    players.push({
+      tornId: p.tornId,
+      name: p.name || p.tornId,
+      slots: set,
+      flex: wild ? 999 : picks.length,
+      wild: wild
+    });
   });
 
-  var slotBuckets = {}; // slotId -> [{ tornId, name, source }]
+  var N = players.length;
 
-  // Greedy main loop
-  var safetyCounter = 0;
-  while (unseated.length > 0 && safetyCounter < 10000) {
-    safetyCounter++;
+  // GLOBAL table-size template for the whole field.
+  var template = layoutForCount_(N, tableSize); // e.g. [9,9,...,6,6]
+  var numFull = 0;
+  var shortSizes = [];
+  template.forEach(function(sz) {
+    if (sz === tableSize) numFull++;
+    else shortSizes.push(sz);
+  });
 
-    // Demand per slot from remaining unseated
-    var demand = {};
-    unseated.forEach(function(u) {
-      u.availableSlots.forEach(function(s) {
-        demand[s] = (demand[s] || 0) + 1;
-      });
-    });
+  // How many real submitters marked each slot — a tie-break toward busy times.
+  var popularity = {};
+  ALL_SLOTS.forEach(function(s) { popularity[s] = 0; });
+  players.forEach(function(p) {
+    if (p.wild) return;
+    for (var k in p.slots) if (p.slots.hasOwnProperty(k)) popularity[k]++;
+  });
 
-    var demandSlots = Object.keys(demand);
-    if (demandSlots.length === 0) break; // everyone's slots full
+  var slotTableCount = {};
+  ALL_SLOTS.forEach(function(s) { slotTableCount[s] = 0; });
 
-    // Pick slot with most demand; tie-break by earliest hour
-    demandSlots.sort(function(a, b) {
-      if (demand[b] !== demand[a]) return demand[b] - demand[a];
-      return slotHour_(a) - slotHour_(b);
-    });
-    var targetSlot = demandSlots[0];
-
-    var existing = (slotBuckets[targetSlot] || []).length;
-    var room = maxPerSlot - existing;
-    if (room <= 0) {
-      // Target slot is full; drop it from everyone's availability and re-try
-      unseated.forEach(function(u) {
-        var idx = u.availableSlots.indexOf(targetSlot);
-        if (idx !== -1) u.availableSlots.splice(idx, 1);
-      });
-      continue;
+  function availHere(list, slot) {
+    var out = [];
+    for (var i = 0; i < list.length; i++) if (list[i].slots[slot]) out.push(list[i]);
+    return out;
+  }
+  function realCount(list, slot) {
+    var n = 0;
+    for (var i = 0; i < list.length; i++) if (!list[i].wild && list[i].slots[slot]) n++;
+    return n;
+  }
+  // Slots a player can still be seated at (under the per-slot table cap).
+  function openSlots(p) {
+    var out = [];
+    for (var k in p.slots) {
+      if (p.slots.hasOwnProperty(k) && slotTableCount[k] < MAX_TABLES_PER_SLOT) out.push(k);
     }
-
-    // Candidates = unseated players available for this slot
-    var candidates = unseated.filter(function(u) { return u.availableSlots.indexOf(targetSlot) !== -1; });
-    // Inflexible players (fewer options) first so we don't strand them
-    candidates.sort(function(a, b) {
-      if (a.availableSlots.length !== b.availableSlots.length) {
-        return a.availableSlots.length - b.availableSlots.length;
-      }
-      return a.tornId < b.tornId ? -1 : 1;
+    return out;
+  }
+  // Total popularity of a player's slots — low means their times are rare, so
+  // they're hard to place elsewhere and should be seated first.
+  function slotsPop(p) {
+    var sum = 0;
+    for (var k in p.slots) if (p.slots.hasOwnProperty(k)) sum += popularity[k] || 0;
+    return sum;
+  }
+  function byConstraint(a, b) {
+    var ao = openSlots(a).length, bo = openSlots(b).length;
+    if (ao !== bo) return ao - bo;                 // fewest open slots first
+    if (a.flex !== b.flex) return a.flex - b.flex; // then fewest picks
+    var pa = slotsPop(a), pb = slotsPop(b);
+    if (pa !== pb) return pa - pb;                 // then rarest slots first
+    return a.tornId < b.tornId ? -1 : 1;
+  }
+  // Choose the best slot from `candidates` to seat players drawn from `list`.
+  // Priority: (1) most fillable, (2) a slot ALREADY in use (fewer distinct
+  // play-times), (3) most real demand, (4) most popular overall, (5) earliest.
+  function chooseSlot(candidates, list) {
+    var best = null;
+    candidates.forEach(function(s) {
+      if (best === null) { best = s; return; }
+      var fs = availHere(list, s).length, fb = availHere(list, best).length;
+      if (fs !== fb) { if (fs > fb) best = s; return; }
+      var us = slotTableCount[s] > 0 ? 1 : 0, ub = slotTableCount[best] > 0 ? 1 : 0;
+      if (us !== ub) { if (us > ub) best = s; return; }
+      var rs = realCount(list, s), rb = realCount(list, best);
+      if (rs !== rb) { if (rs > rb) best = s; return; }
+      if (popularity[s] !== popularity[best]) { if (popularity[s] > popularity[best]) best = s; return; }
+      if (slotHour_(s) < slotHour_(best)) best = s;
     });
-
-    var toSeat = candidates.slice(0, room);
-    var toSeatIds = {};
-    toSeat.forEach(function(u) { toSeatIds[u.tornId] = true; });
-
-    if (!slotBuckets[targetSlot]) slotBuckets[targetSlot] = [];
-    toSeat.forEach(function(u) {
-      slotBuckets[targetSlot].push({ tornId: u.tornId, name: u.name, source: 'available' });
-    });
-
-    unseated = unseated.filter(function(u) { return !toSeatIds[u.tornId]; });
-
-    // Anyone who wanted this slot but didn't get a seat: remove it from their list
-    if (candidates.length > room) {
-      var notSeated = candidates.slice(room);
-      notSeated.forEach(function(u) {
-        var idx = u.availableSlots.indexOf(targetSlot);
-        if (idx !== -1) u.availableSlots.splice(idx, 1);
-      });
-    }
+    return best;
   }
 
-  // Anyone still unseated had all their slots fill up. Send them to the most-
-  // populated slot among the ones they originally picked, tagged 'bumped'.
-  if (unseated.length > 0) {
-    unseated.forEach(function(u) {
-      var orig = availByTornId[u.tornId];
-      var slots = orig ? parseSlotList_(orig.availableSlotIds) : [];
-      var target = null;
-      var maxCount = -1;
-      slots.forEach(function(s) {
-        var c = (slotBuckets[s] || []).length;
-        if (c > maxCount) {
-          maxCount = c;
-          target = s;
-        }
-      });
-      if (!target) {
-        nonSubmitters.push({ tornId: u.tornId, name: u.name });
-        return;
-      }
-      if (!slotBuckets[target]) slotBuckets[target] = [];
-      slotBuckets[target].push({ tornId: u.tornId, name: u.name, source: 'bumped' });
-    });
+  var unseated = players.slice();
+  var tables = []; // { slot, players:[] }
+
+  function removeSeated(grp) {
+    var ids = {};
+    grp.forEach(function(p) { ids[p.tornId] = true; });
+    unseated = unseated.filter(function(p) { return !ids[p.tornId]; });
   }
 
-  // Build the plan, topping up each slot with non-submitters where it cleans up
-  // a short table.
-  var slotIdsInOrder = Object.keys(slotBuckets).sort(function(a, b) {
+  // ---- Phase A: build the template's FULL tables, inflexible player first ----
+  for (var f = 0; f < numFull && unseated.length > 0; f++) {
+    var anchor = unseated.slice().sort(byConstraint)[0];
+    var opts = openSlots(anchor);
+    if (opts.length === 0) opts = Object.keys(anchor.slots); // cap fallback
+    var slotA = chooseSlot(opts, unseated);
+    var hereA = availHere(unseated, slotA).sort(byConstraint);
+    var grpA = [anchor];
+    for (var i = 0; i < hereA.length && grpA.length < tableSize; i++) {
+      if (hereA[i].tornId !== anchor.tornId) grpA.push(hereA[i]);
+    }
+    tables.push({ slot: slotA, players: grpA });
+    slotTableCount[slotA]++;
+    removeSeated(grpA);
+  }
+
+  // ---- Phase B: the balanced short table(s) from the flexible remainder ----
+  shortSizes.forEach(function(sz) {
+    if (unseated.length === 0) return;
+    var cap = ALL_SLOTS.filter(function(s) {
+      return slotTableCount[s] < MAX_TABLES_PER_SLOT && availHere(unseated, s).length > 0;
+    });
+    var slotB = cap.length ? chooseSlot(cap, unseated)
+                           : (openSlots(unseated[0])[0] || Object.keys(unseated[0].slots)[0]);
+    var hereB = availHere(unseated, slotB).sort(byConstraint);
+    var grpB = hereB.slice(0, sz);
+    tables.push({ slot: slotB, players: grpB });
+    slotTableCount[slotB]++;
+    removeSeated(grpB);
+  });
+
+  // ---- Phase C: safety net — seat anyone left (e.g. a slot ran out of players
+  // during Phase A) into balanced tables at the busiest slot they can play. ----
+  var phaseCGuard = 0;
+  while (unseated.length > 0 && phaseCGuard < 1000) {
+    phaseCGuard++;
+    var leftAnchor = unseated.slice().sort(byConstraint)[0];
+    var leftOpts = openSlots(leftAnchor);
+    if (leftOpts.length === 0) leftOpts = Object.keys(leftAnchor.slots);
+    var slotC = chooseSlot(leftOpts, unseated);
+    var hereC = availHere(unseated, slotC).sort(byConstraint);
+    var grpC = [leftAnchor];
+    for (var j = 0; j < hereC.length && grpC.length < tableSize; j++) {
+      if (hereC[j].tornId !== leftAnchor.tornId) grpC.push(hereC[j]);
+    }
+    tables.push({ slot: slotC, players: grpC });
+    slotTableCount[slotC]++;
+    removeSeated(grpC);
+  }
+
+  // Group tables by slot, ordered by play-time, and shape into the plan.
+  var bySlot = {};
+  tables.forEach(function(t) {
+    if (!bySlot[t.slot]) bySlot[t.slot] = [];
+    bySlot[t.slot].push(t);
+  });
+  var slotIdsInOrder = Object.keys(bySlot).sort(function(a, b) {
     return slotHour_(a) - slotHour_(b);
   });
 
   var tableCounter = 1;
   var plan = [];
-
   slotIdsInOrder.forEach(function(slotId) {
-    var seated = slotBuckets[slotId];
-    if (seated.length === 0) return;
-
-    var roomLeft = maxPerSlot - seated.length;
-    var distToCleanMultiple = (tableSize - (seated.length % tableSize)) % tableSize;
-    var nonSubToPull = Math.min(roomLeft, distToCleanMultiple, nonSubmitters.length);
-    for (var i = 0; i < nonSubToPull; i++) {
-      var ns = nonSubmitters.shift();
-      seated.push({ tornId: ns.tornId, name: ns.name, source: 'non' });
-    }
-
-    var sizes = layoutForCount_(seated.length, tableSize);
-    var tablesForSlot = [];
-    var cursor = 0;
-    sizes.forEach(function(size) {
-      var slice = seated.slice(cursor, cursor + size);
-      cursor += size;
-      tablesForSlot.push({
+    var tablesForSlot = bySlot[slotId].map(function(t) {
+      var entry = {
         tableId: idPrefix + tableCounter,
-        size: size,
-        playerIds: slice.map(function(s) { return s.tornId; }),
-        playerNames: slice.map(function(s) { return s.name; }),
-        sources: slice.map(function(s) { return s.source; })
-      });
+        size: t.players.length,
+        playerIds: t.players.map(function(p) { return p.tornId; }),
+        playerNames: t.players.map(function(p) { return p.name; }),
+        sources: t.players.map(function(p) { return p.wild ? 'non' : 'available'; })
+      };
       tableCounter++;
+      return entry;
     });
-
     plan.push({ slotId: slotId, tables: tablesForSlot });
   });
-
-  // Any remaining non-submitters get their own table(s) at the most-popular slot.
-  if (nonSubmitters.length > 0) {
-    var targetSlotEntry = null;
-    var maxTables = -1;
-    plan.forEach(function(entry) {
-      if (entry.tables.length > maxTables) {
-        maxTables = entry.tables.length;
-        targetSlotEntry = entry;
-      }
-    });
-
-    if (!targetSlotEntry) {
-      var allSlots = readTimeSlots();
-      var fallbackSlotId = allSlots.length > 0 ? allSlots[0].slotId : '';
-      targetSlotEntry = { slotId: fallbackSlotId, tables: [] };
-      plan.push(targetSlotEntry);
-    }
-
-    var sizes = layoutForCount_(nonSubmitters.length, tableSize);
-    var cursor = 0;
-    sizes.forEach(function(size) {
-      var slice = nonSubmitters.slice(cursor, cursor + size);
-      cursor += size;
-      targetSlotEntry.tables.push({
-        tableId: idPrefix + tableCounter,
-        size: size,
-        playerIds: slice.map(function(s) { return s.tornId; }),
-        playerNames: slice.map(function(s) { return s.name; }),
-        sources: slice.map(function() { return 'non'; })
-      });
-      tableCounter++;
-    });
-    nonSubmitters = [];
-  }
 
   // Stats
   var stats = { totalPlayers: pool.length, availableHits: 0, bumped: 0, nonSubmitterSeats: 0 };
@@ -1401,6 +1410,244 @@ function stageTablePrefix_(stage) {
 }
 
 var VALID_GEN_STAGES = ['1', '2', '3', 'rebuy_25', 'rebuy_50', 'rebuy_75'];
+
+/**
+ * TEST ONLY — writes nothing. Select this function in the Apps Script editor,
+ * click Run, then open View > Logs (Ctrl/Cmd+Enter) to read the result.
+ *
+ * Shows what a CORRECTED packer would output instead of previewStageTables.
+ *
+ * Rules honoured:
+ *   - A time slot is the time those tables actually play; a player may only be
+ *     seated at a slot they personally marked.
+ *   - No more than 4 tables run at any one time slot.
+ *   - The WHOLE field's table sizes come from layoutForCount_(N): fill as many
+ *     full tables as possible, and turn the leftover into at most 2 BALANCED
+ *     short tables — never a runt of 1-3. (e.g. 84 -> 8x9 + 2x6, 83 -> 8x9 +
+ *     6 + 5.) The sizes are decided globally, then distributed across slots —
+ *     never recomputed per slot.
+ *
+ * Algorithm — INFLEXIBLE PLAYERS FIRST:
+ *   The whole thing is driven off the most-constrained players. A player who
+ *   marked only one time MUST sit at that time, so they anchor a table before
+ *   anyone with options. Each round we take the most-constrained unseated
+ *   player, open a table at the busiest slot they can still play, and fill it
+ *   out with the next-most-constrained players available there. We build
+ *   exactly the number of full tables the template calls for, then drop the
+ *   (now flexible) remainder into the balanced short table(s).
+ *
+ * Non-submitters are treated as wildcards available for any slot, so they fill
+ * gaps without ever stranding a real player.
+ *
+ * Usage: testPackPreview()  or  testPackPreview('1')
+ */
+function testPackPreview(stage) {
+  stage = String(stage || '1');
+  var tableSize = stageBaseSize_(stage);
+  var MAX_TABLES_PER_SLOT = 4;
+
+  var ALL_SLOTS = [];
+  for (var h = 0; h < 24; h += 2) ALL_SLOTS.push('slot_' + h);
+
+  var availability = readAvailability();
+  var availByTornId = {};
+  availability.forEach(function(a) { availByTornId[a.tornId] = a; });
+
+  var pool;
+  try { pool = getStagePool_(stage); } catch (e) { pool = []; }
+  if (!pool || pool.length === 0) {
+    // Fallback: use availability submitters as the pool.
+    pool = availability.map(function(a) { return { tornId: a.tornId, name: a.name || a.tornId }; });
+  }
+
+  // Build player objects: { tornId, name, slots:{slotId:true}, flex, wild }
+  var players = [];
+  pool.forEach(function(p) {
+    var a = availByTornId[p.tornId];
+    var picks = a ? parseSlotList_(a.availableSlotIds) : [];
+    var set = {};
+    var wild = picks.length === 0;
+    (wild ? ALL_SLOTS : picks).forEach(function(s) { set[s] = true; });
+    players.push({
+      tornId: p.tornId,
+      name: p.name || p.tornId,
+      slots: set,
+      flex: wild ? 999 : picks.length, // wildcards are the most flexible -> seated last
+      wild: wild
+    });
+  });
+
+  var N = players.length;
+
+  // GLOBAL table-size template for the whole field.
+  var template = layoutForCount_(N, tableSize); // e.g. [9,9,...,6,6]
+  var numFull = 0;
+  var shortSizes = [];
+  template.forEach(function(sz) {
+    if (sz === tableSize) numFull++;
+    else shortSizes.push(sz);
+  });
+
+  // Static popularity: how many real submitters marked each slot. Used as a
+  // tie-break so equally-fillable slots resolve toward the busiest real time.
+  var popularity = {};
+  ALL_SLOTS.forEach(function(s) { popularity[s] = 0; });
+  players.forEach(function(p) {
+    if (p.wild) return;
+    for (var k in p.slots) if (p.slots.hasOwnProperty(k)) popularity[k]++;
+  });
+
+  // ---- helpers ----
+  var slotTableCount = {};
+  ALL_SLOTS.forEach(function(s) { slotTableCount[s] = 0; });
+
+  function availHere(list, slot) {
+    var out = [];
+    for (var i = 0; i < list.length; i++) if (list[i].slots[slot]) out.push(list[i]);
+    return out;
+  }
+  function realCount(list, slot) {
+    var n = 0;
+    for (var i = 0; i < list.length; i++) if (!list[i].wild && list[i].slots[slot]) n++;
+    return n;
+  }
+  // Slots a player can still be seated at (under the per-slot table cap).
+  function openSlots(p) {
+    var out = [];
+    for (var k in p.slots) {
+      if (p.slots.hasOwnProperty(k) && slotTableCount[k] < MAX_TABLES_PER_SLOT) out.push(k);
+    }
+    return out;
+  }
+  function slotsPop(p) {
+    var sum = 0;
+    for (var k in p.slots) if (p.slots.hasOwnProperty(k)) sum += popularity[k] || 0;
+    return sum;
+  }
+  function byConstraint(a, b) {
+    var ao = openSlots(a).length, bo = openSlots(b).length;
+    if (ao !== bo) return ao - bo;            // fewest open slots first
+    if (a.flex !== b.flex) return a.flex - b.flex; // then fewest picks
+    var pa = slotsPop(a), pb = slotsPop(b);
+    if (pa !== pb) return pa - pb;            // then rarest slots first
+    return a.tornId < b.tornId ? -1 : 1;
+  }
+
+  // Choose the best slot from `candidates` to seat players drawn from `list`.
+  // Priority: (1) most fillable, (2) a slot ALREADY in use (fewer distinct
+  // play-times to run), (3) most real demand, (4) most popular overall,
+  // (5) earliest hour as the final deterministic fallback.
+  function chooseSlot(candidates, list) {
+    var best = null;
+    candidates.forEach(function(s) {
+      if (best === null) { best = s; return; }
+      // (1) fillability
+      var fs = availHere(list, s).length, fb = availHere(list, best).length;
+      if (fs !== fb) { if (fs > fb) best = s; return; }
+      // (2) already in use
+      var us = slotTableCount[s] > 0 ? 1 : 0, ub = slotTableCount[best] > 0 ? 1 : 0;
+      if (us !== ub) { if (us > ub) best = s; return; }
+      // (3) real (non-wildcard) demand
+      var rs = realCount(list, s), rb = realCount(list, best);
+      if (rs !== rb) { if (rs > rb) best = s; return; }
+      // (4) overall popularity
+      if (popularity[s] !== popularity[best]) { if (popularity[s] > popularity[best]) best = s; return; }
+      // (5) earliest hour
+      if (slotHour_(s) < slotHour_(best)) best = s;
+    });
+    return best;
+  }
+
+  var unseated = players.slice();
+  var tables = []; // { slot, players:[], short:bool }
+
+  function removeSeated(grp) {
+    var ids = {};
+    grp.forEach(function(p) { ids[p.tornId] = true; });
+    unseated = unseated.filter(function(p) { return !ids[p.tornId]; });
+  }
+
+  // ---- Phase A: build the template's FULL tables, inflexible player first ----
+  for (var f = 0; f < numFull && unseated.length > 0; f++) {
+    // Most-constrained unseated player anchors this table.
+    var anchor = unseated.slice().sort(byConstraint)[0];
+    var opts = openSlots(anchor);
+    if (opts.length === 0) opts = Object.keys(anchor.slots); // cap fallback
+
+    // Among the anchor's playable slots, open the table where the most other
+    // unseated players are available (best chance to fill all 9), resolving
+    // ties toward a slot already in use.
+    var slot = chooseSlot(opts, unseated);
+
+    // Fill the table: anchor + next-most-constrained players available here.
+    var here = availHere(unseated, slot).sort(byConstraint);
+    var grp = [anchor];
+    for (var i = 0; i < here.length && grp.length < tableSize; i++) {
+      if (here[i].tornId !== anchor.tornId) grp.push(here[i]);
+    }
+    tables.push({ slot: slot, players: grp, short: grp.length < tableSize });
+    slotTableCount[slot]++;
+    removeSeated(grp);
+  }
+
+  // ---- Phase B: the balanced short table(s) from the flexible remainder ----
+  shortSizes.forEach(function(sz) {
+    if (unseated.length === 0) return;
+    var cap = ALL_SLOTS.filter(function(s) {
+      return slotTableCount[s] < MAX_TABLES_PER_SLOT && availHere(unseated, s).length > 0;
+    });
+    var slot = cap.length ? chooseSlot(cap, unseated)
+                          : (openSlots(unseated[0])[0] || Object.keys(unseated[0].slots)[0]);
+    var here = availHere(unseated, slot).sort(byConstraint);
+    var grp = here.slice(0, sz);
+    tables.push({ slot: slot, players: grp, short: grp.length < tableSize });
+    slotTableCount[slot]++;
+    removeSeated(grp);
+  });
+
+  // ---- Report ----
+  tables.sort(function(a, b) { return slotHour_(a.slot) - slotHour_(b.slot); });
+  var lines = [];
+  lines.push('=== Stage ' + stage + ' packer preview (full table = ' + tableSize + ') ===');
+  lines.push('Pool: ' + N + '  |  submitters: ' +
+    players.filter(function(p) { return !p.wild; }).length +
+    '  |  non-submitters (wildcards): ' + players.filter(function(p) { return p.wild; }).length);
+  lines.push('Template for ' + N + ': [' + template.join(', ') + ']  (' + numFull + ' x ' + tableSize +
+    (shortSizes.length ? ' + short ' + shortSizes.join(',') : '') + ')');
+  lines.push('');
+
+  var total = 0, shortCount = 0;
+  tables.forEach(function(t, i) {
+    var size = t.players.length;
+    total += size;
+    if (size < tableSize) shortCount++;
+    var hr = slotHour_(t.slot);
+    var hh = (hr < 10 ? '0' : '') + hr;
+    lines.push('T' + (i + 1) + '  ' + hh + ':00 TCT  (' + size + ')' +
+      (size < tableSize ? '  <-- SHORT' : '') + ': ' +
+      t.players.map(function(p) { return p.name + (p.wild ? '*' : ''); }).join(', '));
+  });
+
+  var perSlot = [];
+  ALL_SLOTS.forEach(function(s) {
+    if (slotTableCount[s] > 0) {
+      var hr = slotHour_(s);
+      perSlot.push(((hr < 10 ? '0' : '') + hr) + ':00=' + slotTableCount[s]);
+    }
+  });
+
+  lines.push('');
+  lines.push('* = non-submitter placed as wildcard');
+  lines.push('Tables per slot: ' + perSlot.join('  '));
+  lines.push('Players seated: ' + total + ' / ' + N +
+    '  |  Tables: ' + tables.length +
+    '  |  Short tables: ' + shortCount +
+    (unseated.length ? '  |  UNSEATED: ' + unseated.map(function(p) { return p.name; }).join(', ') : ''));
+
+  var out = lines.join('\n');
+  Logger.log(out);
+  return out;
+}
 
 // =============================================================================
 // STEWARDS
