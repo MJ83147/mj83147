@@ -2028,6 +2028,8 @@ body {
     /* --- TOURNAMENT VIEW --- */
     body.leaderboard .tournament-section {
       padding: 0 32px 48px;
+      max-width: 1100px;
+      margin: 0 auto;
     }
 
     body.leaderboard .search-bar-wrap {
