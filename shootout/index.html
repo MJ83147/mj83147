@@ -818,19 +818,22 @@
 
     function renderPubTableCard(t) {
       var isComplete = t.status === 'complete';
+      var stewardName = findStewardForTable(t.tableId);
+      var timeLabel = fmtSlotTime(t.timeSlotId);
+
       var html = '<div class="pub-table-card">';
       html += '<div class="pub-table-card-header">';
-      html += '<span class="pub-table-card-id">' + esc(t.tableId);
-      var timeLabel = fmtSlotTime(t.timeSlotId);
+      html += '<div class="pub-table-card-left">';
+      html += '<span class="pub-table-card-id">' + esc(t.tableId) + '</span>';
       if (timeLabel) html += '<span class="pub-table-card-time">' + esc(timeLabel) + '</span>';
-      html += '</span>';
+      html += '</div>';
+      html += '<div class="pub-table-card-steward">';
+      if (stewardName) {
+        html += '<span class="steward-label">Steward</span><span class="steward-name">' + esc(stewardName) + '</span>';
+      }
+      html += '</div>';
       html += '<span class="pub-table-status ' + esc(t.status) + '">' + esc(t.status) + '</span>';
       html += '</div>';
-
-      var stewardName = findStewardForTable(t.tableId);
-      if (stewardName) {
-        html += '<div class="pub-table-steward">Steward: <span>' + esc(stewardName) + '</span></div>';
-      }
 
       html += '<div class="pub-table-players">';
       (t.players || []).forEach(function(pid) {
