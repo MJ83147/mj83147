@@ -945,11 +945,17 @@ function submitAvailability(params) {
  * Packing is driven off the most-constrained players. A player who marked only
  * one time MUST sit at that time, so they anchor a table before anyone with
  * options. Each round takes the most-constrained unseated player, opens a table
- * at the busiest slot they can still play, and fills it with the next-most-
- * constrained players available there. We build exactly the template's full-
- * table count, then drop the flexible remainder into the balanced short table(s).
- * Non-submitters are wildcards (any slot, seated last) so they fill gaps without
+ * at a slot they can still play, and fills it with the next-most-constrained
+ * players available there. We build exactly the template's full-table count,
+ * then drop the flexible remainder into the balanced short table(s). Non-
+ * submitters are wildcards (any slot, seated last) so they fill gaps without
  * stranding a real player.
+ *
+ * Games are spread evenly across the day: when a table could open at several
+ * times its players marked, the slot running the FEWEST tables so far wins, so
+ * we fan out rather than stacking on one popular hour (still capped at 4/slot).
+ * Where a slot ends up with multiple tables, players are randomly assigned
+ * across those tables (one shuffle per generation; sizes preserved).
  *
  * Returns:
  *   {
@@ -1055,17 +1061,19 @@ function previewStageTables(params) {
     if (pa !== pb) return pa - pb;                 // then rarest slots first
     return a.tornId < b.tornId ? -1 : 1;
   }
-  // Choose the best slot from `candidates` to seat players drawn from `list`.
-  // Priority: (1) most fillable, (2) a slot ALREADY in use (fewer distinct
-  // play-times), (3) most real demand, (4) most popular overall, (5) earliest.
-  function chooseSlot(candidates, list) {
+  // Choose the best slot from `candidates` to seat `needed` players drawn from
+  // `list`. Priority: (1) able to fill the table, (2) FEWEST tables so far, so
+  // games spread evenly across the day rather than stacking on one time,
+  // (3) most headroom, (4) most real demand, (5) popularity, (6) earliest hour.
+  function chooseSlot(candidates, list, needed) {
     var best = null;
     candidates.forEach(function(s) {
       if (best === null) { best = s; return; }
-      var fs = availHere(list, s).length, fb = availHere(list, best).length;
+      var as = availHere(list, s).length, ab = availHere(list, best).length;
+      var fs = as >= needed ? 1 : 0, fb = ab >= needed ? 1 : 0;
       if (fs !== fb) { if (fs > fb) best = s; return; }
-      var us = slotTableCount[s] > 0 ? 1 : 0, ub = slotTableCount[best] > 0 ? 1 : 0;
-      if (us !== ub) { if (us > ub) best = s; return; }
+      if (slotTableCount[s] !== slotTableCount[best]) { if (slotTableCount[s] < slotTableCount[best]) best = s; return; }
+      if (as !== ab) { if (as > ab) best = s; return; }
       var rs = realCount(list, s), rb = realCount(list, best);
       if (rs !== rb) { if (rs > rb) best = s; return; }
       if (popularity[s] !== popularity[best]) { if (popularity[s] > popularity[best]) best = s; return; }
@@ -1088,7 +1096,7 @@ function previewStageTables(params) {
     var anchor = unseated.slice().sort(byConstraint)[0];
     var opts = openSlots(anchor);
     if (opts.length === 0) opts = Object.keys(anchor.slots); // cap fallback
-    var slotA = chooseSlot(opts, unseated);
+    var slotA = chooseSlot(opts, unseated, tableSize);
     var hereA = availHere(unseated, slotA).sort(byConstraint);
     var grpA = [anchor];
     for (var i = 0; i < hereA.length && grpA.length < tableSize; i++) {
@@ -1105,7 +1113,7 @@ function previewStageTables(params) {
     var cap = ALL_SLOTS.filter(function(s) {
       return slotTableCount[s] < MAX_TABLES_PER_SLOT && availHere(unseated, s).length > 0;
     });
-    var slotB = cap.length ? chooseSlot(cap, unseated)
+    var slotB = cap.length ? chooseSlot(cap, unseated, sz)
                            : (openSlots(unseated[0])[0] || Object.keys(unseated[0].slots)[0]);
     var hereB = availHere(unseated, slotB).sort(byConstraint);
     var grpB = hereB.slice(0, sz);
@@ -1122,7 +1130,7 @@ function previewStageTables(params) {
     var leftAnchor = unseated.slice().sort(byConstraint)[0];
     var leftOpts = openSlots(leftAnchor);
     if (leftOpts.length === 0) leftOpts = Object.keys(leftAnchor.slots);
-    var slotC = chooseSlot(leftOpts, unseated);
+    var slotC = chooseSlot(leftOpts, unseated, tableSize);
     var hereC = availHere(unseated, slotC).sort(byConstraint);
     var grpC = [leftAnchor];
     for (var j = 0; j < hereC.length && grpC.length < tableSize; j++) {
@@ -1139,6 +1147,32 @@ function previewStageTables(params) {
     if (!bySlot[t.slot]) bySlot[t.slot] = [];
     bySlot[t.slot].push(t);
   });
+
+  // Where a slot runs more than one table, randomly assign its players across
+  // those tables (table sizes are preserved). One shuffle per generation, so
+  // the plan is stable until regenerated. Everyone in a slot is available for
+  // it, so shuffling never breaks an availability constraint.
+  function shuffle_(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+  }
+  Object.keys(bySlot).forEach(function(slot) {
+    var ts = bySlot[slot];
+    if (ts.length < 2) return;
+    var pool2 = [];
+    ts.forEach(function(t) { pool2 = pool2.concat(t.players); });
+    shuffle_(pool2);
+    var cursor = 0;
+    ts.forEach(function(t) {
+      var n = t.players.length;
+      t.players = pool2.slice(cursor, cursor + n);
+      cursor += n;
+    });
+  });
+
   var slotIdsInOrder = Object.keys(bySlot).sort(function(a, b) {
     return slotHour_(a) - slotHour_(b);
   });
@@ -1533,26 +1567,28 @@ function testPackPreview(stage) {
     return a.tornId < b.tornId ? -1 : 1;
   }
 
-  // Choose the best slot from `candidates` to seat players drawn from `list`.
-  // Priority: (1) most fillable, (2) a slot ALREADY in use (fewer distinct
-  // play-times to run), (3) most real demand, (4) most popular overall,
-  // (5) earliest hour as the final deterministic fallback.
-  function chooseSlot(candidates, list) {
+  // Choose the best slot from `candidates` to seat `needed` players drawn from
+  // `list`. Priority: (1) able to fill the table, (2) FEWEST tables so far so
+  // games spread evenly across the day, (3) most headroom, (4) most real demand,
+  // (5) most popular overall, (6) earliest hour as the deterministic fallback.
+  function chooseSlot(candidates, list, needed) {
     var best = null;
     candidates.forEach(function(s) {
       if (best === null) { best = s; return; }
-      // (1) fillability
-      var fs = availHere(list, s).length, fb = availHere(list, best).length;
+      // (1) can this slot fill the table?
+      var as = availHere(list, s).length, ab = availHere(list, best).length;
+      var fs = as >= needed ? 1 : 0, fb = ab >= needed ? 1 : 0;
       if (fs !== fb) { if (fs > fb) best = s; return; }
-      // (2) already in use
-      var us = slotTableCount[s] > 0 ? 1 : 0, ub = slotTableCount[best] > 0 ? 1 : 0;
-      if (us !== ub) { if (us > ub) best = s; return; }
-      // (3) real (non-wildcard) demand
+      // (2) fewest tables so far -> spread across the day
+      if (slotTableCount[s] !== slotTableCount[best]) { if (slotTableCount[s] < slotTableCount[best]) best = s; return; }
+      // (3) more headroom
+      if (as !== ab) { if (as > ab) best = s; return; }
+      // (4) real (non-wildcard) demand
       var rs = realCount(list, s), rb = realCount(list, best);
       if (rs !== rb) { if (rs > rb) best = s; return; }
-      // (4) overall popularity
+      // (5) overall popularity
       if (popularity[s] !== popularity[best]) { if (popularity[s] > popularity[best]) best = s; return; }
-      // (5) earliest hour
+      // (6) earliest hour
       if (slotHour_(s) < slotHour_(best)) best = s;
     });
     return best;
@@ -1574,10 +1610,9 @@ function testPackPreview(stage) {
     var opts = openSlots(anchor);
     if (opts.length === 0) opts = Object.keys(anchor.slots); // cap fallback
 
-    // Among the anchor's playable slots, open the table where the most other
-    // unseated players are available (best chance to fill all 9), resolving
-    // ties toward a slot already in use.
-    var slot = chooseSlot(opts, unseated);
+    // Among the anchor's playable slots, open the table at the slot running the
+    // fewest tables so far (spread across the day) that can still fill.
+    var slot = chooseSlot(opts, unseated, tableSize);
 
     // Fill the table: anchor + next-most-constrained players available here.
     var here = availHere(unseated, slot).sort(byConstraint);
@@ -1596,7 +1631,7 @@ function testPackPreview(stage) {
     var cap = ALL_SLOTS.filter(function(s) {
       return slotTableCount[s] < MAX_TABLES_PER_SLOT && availHere(unseated, s).length > 0;
     });
-    var slot = cap.length ? chooseSlot(cap, unseated)
+    var slot = cap.length ? chooseSlot(cap, unseated, sz)
                           : (openSlots(unseated[0])[0] || Object.keys(unseated[0].slots)[0]);
     var here = availHere(unseated, slot).sort(byConstraint);
     var grp = here.slice(0, sz);
