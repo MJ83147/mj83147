@@ -343,7 +343,6 @@
       { key: 'rebuy_75', label: '75M Rebuy' },
       { key: '4', label: 'Stage 4' }
     ];
-    var STAGE_RANK = { '1': 0, 'rebuy_25': 1, '2': 2, 'rebuy_50': 3, '3': 4, 'rebuy_75': 5, '4': 6 };
     var currentTab = '1';
 
     function tablesForStage(stage) {
@@ -441,10 +440,6 @@
       var body = document.getElementById('stageTabBody');
       var tables = tablesForStage(stage);
       var anyComplete = tables.some(function(t) { return t.status === 'complete'; });
-      var hasDownstream = (state.tables || []).some(function(t) {
-        var r = STAGE_RANK[String(t.stage)];
-        return r !== undefined && r > STAGE_RANK[stage];
-      });
 
       var html = '';
       html += '<div class="stage-head">';
@@ -477,7 +472,7 @@
         }
       } else {
         html += '<div class="stage-block-body">';
-        tables.forEach(function(t) { html += renderTableCard(t, hasDownstream); });
+        tables.forEach(function(t) { html += renderTableCard(t); });
         html += '</div>';
       }
 
@@ -540,15 +535,6 @@
       body.querySelectorAll('.btn-confirm-rebuy').forEach(function(b) {
         b.addEventListener('click', function() { confirmRebuy(b.getAttribute('data-torn-id')); });
       });
-      body.querySelectorAll('.btn-record').forEach(function(b) {
-        b.addEventListener('click', function() { submitResult(b.getAttribute('data-table-id'), false); });
-      });
-      body.querySelectorAll('.btn-edit').forEach(function(b) {
-        b.addEventListener('click', function() { enterEditMode(b.getAttribute('data-table-id')); });
-      });
-      body.querySelectorAll('.result-form select').forEach(function(sel) {
-        sel.addEventListener('change', function() { updateDropdownDisables(sel.getAttribute('data-table-id')); });
-      });
     }
 
     function generateStage(stage) {
@@ -585,7 +571,7 @@
         '</div>';
     }
 
-    function renderTableCard(t, hasDownstream) {
+    function renderTableCard(t) {
       var isComplete = t.status === 'complete';
       var html = '<div class="table-card' + (isComplete ? ' complete' : '') + '" data-table-id="' + esc(t.tableId) + '">';
 
@@ -616,82 +602,8 @@
       });
       html += '</div>';
 
-      if (!isComplete) {
-        // Live: render result form
-        html += renderResultForm(t);
-      } else {
-        // Complete: edit button (disabled if downstream cascade)
-        html += '<div class="table-card-footer">';
-        var editDisabled = hasDownstream;
-        var editTitle = editDisabled ? 'Cannot edit: downstream tables exist' : 'Edit this result';
-        html += '<button class="btn-edit" data-table-id="' + esc(t.tableId) + '"' + (editDisabled ? ' disabled' : '') + ' title="' + editTitle + '">Edit Result</button>';
-        html += '</div>';
-      }
-
       html += '</div>';
       return html;
-    }
-
-    // Which finishing places a stage records:
-    //   Stage 1: 1st (+2nd if 4+, +3rd if 7+).  Stage 2: 1st + 2nd.
-    //   Stage 3 and all rebuy tiers: 1st only (knockout).
-    function placesForStage(stage, size) {
-      if (stage === '1') {
-        var p = ['1'];
-        if (size >= 4) p.push('2');
-        if (size >= 7) p.push('3');
-        return p;
-      }
-      if (stage === '2') return ['1', '2'];
-      return ['1']; // stage 3, rebuy_25/50/75
-    }
-
-    function renderResultForm(t) {
-      var size = Number(t.tableSize);
-      var stage = String(t.stage);
-      var optionsList = t.players.map(function(pid) {
-        var p = findPlayerById(pid);
-        return p ? { tornId: pid, name: p.name } : null;
-      }).filter(Boolean);
-
-      var labels = { '1': '1st', '2': '2nd', '3': '3rd' };
-      var html = '<div class="result-form" data-table-form="' + esc(t.tableId) + '">';
-      placesForStage(stage, size).forEach(function(slot) {
-        html += renderResultFormRow(t.tableId, labels[slot], slot, optionsList);
-      });
-      html += '<div class="result-form-actions">';
-      html += '<button class="btn-record" data-table-id="' + esc(t.tableId) + '">Record Result</button>';
-      html += '</div>';
-      html += '</div>';
-      return html;
-    }
-
-    function renderResultFormRow(tableId, label, slot, optionsList) {
-      var html = '<div class="result-form-row">';
-      html += '<span class="result-form-label">' + label + '</span>';
-      html += '<select id="sel-' + esc(tableId) + '-' + slot + '" data-table-id="' + esc(tableId) + '" data-slot="' + slot + '">';
-      html += '<option value="">— Select —</option>';
-      optionsList.forEach(function(o) {
-        html += '<option value="' + esc(o.tornId) + '">' + esc(o.name) + '</option>';
-      });
-      html += '</select>';
-      html += '</div>';
-      return html;
-    }
-
-    function updateDropdownDisables(tableId) {
-      // Disable already-selected players in the other dropdowns for this table
-      var selects = document.querySelectorAll('.result-form select[data-table-id="' + tableId + '"]');
-      var picked = [];
-      selects.forEach(function(s) { if (s.value) picked.push(s.value); });
-
-      selects.forEach(function(s) {
-        var current = s.value;
-        Array.from(s.options).forEach(function(opt) {
-          if (!opt.value) return; // skip placeholder
-          opt.disabled = (picked.indexOf(opt.value) !== -1) && (opt.value !== current);
-        });
-      });
     }
 
     function findPlayerById(tornId) {
@@ -713,83 +625,6 @@
         apiCall('reseatStage1', null, function(data) {
           toast(data.message || 'Reseated', 'success');
           fetchState();
-        });
-      });
-    }
-
-    function submitResult(tableId, isEdit) {
-      var p1 = (document.getElementById('sel-' + tableId + '-1') || {}).value || '';
-      var p2El = document.getElementById('sel-' + tableId + '-2');
-      var p3El = document.getElementById('sel-' + tableId + '-3');
-      var p2 = p2El ? p2El.value : '';
-      var p3 = p3El ? p3El.value : '';
-
-      if (!p1) return toast('Pick a 1st place', 'error');
-      // Find table to know stage and size
-      var t = (state.tables || []).filter(function(tt) { return tt.tableId === tableId; })[0];
-      if (!t) return toast('Table not found in state', 'error');
-      var size = Number(t.tableSize);
-      var stage = String(t.stage);
-      var needed = placesForStage(stage, size);
-      if (needed.indexOf('2') !== -1 && !p2) return toast('Pick a 2nd place', 'error');
-      if (needed.indexOf('3') !== -1 && !p3) return toast('Pick a 3rd place', 'error');
-
-      // Build a confirm summary
-      var name = function(id) { var pl = findPlayerById(id); return pl ? pl.name : id; };
-      var summary = '1st: ' + name(p1);
-      if (p2) summary += '\n2nd: ' + name(p2);
-      if (p3) summary += '\n3rd: ' + name(p3);
-
-      showConfirm('Record result for ' + tableId + '?\n\n' + summary, function() {
-        var action = isEdit ? 'editTableResult' : 'recordTableResult';
-        var params = { tableId: tableId, place1: p1 };
-        if (p2) params.place2 = p2;
-        if (p3) params.place3 = p3;
-        apiCall(action, params, function(data) {
-          toast(data.message || 'Result recorded', 'success');
-          fetchState();
-        });
-      });
-    }
-
-    function enterEditMode(tableId) {
-      // Find the table card and replace its footer with a result form
-      var card = document.querySelector('.table-card[data-table-id="' + tableId + '"]');
-      if (!card) return;
-      var t = (state.tables || []).filter(function(tt) { return tt.tableId === tableId; })[0];
-      if (!t) return;
-
-      // Remove footer with Edit Result button, insert form
-      var footer = card.querySelector('.table-card-footer');
-      if (footer) footer.remove();
-
-      // Build the form HTML and inject
-      var formHtml = renderResultForm(t);
-      card.insertAdjacentHTML('beforeend', formHtml);
-
-      // Pre-populate with current values
-      if (t.place1) document.getElementById('sel-' + tableId + '-1').value = t.place1;
-      if (t.place2) {
-        var p2El = document.getElementById('sel-' + tableId + '-2');
-        if (p2El) p2El.value = t.place2;
-      }
-      if (t.place3) {
-        var p3El = document.getElementById('sel-' + tableId + '-3');
-        if (p3El) p3El.value = t.place3;
-      }
-      updateDropdownDisables(tableId);
-
-      // Wire up the new submit and selects
-      var newBtn = card.querySelector('.btn-record');
-      if (newBtn) {
-        newBtn.textContent = 'Save Edit';
-        newBtn.addEventListener('click', function() {
-          submitResult(tableId, true);
-        });
-      }
-      card.querySelectorAll('.result-form select').forEach(function(sel) {
-        sel.addEventListener('change', function() {
-          updateDropdownDisables(tableId);
         });
       });
     }
