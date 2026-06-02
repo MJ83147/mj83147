@@ -609,11 +609,14 @@
 
     var html = '<div class="' + classes.join(' ') + '" draggable="true" data-torn-id="' + esc(p.tornId) + '" data-current-slot="' + esc(currentSlot) + '">';
     html += '<span class="player-pill-name">' + esc(p.name) + '</span>';
-    // The other times this player marked — i.e. where they can be dragged.
+    // The other times this player marked that actually have a column in this
+    // plan — i.e. slots they could realistically be dragged to.
     var picks = AVAIL_BY_TORN_ID[p.tornId] || [];
     var others = [];
     for (var i = 0; i < picks.length; i++) {
-      if (picks[i] !== currentSlot) others.push(fmtSlot(picks[i]));
+      if (picks[i] !== currentSlot && slots.hasOwnProperty(picks[i])) {
+        others.push(fmtSlot(picks[i]));
+      }
     }
     if (others.length) {
       html += '<span class="player-pill-slots">' + esc(others.join(' · ')) + '</span>';
