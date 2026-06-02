@@ -166,9 +166,32 @@
       padding: 6px;
       display: flex;
       flex-direction: column;
-      gap: 3px;
+      gap: 6px;
       min-height: 60px;
     }
+
+    .table-group {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding: 5px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .table-group.short {
+      border-color: var(--accent);
+      border-style: dashed;
+    }
+    .table-group-head {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      padding: 0 2px 2px;
+    }
+    .table-group.short .table-group-head { color: var(--accent); }
 
     .player-pill {
       display: flex;
@@ -487,8 +510,11 @@
     });
 
     var html = '<div class="slots-row">';
+    var tableNum = 1; // global running table number, matches commit order
     slotIds.forEach(function(slotId) {
-      html += renderSlotColumn(slotId, shortSlotsSet);
+      var n = slots[slotId].length;
+      html += renderSlotColumn(slotId, shortSlotsSet, tableNum);
+      if (n > 0) tableNum += layoutForCount(n, TABLE_SIZE).length;
     });
     // Non-pool column
     html += renderNonPoolColumn(shortSlotsSet);
@@ -498,7 +524,7 @@
     bindDragHandlers();
   }
 
-  function renderSlotColumn(slotId, shortSlotsSet) {
+  function renderSlotColumn(slotId, shortSlotsSet, startTableNum) {
     var players = slots[slotId];
     var n = players.length;
 
@@ -535,8 +561,21 @@
     if (players.length === 0) {
       html += '<div class="empty-msg">empty</div>';
     } else {
-      players.forEach(function(p) {
-        html += renderPlayerPill(p, slotId, shortSlotsSet);
+      // Split the slot's players into its actual tables (same layout the commit
+      // uses) and render each as a labelled group so multi-table slots read as
+      // distinct tables, not one block.
+      var sizes = layoutForCount(players.length, TABLE_SIZE);
+      var cursor = 0;
+      sizes.forEach(function(size, ti) {
+        var slice = players.slice(cursor, cursor + size);
+        cursor += size;
+        var isShort = size < TABLE_SIZE;
+        html += '<div class="table-group' + (isShort ? ' short' : '') + '">';
+        html += '<div class="table-group-head">Table ' + (startTableNum + ti) + ' · ' + size + (isShort ? ' short' : '') + '</div>';
+        slice.forEach(function(p) {
+          html += renderPlayerPill(p, slotId, shortSlotsSet);
+        });
+        html += '</div>';
       });
     }
     html += '</div>';
