@@ -351,6 +351,22 @@
   var TABLE_SIZE = 9;
   var ORIGINAL_PLAN = null;   // pristine algorithm output (for reset)
   var AVAIL_BY_TORN_ID = {};  // tornId -> list of slot ids the player picked
+  var RETURN_TO = 'availability-admin'; // page to return to on cancel/commit
+
+  // Friendly stage label + tableId prefix — must mirror the backend
+  // (stageTablePrefix_ in appscript.gs) so committed IDs match the rest of the app.
+  function stageLabel(stage) {
+    if (stage === 'rebuy_25') return '25M Rebuy';
+    if (stage === 'rebuy_50') return '50M Rebuy';
+    if (stage === 'rebuy_75') return '75M Rebuy';
+    return 'Stage ' + stage;
+  }
+  function stageTablePrefix(stage) {
+    if (stage === 'rebuy_25') return 'R25-T';
+    if (stage === 'rebuy_50') return 'R50-T';
+    if (stage === 'rebuy_75') return 'R75-T';
+    return 'S' + stage + '-T';
+  }
 
   // Internal mutable state: slotId -> [player...] and a separate non-pool list
   // Each player: { tornId, name, source, originalSlot (for warnings) }
@@ -374,6 +390,7 @@
       STAGE = String(payload.stage || '');
       TABLE_SIZE = Number(payload.tableSize) || 9;
       ORIGINAL_PLAN = payload.plan;
+      RETURN_TO = payload.returnTo || 'availability-admin';
       buildAvailabilityMap(payload.availability || []);
       loadFromPlan(payload.plan);
     } catch (e) {
@@ -381,11 +398,11 @@
       return;
     }
 
-    document.getElementById('stageTitle').textContent = 'Stage ' + STAGE + ' — drag to refine';
+    document.getElementById('stageTitle').textContent = stageLabel(STAGE) + ' — drag to refine';
 
     document.getElementById('btnReset').addEventListener('click', resetToAlgorithm);
     document.getElementById('btnCancel').addEventListener('click', function() {
-      window.location.href = 'availability-admin';
+      window.location.href = RETURN_TO;
     });
     document.getElementById('btnCommit').addEventListener('click', commit);
 
@@ -752,7 +769,7 @@
     var totalTables = 0;
     plan.forEach(function(s) { totalTables += s.tables.length; });
 
-    if (!confirm('Create ' + totalTables + ' Stage ' + STAGE + ' tables? Players will be locked in and tables will go live.')) return;
+    if (!confirm('Create ' + totalTables + ' ' + stageLabel(STAGE) + ' tables? Players will be locked in and tables will go live.')) return;
 
     var commitBtn = document.getElementById('btnCommit');
     commitBtn.disabled = true;
@@ -772,7 +789,7 @@
         }
         sessionStorage.removeItem('seatingEditor.plan');
         alert(data.message || 'Tables created');
-        window.location.href = 'availability-admin';
+        window.location.href = RETURN_TO;
       })
       .catch(function(err) {
         commitBtn.disabled = false;
@@ -798,7 +815,7 @@
         var slice = seated.slice(cursor, cursor + size);
         cursor += size;
         tables.push({
-          tableId: 'S' + STAGE + '-T' + tableCounter,
+          tableId: stageTablePrefix(STAGE) + tableCounter,
           size: size,
           playerIds: slice.map(function(s) { return s.tornId; }),
           playerNames: slice.map(function(s) { return s.name; }),

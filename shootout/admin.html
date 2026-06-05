@@ -543,12 +543,21 @@
         var count = 0;
         preview.plan.forEach(function(e) { count += e.tables.length; });
         if (count === 0) { toast('No players available to seat', 'error'); return; }
-        showConfirm('Generate ' + count + ' table(s) for ' + stageLabel(stage) + '?', function() {
-          apiCall('commitStageTables', { stage: stage, plan: JSON.stringify(preview.plan) }, function(data) {
-            toast(data.message || 'Generated', 'success');
-            fetchState();
-          });
-        });
+        // Hand off to the seating editor so the draw can be refined before it goes live.
+        var payload = {
+          stage: preview.stage,
+          tableSize: preview.tableSize,
+          plan: preview.plan,
+          availability: state.availability || [],
+          returnTo: 'admin'
+        };
+        try {
+          sessionStorage.setItem('seatingEditor.plan', JSON.stringify(payload));
+        } catch (e) {
+          toast('Could not open seating editor: ' + e.message, 'error');
+          return;
+        }
+        window.location.href = 'seating-editor';
       });
     }
 
