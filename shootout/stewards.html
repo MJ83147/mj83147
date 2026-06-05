@@ -29,6 +29,94 @@
     .steward-result-row .srr-rebuy { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
     .steward-result-row .srr-rebuy input[disabled] + span, .steward-result-row .srr-rebuy.disabled { opacity: 0.4; }
     .steward-result-actions { display: flex; gap: 8px; }
+
+    /* ===== Player messages ===== */
+    .btn-messages {
+      font-family: var(--font-body); font-size: 13px; font-weight: 600; cursor: pointer;
+      border-radius: 6px; padding: 9px 16px; color: var(--text);
+      border: 1px solid var(--border); background: var(--surface-2);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .btn-messages:hover { border-color: var(--accent-dim); background: var(--surface-3); }
+
+    .msg-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1100;
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .msg-modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .msg-modal {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      width: 100%; max-width: 640px; max-height: 85vh; display: flex; flex-direction: column;
+      transform: translateY(12px); transition: transform 0.2s;
+    }
+    .msg-modal-overlay.open .msg-modal { transform: translateY(0); }
+    .msg-modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 18px 22px; border-bottom: 1px solid var(--border);
+    }
+    .msg-modal-header h2 {
+      font-family: var(--font-mono); font-size: 14px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin: 0;
+    }
+    .msg-modal-close {
+      width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 4px;
+      background: var(--surface-2); color: var(--text-muted); font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: border-color 0.2s, color 0.2s;
+    }
+    .msg-modal-close:hover { border-color: var(--border-light, var(--accent-dim)); color: var(--text); }
+
+    .msg-modal-tabs {
+      display: flex; gap: 4px; padding: 12px 22px 0; border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .msg-tab {
+      font-family: var(--font-mono); font-size: 12px; font-weight: 600; cursor: pointer;
+      padding: 9px 14px; border: 1px solid transparent; border-bottom: none;
+      border-radius: 6px 6px 0 0; background: transparent; color: var(--text-muted);
+      margin-bottom: -1px; transition: color 0.15s, background 0.15s;
+    }
+    .msg-tab:hover { color: var(--text); }
+    .msg-tab.active {
+      color: var(--accent); background: var(--surface-2);
+      border-color: var(--border); border-bottom-color: var(--surface-2);
+    }
+
+    .msg-modal-body { padding: 18px 22px 22px; overflow-y: auto; }
+    .msg-panel { display: none; flex-direction: column; gap: 14px; }
+    .msg-panel.active { display: flex; }
+
+    .msg-card {
+      border: 1px solid var(--border); border-radius: 7px;
+      background: var(--surface-2); overflow: hidden;
+    }
+    .msg-card-label {
+      font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.6px; color: var(--accent-dim);
+      padding: 10px 14px 0;
+    }
+    .msg-card-text {
+      font-family: var(--font-body); font-size: 13px; line-height: 1.6; color: var(--text);
+      white-space: pre-wrap; padding: 8px 14px 12px; margin: 0;
+    }
+    .msg-card-footer {
+      display: flex; justify-content: flex-end; padding: 0 14px 12px;
+    }
+    .btn-msg-copy {
+      font-family: var(--font-body); font-size: 12px; font-weight: 600; cursor: pointer;
+      border-radius: 5px; padding: 7px 14px; color: var(--text);
+      border: 1px solid var(--border); background: var(--surface-3);
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+    .btn-msg-copy:hover { border-color: var(--accent-dim); }
+    .btn-msg-copy.copied { background: var(--green); border-color: transparent; color: #fff; }
+
+    @media (max-width: 600px) {
+      .msg-modal-overlay { padding: 12px; }
+      .msg-modal { max-height: 90vh; }
+      .msg-modal-tabs { padding: 10px 14px 0; }
+      .msg-modal-body { padding: 16px 14px; }
+    }
   </style>
   <script src="config.js"></script>
   <script src="steward-auth.js"></script>
@@ -68,6 +156,14 @@
 
         <section class="stewards-section">
           <div class="section-title">
+            <span>Player messages</span>
+          </div>
+          <p class="section-blurb">Ready-made messages to send players after a result. Pick the stage, then click to copy the message that fits their finish.</p>
+          <button class="btn-messages" id="btnOpenMessages">Open sample messages</button>
+        </section>
+
+        <section class="stewards-section">
+          <div class="section-title">
             <span>Steward availability</span>
             <span class="section-title-count" id="availSlotsCount"></span>
           </div>
@@ -92,6 +188,18 @@
     </div>
   </main>
 
+  <!-- SAMPLE MESSAGES MODAL -->
+  <div class="msg-modal-overlay" id="messagesModal">
+    <div class="msg-modal">
+      <div class="msg-modal-header">
+        <h2>Sample messages</h2>
+        <button class="msg-modal-close" id="btnCloseMessages" aria-label="Close">&times;</button>
+      </div>
+      <div class="msg-modal-tabs" id="msgTabs"></div>
+      <div class="msg-modal-body" id="msgPanels"></div>
+    </div>
+  </div>
+
   <div class="toast-container" id="toasts" style="position:fixed;bottom:24px;right:24px;z-index:1000;display:flex;flex-direction:column;gap:8px;"></div>
 
   <script>
@@ -111,8 +219,127 @@
     document.addEventListener('DOMContentLoaded', function() {
       renderSignedInPill();
       document.getElementById('btnAutoAssign').addEventListener('click', autoAssignStewards);
+      initMessagesModal();
       fetchState();
     });
+
+    // ===== SAMPLE MESSAGES MODAL =====
+    // Edit the copy here. Each stage is a tab; each message gets its own copy button.
+    var MESSAGE_TABS = [
+      {
+        label: 'Stage 1',
+        messages: [
+          { label: 'Rebuy offer', text:
+"Hey, unlucky result.\n" +
+"If you want to rebuy, It costs 25m and puts you on a 3 player rebuy table, which you'll need to win to reach stage 2.\n" +
+"To rebuy, let me know now then send 25m to weedpsycho by tomorrow.\n" +
+"The rebuy stage is on Sunday, and you'll be able to update your availability for it." },
+          { label: '3rd place', text:
+"congrats you've secured 3rd place in stage 1 which means you advance to stage 2. This will happen after the rebuy stages have finished so keep an eye on discord or ping your steward on torn for more details" },
+          { label: '2nd place', text:
+"congrats you've secured 2nd place in stage 1 which means you skip stage 2 and advance to stage 3. This will happen after stage 2 games have finished so keep an eye on discord or ping your steward on torn for more details" },
+          { label: '1st place', text:
+"congrats you've secured 1st place in stage 1 which means you skip stage 2 and 3 and advance to stage 4 (the final stage). This will happen after stage 2 and 3 have finished so keep an eye on discord or ping your steward on torn for more details" }
+        ]
+      },
+      {
+        label: 'Stage 2',
+        messages: [
+          { label: 'Rebuy offer', text:
+"Hey, unlucky result.\n" +
+"If you want to rebuy, It costs 50m and puts you on a 3 player rebuy table, which you'll need to win to reach stage 3.\n" +
+"To rebuy, let me know now then send 50m to weedpsycho by tomorrow.\n" +
+"You'll be able to update your availability for the rebuy stage." },
+          { label: '2nd place', text:
+"congrats you've secured 2nd place in stage 2 which means you advance to stage 3. This will happen after the rebuy stages have finished so keep an eye on discord or ping your steward on torn for more details" },
+          { label: '1st place', text:
+"congrats you've secured 1st place in stage 2 which means you skip stage 3 and advance to stage 4 (the final stage). This will happen after stage 3 games have finished so keep an eye on discord or ping your steward on torn for more details" }
+        ]
+      },
+      {
+        label: 'Stage 3',
+        messages: [
+          { label: 'Rebuy offer', text:
+"Hey, unlucky result.\n" +
+"If you want to rebuy, It costs 75m and puts you on a 3 player rebuy table, which you'll need to win to reach stage 4.\n" +
+"To rebuy, let me know now then send 75m to weedpsycho by tomorrow.\n" +
+"You'll be able to update your availability for the rebuy stage." },
+          { label: '1st place', text:
+"congrats you've secured 1st place in stage 3 which means you advance to stage 4 (the final stage). This will happen after the rebuy stages have finished so keep an eye on discord or ping your steward on torn for more details" }
+        ]
+      },
+      {
+        label: 'Stage 4',
+        messages: [
+          { label: 'Top 3 advance', text:
+"congrats you've secured a top 3 finish in stage 4 which means you advance to the next stage 4 table. Progression continues until the final table so keep an eye on discord or ping your steward on torn for more details" },
+          { label: 'Eliminated', text:
+"unlucky result, that's the end of the road this time. There's no rebuy at stage 4. Thanks for playing and keep an eye on discord for how the rest of the tournament plays out" }
+        ]
+      }
+    ];
+
+    function initMessagesModal() {
+      var tabsEl = document.getElementById('msgTabs');
+      var panelsEl = document.getElementById('msgPanels');
+      var tabsHtml = '';
+      var panelsHtml = '';
+
+      MESSAGE_TABS.forEach(function(tab, i) {
+        var activeCls = i === 0 ? ' active' : '';
+        tabsHtml += '<button class="msg-tab' + activeCls + '" data-tab="' + i + '">' + esc(tab.label) + '</button>';
+
+        panelsHtml += '<div class="msg-panel' + activeCls + '" data-panel="' + i + '">';
+        tab.messages.forEach(function(m) {
+          panelsHtml += '<div class="msg-card">';
+          panelsHtml += '<div class="msg-card-label">' + esc(m.label) + '</div>';
+          panelsHtml += '<p class="msg-card-text">' + esc(m.text) + '</p>';
+          panelsHtml += '<div class="msg-card-footer"><button class="btn-msg-copy" data-text="' + esc(m.text) + '">Click to copy</button></div>';
+          panelsHtml += '</div>';
+        });
+        panelsHtml += '</div>';
+      });
+
+      tabsEl.innerHTML = tabsHtml;
+      panelsEl.innerHTML = panelsHtml;
+
+      tabsEl.querySelectorAll('.msg-tab').forEach(function(btn) {
+        btn.addEventListener('click', function() { switchMessageTab(btn.getAttribute('data-tab')); });
+      });
+      panelsEl.querySelectorAll('.btn-msg-copy').forEach(function(btn) {
+        btn.addEventListener('click', function() { copyText(btn.getAttribute('data-text'), btn); });
+      });
+
+      document.getElementById('btnOpenMessages').addEventListener('click', openMessagesModal);
+      document.getElementById('btnCloseMessages').addEventListener('click', closeMessagesModal);
+      var overlay = document.getElementById('messagesModal');
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) closeMessagesModal();
+      });
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && overlay.classList.contains('open')) closeMessagesModal();
+      });
+    }
+
+    function switchMessageTab(index) {
+      document.querySelectorAll('.msg-tab').forEach(function(b) {
+        b.classList.toggle('active', b.getAttribute('data-tab') === String(index));
+      });
+      document.querySelectorAll('.msg-panel').forEach(function(p) {
+        p.classList.toggle('active', p.getAttribute('data-panel') === String(index));
+      });
+    }
+
+    function openMessagesModal() { document.getElementById('messagesModal').classList.add('open'); }
+    function closeMessagesModal() { document.getElementById('messagesModal').classList.remove('open'); }
+
+    function copyText(text, btn) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() { flashCopied(btn); }, function() { fallbackCopy(text, btn); });
+      } else {
+        fallbackCopy(text, btn);
+      }
+    }
 
     // ===== API =====
     function apiCall(action, params, callback) {
