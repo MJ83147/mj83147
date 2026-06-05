@@ -1,7 +1,7 @@
 // Frontend-only gate for the admin pages. The page body is hidden until the
 // user enters a password that matches the SHA-256 hash below. Once verified,
-// a flag is stored in sessionStorage so reloads in the same tab skip the
-// prompt. NOT a security boundary — anyone reading source can see the hash
+// a flag is stored in localStorage so the login is remembered across reloads,
+// tabs, and browser restarts. NOT a security boundary — anyone reading source can see the hash
 // and brute-force a short password, and the Apps Script API is still open
 // to anyone who finds the /exec URL.
 //
@@ -71,7 +71,7 @@
       if (!entered) return;
       var hash = await sha256Hex(entered);
       if (hash === EXPECTED_HASH) {
-        try { sessionStorage.setItem(SESSION_KEY, '1'); } catch (_) {}
+        try { localStorage.setItem(SESSION_KEY, '1'); } catch (_) {}
         unlock();
       } else {
         error.textContent = 'Wrong password';
@@ -88,7 +88,7 @@
 
   function init() {
     try {
-      if (sessionStorage.getItem(SESSION_KEY) === '1') return;
+      if (localStorage.getItem(SESSION_KEY) === '1') return;
     } catch (_) {}
 
     if (document.readyState === 'loading') {

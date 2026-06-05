@@ -2891,6 +2891,39 @@ body.stewards .section-title-actions {
   gap: 12px;
 }
 
+/* Collapsible sections */
+body.stewards .stewards-section.collapsible .section-title {
+  cursor: pointer;
+  user-select: none;
+}
+
+body.stewards .section-toggle-left {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+body.stewards .section-chevron {
+  font-size: 10px;
+  color: var(--text-dim);
+  transition: transform 0.2s;
+}
+
+body.stewards .stewards-section.collapsed .section-chevron {
+  transform: rotate(-90deg);
+}
+
+body.stewards .stewards-section.collapsed .section-title {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+body.stewards .stewards-section.collapsed > *:not(.section-title) {
+  display: none;
+}
+
 body.stewards .btn-auto-assign,
 body.stewards button.btn-auto-assign {
   -webkit-appearance: none;
@@ -3157,6 +3190,33 @@ body.stewards .steward-table-card-header {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+body.stewards .steward-table-card-header-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+body.stewards .steward-table-card.collapsible .steward-table-card-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+body.stewards .steward-table-card .card-chevron {
+  font-size: 10px;
+  color: var(--text-dim);
+  transition: transform 0.2s;
+  margin-right: 2px;
+}
+
+body.stewards .steward-table-card.collapsed .card-chevron {
+  transform: rotate(-90deg);
+}
+
+body.stewards .steward-table-card.collapsed > *:not(.steward-table-card-header) {
+  display: none;
 }
 
 body.stewards .steward-table-card-id {

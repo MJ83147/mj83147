@@ -77,10 +77,10 @@
         // 1. Try admin password (client-side hash check, instant)
         var hash = await sha256Hex(entered);
         if (hash === EXPECTED_HASH) {
-          try { sessionStorage.setItem(SESSION_KEY, '1'); } catch (_) {}
+          try { localStorage.setItem(SESSION_KEY, '1'); } catch (_) {}
           try {
-            sessionStorage.removeItem(STEWARD_ID_KEY);
-            sessionStorage.removeItem(STEWARD_NAME_KEY);
+            localStorage.removeItem(STEWARD_ID_KEY);
+            localStorage.removeItem(STEWARD_NAME_KEY);
           } catch (_) {}
           unlock();
           return;
@@ -95,9 +95,9 @@
         var data = await res.json();
         if (data && data.ok) {
           try {
-            sessionStorage.setItem(SESSION_KEY, '1');
-            sessionStorage.setItem(STEWARD_ID_KEY, data.stewardId || '');
-            sessionStorage.setItem(STEWARD_NAME_KEY, data.name || '');
+            localStorage.setItem(SESSION_KEY, '1');
+            localStorage.setItem(STEWARD_ID_KEY, data.stewardId || '');
+            localStorage.setItem(STEWARD_NAME_KEY, data.name || '');
           } catch (_) {}
           unlock();
           return;
@@ -121,8 +121,8 @@
     // Fire a custom event so the page can read who logged in
     try {
       var detail = {
-        stewardId: sessionStorage.getItem(STEWARD_ID_KEY) || '',
-        stewardName: sessionStorage.getItem(STEWARD_NAME_KEY) || ''
+        stewardId: localStorage.getItem(STEWARD_ID_KEY) || '',
+        stewardName: localStorage.getItem(STEWARD_NAME_KEY) || ''
       };
       document.dispatchEvent(new CustomEvent('steward-auth-unlocked', { detail: detail }));
     } catch (_) {}
@@ -130,7 +130,7 @@
 
   function init() {
     try {
-      if (sessionStorage.getItem(SESSION_KEY) === '1') return;
+      if (localStorage.getItem(SESSION_KEY) === '1') return;
     } catch (_) {}
 
     if (document.readyState === 'loading') {

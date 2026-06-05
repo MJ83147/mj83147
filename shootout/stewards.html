@@ -6,7 +6,7 @@
   <title>Progressive Shootout // Stewards</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="stylesheet" href="styles.css?v=4">
   <style>
     .steward-result { margin-top: 10px; border-top: 1px solid var(--border, rgba(255,255,255,0.1)); padding-top: 10px; }
     .steward-result-summary { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; margin-bottom: 8px; }
@@ -162,18 +162,24 @@
           <button class="btn-messages" id="btnOpenMessages">Open sample messages</button>
         </section>
 
-        <section class="stewards-section">
+        <section class="stewards-section collapsible" id="sectionAvailability">
           <div class="section-title">
-            <span>Steward availability</span>
+            <span class="section-toggle-left">
+              <span class="section-chevron" aria-hidden="true">&#9662;</span>
+              <span>Steward availability</span>
+            </span>
             <span class="section-title-count" id="availSlotsCount"></span>
           </div>
           <p class="section-blurb">Click a slot to toggle whether the steward can cover it. Slots without tables yet are dimmed but still pickable so stewards can plan ahead. Removing a slot will auto-unassign the steward from any table at that slot.</p>
           <div id="availGrid" class="avail-grid"></div>
         </section>
 
-        <section class="stewards-section">
+        <section class="stewards-section collapsible" id="sectionTables">
           <div class="section-title">
-            <span>Tables by time slot</span>
+            <span class="section-toggle-left">
+              <span class="section-chevron" aria-hidden="true">&#9662;</span>
+              <span>Tables by time slot</span>
+            </span>
             <div class="section-title-actions">
               <button class="btn-auto-assign" id="btnAutoAssign">Auto-assign stewards</button>
               <span class="section-title-count" id="tablesCount"></span>
@@ -216,12 +222,46 @@
     var availSaveTimers = {}; // stewardId -> setTimeout handle (debounce saves)
     var localAvailability = {}; // stewardId -> Set of slotIds (optimistic state)
 
+    // Persisted collapse state so reloads keep sections/cards how the user left them.
+    // { sections: { sectionId: collapsed }, cards: { tableId: collapsed } }
+    var COLLAPSE_KEY = 'shootout_steward_collapse';
+    var collapseState = loadCollapseState();
+
+    function loadCollapseState() {
+      var obj = {};
+      try { obj = JSON.parse(localStorage.getItem(COLLAPSE_KEY)) || {}; } catch (_) {}
+      if (!obj.sections) obj.sections = {};
+      if (!obj.cards) obj.cards = {};
+      return obj;
+    }
+
+    function saveCollapseState() {
+      try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify(collapseState)); } catch (_) {}
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
       renderSignedInPill();
       document.getElementById('btnAutoAssign').addEventListener('click', autoAssignStewards);
+      initSectionToggles();
       initMessagesModal();
       fetchState();
     });
+
+    // ===== COLLAPSIBLE SECTIONS =====
+    function initSectionToggles() {
+      document.querySelectorAll('.stewards-section.collapsible').forEach(function(section) {
+        var id = section.id;
+        if (collapseState.sections[id]) section.classList.add('collapsed');
+        var title = section.querySelector('.section-title');
+        title.addEventListener('click', function(e) {
+          // Don't collapse when clicking an action inside the header (e.g. Auto-assign).
+          if (e.target.closest('.section-title-actions')) return;
+          var collapsed = section.classList.toggle('collapsed');
+          collapseState.sections[id] = collapsed;
+          saveCollapseState();
+        });
+      });
+    }
 
     // ===== SAMPLE MESSAGES MODAL =====
     // Edit the copy here. Each stage is a tab; each message gets its own copy button.
@@ -737,6 +777,15 @@
       container.querySelectorAll('.steward-result').forEach(function(box) {
         wireResultBox(box);
       });
+
+      container.querySelectorAll('.steward-table-card.collapsible .steward-table-card-header').forEach(function(header) {
+        header.addEventListener('click', function() {
+          var card = header.parentElement;
+          var collapsed = card.classList.toggle('collapsed');
+          collapseState.cards[card.getAttribute('data-table-id')] = collapsed;
+          saveCollapseState();
+        });
+      });
     }
 
     function wireResultBox(box) {
@@ -831,7 +880,8 @@
     }
 
     function renderTableCard(t, currentAssign, eligible, takenAtSlot) {
-      var statusCls = (t.status === 'complete') ? 'complete' : 'live';
+      var isComplete = (t.status === 'complete');
+      var statusCls = isComplete ? 'complete' : 'live';
       var stage = String(t.stage);
       var stageLabel = friendlyStageLabel(stage);
 
@@ -847,9 +897,19 @@
           '</div>';
       });
 
-      var html = '<div class="steward-table-card">';
+      // Completed games default to collapsed so finished tables don't clutter the
+      // list, but a remembered per-table choice (from a prior toggle) wins.
+      var collapsed = isComplete;
+      if (isComplete && collapseState.cards.hasOwnProperty(t.tableId)) {
+        collapsed = collapseState.cards[t.tableId];
+      }
+      var cardCls = 'steward-table-card' + (isComplete ? ' collapsible' : '') + (collapsed ? ' collapsed' : '');
+      var html = '<div class="' + cardCls + '" data-table-id="' + esc(t.tableId) + '">';
       html += '  <div class="steward-table-card-header">';
-      html += '    <span class="steward-table-card-id">' + esc(t.tableId) + '</span>';
+      html += '    <span class="steward-table-card-header-left">';
+      if (isComplete) html += '<span class="card-chevron" aria-hidden="true">&#9662;</span>';
+      html += '      <span class="steward-table-card-id">' + esc(t.tableId) + '</span>';
+      html += '    </span>';
       html += '    <span class="steward-table-card-stage">' + esc(stageLabel) + '</span>';
       html += '    <span class="steward-table-card-status ' + statusCls + '">' + esc(t.status) + '</span>';
       html += '  </div>';
@@ -1018,7 +1078,7 @@
 
     function renderSignedInPill() {
       var name = '';
-      try { name = sessionStorage.getItem('shootout_steward_name') || ''; } catch (_) {}
+      try { name = localStorage.getItem('shootout_steward_name') || ''; } catch (_) {}
       var pill = document.getElementById('signedInAs');
       if (!pill) return;
       if (!name) {
@@ -1033,9 +1093,9 @@
       if (link) link.addEventListener('click', function(e) {
         e.preventDefault();
         try {
-          sessionStorage.removeItem('shootout_steward_authed');
-          sessionStorage.removeItem('shootout_steward_id');
-          sessionStorage.removeItem('shootout_steward_name');
+          localStorage.removeItem('shootout_steward_authed');
+          localStorage.removeItem('shootout_steward_id');
+          localStorage.removeItem('shootout_steward_name');
         } catch (_) {}
         location.reload();
       });
