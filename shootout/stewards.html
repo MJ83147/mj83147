@@ -768,6 +768,7 @@
         var sel = row.querySelector('.srr-place');
         var cb = row.querySelector('.srr-rebuy-cb');
         var label = row.querySelector('.srr-rebuy');
+        if (!cb) return; // rebuy tables have no rebuy checkbox
         if (sel.value) {
           cb.checked = false;
           cb.disabled = true;
@@ -794,7 +795,7 @@
         if (place) {
           if (placeByNum[place]) { toast('Two players selected for the same place', 'error'); return; }
           placeByNum[place] = pid;
-        } else if (cb.checked) {
+        } else if (cb && cb.checked) {
           rebuys.push(pid);
         }
       }
@@ -832,7 +833,7 @@
     function renderTableCard(t, currentAssign, eligible, takenAtSlot) {
       var statusCls = (t.status === 'complete') ? 'complete' : 'live';
       var stage = String(t.stage);
-      var stageLabel = (stage === '1' || stage === '2' || stage === '3') ? 'Stage ' + stage : stage;
+      var stageLabel = friendlyStageLabel(stage);
 
       var playerCells = '';
       var tornIds = [];
@@ -881,7 +882,7 @@
       html += '    <button class="btn-copy" data-torn-ids="' + esc(tornIds.join(',')) + '">Copy Torn IDs (' + tornIds.length + ')</button>';
       html += '  </div>';
 
-      if (stage === '1' || stage === '2' || stage === '3') {
+      if (stage === '1' || stage === '2' || stage === '3' || isRebuyStage(stage)) {
         html += renderResultSection(t, stage);
       }
 
@@ -924,8 +925,11 @@
         if (stage === '1' || stage === '2') html += '<option value="2"' + (sel === '2' ? ' selected' : '') + '>2nd</option>';
         if (stage === '1') html += '<option value="3"' + (sel === '3' ? ' selected' : '') + '>3rd</option>';
         html += '</select>';
-        var disabled = sel ? ' disabled' : '';
-        html += '<label class="srr-rebuy' + (sel ? ' disabled' : '') + '"><input type="checkbox" class="srr-rebuy-cb"' + (rebuyChecked ? ' checked' : '') + disabled + '> <span>rebuy</span></label>';
+        // Rebuy tables are knockouts — losers are out for good, so no re-rebuy tick.
+        if (!isRebuyStage(stage)) {
+          var disabled = sel ? ' disabled' : '';
+          html += '<label class="srr-rebuy' + (sel ? ' disabled' : '') + '"><input type="checkbox" class="srr-rebuy-cb"' + (rebuyChecked ? ' checked' : '') + disabled + '> <span>rebuy</span></label>';
+        }
         html += '</div>';
       });
       html += '</div>';
@@ -983,6 +987,18 @@
     }
 
     function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+    function isRebuyStage(stage) {
+      return stage === 'rebuy_25' || stage === 'rebuy_50' || stage === 'rebuy_75';
+    }
+
+    function friendlyStageLabel(stage) {
+      if (stage === 'rebuy_25') return '25M Rebuy';
+      if (stage === 'rebuy_50') return '50M Rebuy';
+      if (stage === 'rebuy_75') return '75M Rebuy';
+      if (stage === '1' || stage === '2' || stage === '3') return 'Stage ' + stage;
+      return stage;
+    }
 
     function toast(message, type) {
       var container = document.getElementById('toasts');
