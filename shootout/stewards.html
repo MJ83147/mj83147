@@ -6,7 +6,7 @@
   <title>Progressive Shootout // Stewards</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=7">
+  <link rel="stylesheet" href="styles.css?v=8">
   <style>
     .steward-result { margin-top: 10px; border-top: 1px solid var(--border, rgba(255,255,255,0.1)); padding-top: 10px; }
     .steward-result-summary { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; margin-bottom: 8px; }
@@ -170,7 +170,7 @@
             </span>
             <span class="section-title-count" id="availSlotsCount"></span>
           </div>
-          <p class="section-blurb">Click a slot to toggle whether the steward can cover it. Slots without tables yet are dimmed but still pickable so stewards can plan ahead. Removing a slot will auto-unassign the steward from any table at that slot.</p>
+          <p class="section-blurb">Click a slot to toggle whether the steward can cover it. Removing a slot will auto-unassign the steward from any table at that slot.</p>
           <div id="availGrid" class="avail-grid"></div>
         </section>
 
@@ -639,14 +639,8 @@
       var countLabel = document.getElementById('availSlotsCount');
 
       var allSlots = getAllSlots();
-      var slotsWithTables = {};
-      (state.tables || []).forEach(function(t) {
-        if (t.timeSlotId) slotsWithTables[t.timeSlotId] = true;
-      });
-      var withTableCount = Object.keys(slotsWithTables).length;
 
-      countLabel.textContent = allSlots.length + ' slot' + (allSlots.length === 1 ? '' : 's') +
-        ' (' + withTableCount + ' with tables)';
+      countLabel.textContent = allSlots.length + ' slot' + (allSlots.length === 1 ? '' : 's');
 
       if (state.stewards.length === 0) {
         container.innerHTML = '<div class="empty-list">No stewards in the sheet yet.</div>';
@@ -665,14 +659,11 @@
         html += '  <div class="avail-chips">';
         allSlots.forEach(function(slot) {
           var selected = !!(localAvailability[s.stewardId] && localAvailability[s.stewardId][slot.slotId]);
-          var hasTables = !!slotsWithTables[slot.slotId];
           var classes = ['slot-chip'];
           if (selected) classes.push('selected');
-          if (!hasTables) classes.push('no-tables');
           html += '<span class="' + classes.join(' ') + '"' +
                   ' data-steward-id="' + esc(s.stewardId) + '"' +
-                  ' data-slot-id="' + esc(slot.slotId) + '"' +
-                  ' title="' + (hasTables ? 'Has tables at this slot' : 'No tables at this slot yet') + '">' +
+                  ' data-slot-id="' + esc(slot.slotId) + '">' +
                   pad2(slot.hour) + ':00' +
                   '<span class="slot-chip-local">(' + esc(formatLocalTime(slot.hour)) + ')</span>' +
                   '</span>';

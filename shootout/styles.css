@@ -3590,25 +3590,6 @@ body.stewards .no-tables {
   border-radius: 6px;
 }
 
-/* Chip variant for slots that don't yet have any tables — dimmed but still clickable */
-body.stewards .slot-chip.no-tables {
-  opacity: 0.55;
-  border-style: dashed;
-  border-color: var(--border);
-  background: transparent;
-  padding: 6px 12px;
-  text-align: inherit;
-}
-
-body.stewards .slot-chip.no-tables.selected {
-  opacity: 1;
-  border-style: solid;
-}
-
-body.stewards .slot-chip.no-tables:hover {
-  opacity: 0.85;
-}
-
 /* Sidebar steward rows stack vertically and stay compact */
 body.stewards .sidebar .steward-row {
   flex-direction: column;
