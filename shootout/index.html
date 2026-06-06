@@ -100,6 +100,21 @@
       No registered player matches that search.
     </div>
 
+    <!-- STANDINGS LADDER -->
+    <div class="stage-panel standings-panel" id="standingsPanel">
+      <div class="stage-header" onclick="toggleStage(this)">
+        <div class="stage-header-left">
+          <span class="stage-chevron">▼</span>
+          <span class="stage-title">Standings</span>
+        </div>
+        <span class="stage-summary" id="standings-summary">Awaiting tournament start</span>
+      </div>
+      <div class="stage-body">
+        <div class="ladder-note">Ranked by how deep each player has reached. The closer to the top, the closer to the title.</div>
+        <div id="ladder-body"><div class="stage-placeholder">Standings will appear once the tournament begins.</div></div>
+      </div>
+    </div>
+
     <div class="stage-panel" data-stage="1">
       <div class="stage-header" onclick="toggleStage(this)">
         <div class="stage-header-left">
@@ -526,6 +541,7 @@
     function render() {
       renderPrizes();
       renderRegBanner();
+      renderStandings();
       renderStages();
     }
 
@@ -700,6 +716,131 @@
       html += '</div>';
 
       body.innerHTML = html;
+    }
+
+    // --- STANDINGS LADDER ---
+    // Tiers from top (closest to the title) to bottom. Each player lands in exactly
+    // one tier based on where they currently are: a live table, a queue, or — failing
+    // both — their recorded currentStage. Eliminated players drop to the bottom band,
+    // sub-ranked by how far they got before busting.
+    var LADDER_TIERS = [
+      { key: 'champion', label: 'Champion',    icon: '★', cls: 'tier-champion' },
+      { key: 'final',    label: 'Final Table', icon: '♦', cls: 'tier-final' },
+      { key: 's4',       label: 'Stage 4',     icon: '4', cls: 'tier-s4' },
+      { key: 'r75',      label: '75M Rebuy',   icon: '↺', cls: 'tier-rebuy' },
+      { key: 's3',       label: 'Stage 3',     icon: '3', cls: 'tier-s3' },
+      { key: 'r50',      label: '50M Rebuy',   icon: '↺', cls: 'tier-rebuy' },
+      { key: 's2',       label: 'Stage 2',     icon: '2', cls: 'tier-s2' },
+      { key: 'r25',      label: '25M Rebuy',   icon: '↺', cls: 'tier-rebuy' },
+      { key: 's1',       label: 'Stage 1',     icon: '1', cls: 'tier-s1' },
+      { key: 'elim',     label: 'Eliminated',  icon: '✕', cls: 'tier-elim' }
+    ];
+
+    function locationToTier(loc) {
+      loc = String(loc || '');
+      if (loc === 'final') return 'final';
+      if (loc === '4' || loc === 'stage_4') return 's4';
+      if (loc === 'rebuy_75') return 'r75';
+      if (loc === '3' || loc === 'stage_3') return 's3';
+      if (loc === 'rebuy_50') return 'r50';
+      if (loc === '2' || loc === 'stage_2') return 's2';
+      if (loc === 'rebuy_25') return 'r25';
+      if (loc === '1' || loc === 'stage_1') return 's1';
+      return 's1';
+    }
+
+    function getPlayerTier(player) {
+      var status = (player.status || 'active').toLowerCase();
+      if (status === 'champion') return 'champion';
+      if (status === 'eliminated') return 'elim';
+
+      var pid = player.tornId;
+      var tables = (state && state.tables) ? state.tables : [];
+      var queues = (state && state.queues) ? state.queues : [];
+
+      // Where they are right now takes priority: a live table, then a queue.
+      var liveTable = tables.find(function(t) {
+        return t.status === 'live' && t.players && t.players.indexOf(pid) !== -1;
+      });
+      if (liveTable) return locationToTier(liveTable.stage);
+
+      var queued = queues.find(function(q) { return q.tornId === pid; });
+      if (queued) return locationToTier(queued.queuedFor);
+
+      if (player.currentStage) return locationToTier(player.currentStage);
+      return 's1';
+    }
+
+    function stageLostAtFor(pid) {
+      var elims = (state && state.eliminations) ? state.eliminations : [];
+      var e = elims.find(function(x) { return x.tornId === pid; });
+      return e ? Number(e.stageLostAt) || 0 : 0;
+    }
+
+    function renderStandings() {
+      var status = (state && state.settings && state.settings.tournament_status) || 'setup';
+      var players = (state && state.players) ? state.players : [];
+      var summaryEl = document.getElementById('standings-summary');
+      var bodyEl = document.getElementById('ladder-body');
+
+      if (status === 'setup' || players.length === 0) {
+        summaryEl.textContent = 'Awaiting tournament start';
+        bodyEl.innerHTML = '<div class="stage-placeholder">Standings will appear once the tournament begins.</div>';
+        return;
+      }
+
+      // Bucket every player into a tier.
+      var buckets = {};
+      LADDER_TIERS.forEach(function(t) { buckets[t.key] = []; });
+      players.forEach(function(p) {
+        var key = getPlayerTier(p);
+        if (!buckets[key]) buckets[key] = [];
+        buckets[key].push(p);
+      });
+
+      var standing = 0, eliminated = 0;
+      players.forEach(function(p) {
+        if ((p.status || '').toLowerCase() === 'eliminated') eliminated++;
+        else standing++;
+      });
+      summaryEl.textContent = standing + ' still standing · ' + eliminated + ' out';
+
+      var html = '';
+      LADDER_TIERS.forEach(function(tier) {
+        var group = buckets[tier.key] || [];
+        if (group.length === 0) return; // hide empty bands
+
+        // Sort: eliminated by furthest stage reached (desc) then name; others by name.
+        if (tier.key === 'elim') {
+          group.sort(function(a, b) {
+            var d = stageLostAtFor(b.tornId) - stageLostAtFor(a.tornId);
+            return d !== 0 ? d : a.name.localeCompare(b.name);
+          });
+        } else {
+          group.sort(function(a, b) { return a.name.localeCompare(b.name); });
+        }
+
+        html += '<div class="ladder-row ' + tier.cls + '">';
+        html += '  <div class="ladder-rail">';
+        html += '    <span class="ladder-icon">' + tier.icon + '</span>';
+        html += '    <span class="ladder-label">' + esc(tier.label) + '</span>';
+        html += '    <span class="ladder-count">' + group.length + '</span>';
+        html += '  </div>';
+        html += '  <div class="ladder-players">';
+        group.forEach(function(p) {
+          var profileUrl = 'https://www.torn.com/profiles.php?XID=' + esc(p.tornId);
+          var tag = '';
+          if (tier.key === 'elim') {
+            var sl = stageLostAtFor(p.tornId);
+            if (sl) tag = '<span class="ladder-chip-tag">reached S' + sl + '</span>';
+          }
+          html += '<a class="ladder-chip" href="' + profileUrl + '" target="_blank" rel="noopener">' + esc(p.name) + tag + '</a>';
+        });
+        html += '  </div>';
+        html += '</div>';
+      });
+
+      bodyEl.innerHTML = html || '<div class="stage-placeholder">Standings will appear once the tournament begins.</div>';
     }
 
     // --- STAGES (live/complete/queue rendering) ---

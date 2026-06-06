@@ -6,7 +6,7 @@
   <title>Progressive Shootout // Stewards</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=6">
   <style>
     .steward-result { margin-top: 10px; border-top: 1px solid var(--border, rgba(255,255,255,0.1)); padding-top: 10px; }
     .steward-result-summary { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; margin-bottom: 8px; }
@@ -149,10 +149,6 @@
           <p class="section-blurb">Managed in the <code>Stewards</code> tab. Each signs in with their Torn ID.</p>
           <div class="steward-list" id="stewardList"></div>
         </section>
-      </aside>
-
-      <!-- RIGHT: Availability + tables -->
-      <div class="panel">
 
         <section class="stewards-section">
           <div class="section-title">
@@ -161,6 +157,10 @@
           <p class="section-blurb">Ready-made messages to send players after a result. Pick the stage, then click to copy the message that fits their finish.</p>
           <button class="btn-messages" id="btnOpenMessages">Open sample messages</button>
         </section>
+      </aside>
+
+      <!-- RIGHT: Availability + tables -->
+      <div class="panel">
 
         <section class="stewards-section collapsible" id="sectionAvailability">
           <div class="section-title">
@@ -185,7 +185,7 @@
               <span class="section-title-count" id="tablesCount"></span>
             </div>
           </div>
-          <p class="section-blurb">Tables appear here once they've been generated and grouped by their time slot. Assign one steward per table from those who marked this slot available, or click <em>Auto-assign stewards</em> to fill unassigned tables in one go (existing assignments are kept). The Copy button puts the table's Torn IDs on your clipboard as a comma-separated list, ready to paste into Torn's poker invite.</p>
+          <p class="section-blurb">Tables appear here once they've been generated. Use the tabs to switch between stages (Stage 1, its rebuy, Stage 2, and so on); within a stage they're grouped by time slot. Assign one steward per table from those who marked this slot available, or click <em>Auto-assign stewards</em> to fill unassigned tables in one go (existing assignments are kept). The Copy button puts the table's Torn IDs on your clipboard as a comma-separated list, ready to paste into Torn's poker invite.</p>
           <div id="tablesBySlot"></div>
         </section>
 
@@ -689,6 +689,23 @@
       });
     }
 
+    // Order stage groups the way the tournament flows: each stage followed by its rebuy.
+    var STAGE_ORDER = ['1', 'rebuy_25', '2', 'rebuy_50', '3', 'rebuy_75', '4'];
+
+    function stageGroupLabel(stage) {
+      if (stage === 'rebuy_25') return 'Rebuy — Stage 1 (25M)';
+      if (stage === 'rebuy_50') return 'Rebuy — Stage 2 (50M)';
+      if (stage === 'rebuy_75') return 'Rebuy — Stage 3 (75M)';
+      if (stage === '1' || stage === '2' || stage === '3' || stage === '4') return 'Stage ' + stage;
+      return stage;
+    }
+
+    // Which stage tab is showing. Persisted so a reload keeps the steward on the
+    // same stage they were working in.
+    var ACTIVE_STAGE_KEY = 'shootout_steward_active_stage';
+    var activeStage = '';
+    try { activeStage = localStorage.getItem(ACTIVE_STAGE_KEY) || ''; } catch (_) {}
+
     function renderTablesBySlot() {
       var container = document.getElementById('tablesBySlot');
       var countLabel = document.getElementById('tablesCount');
@@ -701,65 +718,56 @@
         return;
       }
 
-      // Group by slot
-      var bySlot = {};
-      tables.forEach(function(t) {
-        if (!bySlot[t.timeSlotId]) bySlot[t.timeSlotId] = [];
-        bySlot[t.timeSlotId].push(t);
-      });
-
       // Assignment map: tableId -> stewardId
       var assignByTable = {};
       state.stewardAssignments.forEach(function(a) { assignByTable[a.tableId] = a.stewardId; });
 
-      // Sort slot keys by hour
-      var slotKeys = Object.keys(bySlot).sort(function(a, b) {
-        return slotIdToHour(a) - slotIdToHour(b);
+      // Group by stage; each stage becomes a tab, its tables grouped by time slot.
+      var byStage = {};
+      tables.forEach(function(t) {
+        var st = String(t.stage);
+        if (!byStage[st]) byStage[st] = [];
+        byStage[st].push(t);
       });
 
-      var html = '';
-      slotKeys.forEach(function(slotId) {
-        var hour = slotIdToHour(slotId);
-        var slotTables = bySlot[slotId];
-
-        // Sort tables by tableId numeric suffix
-        slotTables.sort(function(a, b) {
-          var na = parseInt(String(a.tableId).replace(/[^0-9]/g, ''), 10) || 0;
-          var nb = parseInt(String(b.tableId).replace(/[^0-9]/g, ''), 10) || 0;
-          return na - nb;
-        });
-
-        // Stewards already taken at this slot
-        var takenAtSlot = {}; // stewardId -> tableId
-        slotTables.forEach(function(t) {
-          if (assignByTable[t.tableId]) takenAtSlot[assignByTable[t.tableId]] = t.tableId;
-        });
-
-        // Stewards eligible (have this slot in their availability)
-        var eligible = state.stewards.filter(function(s) {
-          return localAvailability[s.stewardId] && localAvailability[s.stewardId][slotId];
-        });
-
-        var timeLabel = (hour === null) ? '(unknown slot)' :
-          pad2(hour) + ':00 TCT — ' + formatLocalTime(hour) + ' local';
-
-        html += '<div class="slot-block">';
-        html += '  <div class="slot-block-header">';
-        html += '    <span class="slot-block-time">' + esc(timeLabel) + '</span>';
-        html += '    <span class="slot-block-meta">' + slotTables.length + ' table' + (slotTables.length === 1 ? '' : 's') +
-                ' &middot; ' + eligible.length + ' steward' + (eligible.length === 1 ? '' : 's') + ' available</span>';
-        html += '  </div>';
-        html += '  <div class="slot-block-body">';
-
-        slotTables.forEach(function(t) {
-          var currentAssign = assignByTable[t.tableId] || '';
-          html += renderTableCard(t, currentAssign, eligible, takenAtSlot);
-        });
-
-        html += '  </div>';
-        html += '</div>';
+      var stageKeys = Object.keys(byStage).sort(function(a, b) {
+        var ia = STAGE_ORDER.indexOf(a); if (ia === -1) ia = 99;
+        var ib = STAGE_ORDER.indexOf(b); if (ib === -1) ib = 99;
+        if (ia !== ib) return ia - ib;
+        return a < b ? -1 : 1;
       });
-      container.innerHTML = html;
+
+      // Keep the active stage valid — fall back to the first stage with tables.
+      if (stageKeys.indexOf(activeStage) === -1) activeStage = stageKeys[0];
+
+      var tabsHtml = '<div class="stage-tabs" role="tablist">';
+      stageKeys.forEach(function(stage) {
+        var isActive = stage === activeStage;
+        var completeCount = byStage[stage].filter(function(t) { return t.status === 'complete'; }).length;
+        var allDone = completeCount === byStage[stage].length;
+        tabsHtml += '<button class="stage-tab' + (isActive ? ' active' : '') + (allDone ? ' all-complete' : '') + '"' +
+                    ' role="tab" data-stage="' + esc(stage) + '">' +
+                    esc(stageGroupLabel(stage)) +
+                    '<span class="stage-tab-count">' + completeCount + '/' + byStage[stage].length + '</span>' +
+                    '</button>';
+      });
+      tabsHtml += '</div>';
+
+      var panelsHtml = '';
+      stageKeys.forEach(function(stage) {
+        var isActive = stage === activeStage;
+        panelsHtml += '<div class="stage-panel' + (isActive ? ' active' : '') + '" data-stage="' + esc(stage) + '">';
+        panelsHtml += renderStagePanel(byStage[stage], assignByTable);
+        panelsHtml += '</div>';
+      });
+
+      container.innerHTML = tabsHtml + panelsHtml;
+
+      container.querySelectorAll('.stage-tab').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          switchStageTab(btn.getAttribute('data-stage'));
+        });
+      });
 
       container.querySelectorAll('select.steward-assign-select').forEach(function(sel) {
         sel.addEventListener('change', function() {
@@ -786,6 +794,77 @@
           saveCollapseState();
         });
       });
+    }
+
+    function switchStageTab(stage) {
+      activeStage = stage;
+      try { localStorage.setItem(ACTIVE_STAGE_KEY, stage); } catch (_) {}
+      document.querySelectorAll('.stage-tab').forEach(function(b) {
+        b.classList.toggle('active', b.getAttribute('data-stage') === stage);
+      });
+      document.querySelectorAll('.stage-panel').forEach(function(p) {
+        p.classList.toggle('active', p.getAttribute('data-stage') === stage);
+      });
+    }
+
+    function renderStagePanel(stageTables, assignByTable) {
+      // Group this stage's tables by time slot.
+      var bySlot = {};
+      stageTables.forEach(function(t) {
+        if (!bySlot[t.timeSlotId]) bySlot[t.timeSlotId] = [];
+        bySlot[t.timeSlotId].push(t);
+      });
+      var slotKeys = Object.keys(bySlot).sort(function(a, b) {
+        return slotIdToHour(a) - slotIdToHour(b);
+      });
+
+      var html = '';
+      slotKeys.forEach(function(slotId) {
+        html += renderSlotBlock(slotId, bySlot[slotId], assignByTable);
+      });
+      return html;
+    }
+
+    function renderSlotBlock(slotId, slotTables, assignByTable) {
+      var hour = slotIdToHour(slotId);
+
+      // Sort tables by tableId numeric suffix
+      slotTables.sort(function(a, b) {
+        var na = parseInt(String(a.tableId).replace(/[^0-9]/g, ''), 10) || 0;
+        var nb = parseInt(String(b.tableId).replace(/[^0-9]/g, ''), 10) || 0;
+        return na - nb;
+      });
+
+      // Stewards already taken at this slot
+      var takenAtSlot = {}; // stewardId -> tableId
+      slotTables.forEach(function(t) {
+        if (assignByTable[t.tableId]) takenAtSlot[assignByTable[t.tableId]] = t.tableId;
+      });
+
+      // Stewards eligible (have this slot in their availability)
+      var eligible = state.stewards.filter(function(s) {
+        return localAvailability[s.stewardId] && localAvailability[s.stewardId][slotId];
+      });
+
+      var timeLabel = (hour === null) ? '(unknown slot)' :
+        pad2(hour) + ':00 TCT — ' + formatLocalTime(hour) + ' local';
+
+      var html = '<div class="slot-block">';
+      html += '  <div class="slot-block-header">';
+      html += '    <span class="slot-block-time">' + esc(timeLabel) + '</span>';
+      html += '    <span class="slot-block-meta">' + slotTables.length + ' table' + (slotTables.length === 1 ? '' : 's') +
+              ' &middot; ' + eligible.length + ' steward' + (eligible.length === 1 ? '' : 's') + ' available</span>';
+      html += '  </div>';
+      html += '  <div class="slot-block-body">';
+
+      slotTables.forEach(function(t) {
+        var currentAssign = assignByTable[t.tableId] || '';
+        html += renderTableCard(t, currentAssign, eligible, takenAtSlot);
+      });
+
+      html += '  </div>';
+      html += '</div>';
+      return html;
     }
 
     function wireResultBox(box) {

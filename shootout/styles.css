@@ -2381,6 +2381,128 @@ body {
       margin-left: 4px;
     }
 
+    /* --- STANDINGS LADDER --- */
+    body.leaderboard .standings-panel .stage-title { color: var(--accent); }
+
+    body.leaderboard .ladder-note {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    body.leaderboard .ladder-row {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 12px 0;
+      border-top: 1px solid var(--border);
+    }
+    body.leaderboard .ladder-row:first-of-type { border-top: none; padding-top: 4px; }
+
+    body.leaderboard .ladder-rail {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-left: 10px;
+      border-left: 3px solid var(--border-light);
+      min-height: 26px;
+    }
+
+    body.leaderboard .ladder-icon {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      background: var(--surface-2);
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    body.leaderboard .ladder-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    body.leaderboard .ladder-count {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin-left: auto;
+    }
+
+    body.leaderboard .ladder-players {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    body.leaderboard .ladder-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      padding: 4px 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      text-decoration: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    body.leaderboard .ladder-chip:hover {
+      border-color: var(--border-light);
+      background: var(--surface-3);
+    }
+
+    body.leaderboard .ladder-chip-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-dim);
+    }
+
+    /* Tier accents — top tiers glow, eliminated dims out */
+    body.leaderboard .tier-champion .ladder-rail { border-left-color: var(--accent); }
+    body.leaderboard .tier-champion .ladder-icon { background: var(--accent); color: var(--bg); }
+    body.leaderboard .tier-champion .ladder-label { color: var(--accent); }
+
+    body.leaderboard .tier-final .ladder-rail { border-left-color: var(--accent-dim); }
+    body.leaderboard .tier-final .ladder-icon { background: rgba(232, 168, 50, 0.15); color: var(--accent); }
+    body.leaderboard .tier-final .ladder-label { color: var(--accent); }
+
+    body.leaderboard .tier-s4 .ladder-rail { border-left-color: #8a6a2a; }
+    body.leaderboard .tier-s3 .ladder-rail { border-left-color: #6a6f7a; }
+    body.leaderboard .tier-s2 .ladder-rail { border-left-color: #565b66; }
+    body.leaderboard .tier-s1 .ladder-rail { border-left-color: var(--border-light); }
+
+    body.leaderboard .tier-rebuy .ladder-rail { border-left-color: var(--red-dim); border-left-style: dashed; }
+    body.leaderboard .tier-rebuy .ladder-icon { background: rgba(217, 72, 72, 0.12); color: var(--red); }
+
+    body.leaderboard .tier-elim .ladder-rail { border-left-color: #3a2222; }
+    body.leaderboard .tier-elim .ladder-icon { background: rgba(217, 72, 72, 0.08); color: var(--red-dim); }
+    body.leaderboard .tier-elim .ladder-label { color: var(--text-dim); }
+    body.leaderboard .tier-elim .ladder-chip { color: var(--text-dim); opacity: 0.85; }
+
+    @media (max-width: 560px) {
+      body.leaderboard .ladder-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      body.leaderboard .ladder-rail { border-left: none; padding-left: 0; }
+    }
+
     /* Rebuy nested panel */
     body.leaderboard .rebuy-nested {
       margin-top: 16px;
@@ -3134,6 +3256,74 @@ body.stewards .slot-chip-local {
   font-weight: 400;
   margin-left: 4px;
   opacity: 0.7;
+}
+
+/* --- Stage tabs --- */
+body.stewards .stage-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+
+body.stewards .stage-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: var(--text-muted);
+  margin-bottom: -1px;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+
+body.stewards .stage-tab:hover {
+  color: var(--text);
+}
+
+body.stewards .stage-tab.active {
+  color: var(--accent);
+  background: var(--surface-2);
+  border-color: var(--border);
+  border-bottom-color: var(--surface-2);
+}
+
+body.stewards .stage-tab-count {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-muted);
+}
+
+body.stewards .stage-tab.active .stage-tab-count {
+  background: var(--accent-dim);
+  color: var(--bg);
+}
+
+body.stewards .stage-tab.all-complete .stage-tab-count {
+  background: var(--green);
+  color: #fff;
+}
+
+body.stewards .stage-panel {
+  display: none;
+}
+
+body.stewards .stage-panel.active {
+  display: block;
 }
 
 /* --- Tables by slot --- */
