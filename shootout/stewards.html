@@ -6,7 +6,7 @@
   <title>Progressive Shootout // Stewards</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=6">
+  <link rel="stylesheet" href="styles.css?v=7">
   <style>
     .steward-result { margin-top: 10px; border-top: 1px solid var(--border, rgba(255,255,255,0.1)); padding-top: 10px; }
     .steward-result-summary { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; margin-bottom: 8px; }
@@ -713,16 +713,11 @@
       var tables = (state.tables || []).filter(function(t) { return t.timeSlotId; });
       countLabel.textContent = tables.length + ' table' + (tables.length === 1 ? '' : 's');
 
-      if (tables.length === 0) {
-        container.innerHTML = '<div class="no-tables">No tables with a time slot yet. Generate Stage 1 tables in the availability admin first.</div>';
-        return;
-      }
-
       // Assignment map: tableId -> stewardId
       var assignByTable = {};
       state.stewardAssignments.forEach(function(a) { assignByTable[a.tableId] = a.stewardId; });
 
-      // Group by stage; each stage becomes a tab, its tables grouped by time slot.
+      // Group tables by stage.
       var byStage = {};
       tables.forEach(function(t) {
         var st = String(t.stage);
@@ -730,34 +725,39 @@
         byStage[st].push(t);
       });
 
-      var stageKeys = Object.keys(byStage).sort(function(a, b) {
-        var ia = STAGE_ORDER.indexOf(a); if (ia === -1) ia = 99;
-        var ib = STAGE_ORDER.indexOf(b); if (ib === -1) ib = 99;
-        if (ia !== ib) return ia - ib;
-        return a < b ? -1 : 1;
+      // Always show a tab for every known stage (even with no tables yet), then
+      // append any unexpected stage that turned up in the data.
+      var stageKeys = STAGE_ORDER.slice();
+      Object.keys(byStage).forEach(function(st) {
+        if (stageKeys.indexOf(st) === -1) stageKeys.push(st);
       });
 
-      // Keep the active stage valid — fall back to the first stage with tables.
+      // Keep the active stage valid — fall back to the first tab.
       if (stageKeys.indexOf(activeStage) === -1) activeStage = stageKeys[0];
 
       var tabsHtml = '<div class="stage-tabs" role="tablist">';
       stageKeys.forEach(function(stage) {
+        var stageTables = byStage[stage] || [];
         var isActive = stage === activeStage;
-        var completeCount = byStage[stage].filter(function(t) { return t.status === 'complete'; }).length;
-        var allDone = completeCount === byStage[stage].length;
-        tabsHtml += '<button class="stage-tab' + (isActive ? ' active' : '') + (allDone ? ' all-complete' : '') + '"' +
+        var completeCount = stageTables.filter(function(t) { return t.status === 'complete'; }).length;
+        var hasTables = stageTables.length > 0;
+        var allDone = hasTables && completeCount === stageTables.length;
+        var badge = hasTables ? '<span class="stage-tab-count">' + completeCount + '/' + stageTables.length + '</span>' : '';
+        tabsHtml += '<button class="stage-tab' + (isActive ? ' active' : '') + (allDone ? ' all-complete' : '') + (hasTables ? '' : ' empty') + '"' +
                     ' role="tab" data-stage="' + esc(stage) + '">' +
-                    esc(stageGroupLabel(stage)) +
-                    '<span class="stage-tab-count">' + completeCount + '/' + byStage[stage].length + '</span>' +
+                    esc(stageGroupLabel(stage)) + badge +
                     '</button>';
       });
       tabsHtml += '</div>';
 
       var panelsHtml = '';
       stageKeys.forEach(function(stage) {
+        var stageTables = byStage[stage] || [];
         var isActive = stage === activeStage;
         panelsHtml += '<div class="stage-panel' + (isActive ? ' active' : '') + '" data-stage="' + esc(stage) + '">';
-        panelsHtml += renderStagePanel(byStage[stage], assignByTable);
+        panelsHtml += stageTables.length > 0
+          ? renderStagePanel(stageTables, assignByTable)
+          : '<div class="no-tables">No ' + esc(stageGroupLabel(stage)) + ' tables generated yet.</div>';
         panelsHtml += '</div>';
       });
 

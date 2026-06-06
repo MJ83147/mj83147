@@ -3292,6 +3292,14 @@ body.stewards .stage-tab:hover {
   color: var(--text);
 }
 
+body.stewards .stage-tab.empty {
+  opacity: 0.55;
+}
+
+body.stewards .stage-tab.empty.active {
+  opacity: 1;
+}
+
 body.stewards .stage-tab.active {
   color: var(--accent);
   background: var(--surface-2);
