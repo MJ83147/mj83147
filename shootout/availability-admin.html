@@ -478,9 +478,10 @@
       document.getElementById('btnPreviewCommit').addEventListener('click', commitPreview);
     }
 
-    // Stages that must be fully complete before `stage` can be generated, mirroring
-    // checkStageGate_ on the backend. Main-stage prerequisites must exist AND be
-    // complete; rebuy prerequisites only need to be complete if any were created.
+    // Stages that must be fully complete before `stage` can be generated. A
+    // main-stage prerequisite must exist AND be complete. A rebuy prerequisite
+    // must be run AND complete whenever players are queued for it — the rebuy
+    // winners advance into this stage, so seating it first would leave them out.
     var STAGE_PREREQS = {
       'rebuy_25': [{ stage: '1', label: 'Stage 1' }],
       '2':        [{ stage: '1', label: 'Stage 1' }, { stage: 'rebuy_25', label: '25M rebuy', rebuy: true }],
@@ -515,10 +516,17 @@
       for (var i = 0; i < prereqs.length; i++) {
         var pr = prereqs[i];
         var tbls = stageTables(pr.stage);
-        if (!pr.rebuy && tbls.length === 0) {
-          return { enabled: false, note: 'No ' + pr.label + ' tables exist yet — generate and complete them first.' };
-        }
-        if (tbls.some(function(t) { return t.status !== 'complete'; })) {
+        if (tbls.length === 0) {
+          // A rebuy round with players queued must be run first; an empty one
+          // (nobody rebought) is simply skipped. Main stages must always exist.
+          if (pr.rebuy) {
+            if (stagePoolSize(pr.stage) > 0) {
+              return { enabled: false, note: 'Run and complete the ' + pr.label + ' tables first — those players advance into ' + label + '.' };
+            }
+          } else {
+            return { enabled: false, note: 'No ' + pr.label + ' tables exist yet — generate and complete them first.' };
+          }
+        } else if (tbls.some(function(t) { return t.status !== 'complete'; })) {
           return { enabled: false, note: 'All ' + pr.label + ' tables must be complete before generating ' + label + ' tables.' };
         }
       }
