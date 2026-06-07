@@ -22,7 +22,7 @@
 
   <div class="stats-strip" id="statsStrip">
     <div class="stat-item">
-      <div class="stat-label">Registered</div>
+      <div class="stat-label">Eligible</div>
       <div class="stat-value" id="statRegistered">—</div>
     </div>
     <div class="stat-item">
@@ -47,6 +47,9 @@
     </div>
 
     <div id="content" class="hidden">
+
+      <p class="section-blurb" style="margin-bottom:8px;">Pick the stage you're seating. Stats, demand ranking, and outstanding submissions below are scoped to the players eligible for that stage.</p>
+      <div class="stage-tabs" id="stageTabs" role="tablist"></div>
 
       <div class="generate-section">
         <div class="section-title">
@@ -122,7 +125,8 @@
       availability: [],
       tables: [],
       queues: [],
-      settings: {}
+      settings: {},
+      selectedStage: '1'
     };
 
     var currentPreview = null; // holds the in-flight preview plan
@@ -140,6 +144,7 @@
           state.tables = data.tables || [];
           state.queues = data.queues || [];
           state.settings = data.settings || {};
+          state.selectedStage = defaultStage();
           document.getElementById('loadingState').classList.add('hidden');
           document.getElementById('content').classList.remove('hidden');
           render();
@@ -151,7 +156,10 @@
         });
     }
 
+    var GEN_STAGES = ['1', '2', '3'];
+
     function render() {
+      renderStageTabs();
       var stats = computeStats();
       renderStats(stats);
       renderHourList(stats);
@@ -159,13 +167,70 @@
       renderDuplicateBrowsers();
     }
 
+    // Players eligible for a given stage, mirroring the backend getStagePool_:
+    // Stage 1 is the whole registered field; Stage 2/3 are only the players who
+    // queued in from completed results (advancers + confirmed rebuys). Returns a
+    // { tornId: true } set so callers can filter players and availability by it.
+    function stagePoolIdSet(stage) {
+      var set = {};
+      if (stage === '1') {
+        state.players.forEach(function(p) { set[p.tornId] = true; });
+        return set;
+      }
+      var queueKey = 'stage_' + stage;
+      (state.queues || []).forEach(function(q) {
+        if (q.queuedFor === queueKey) set[q.tornId] = true;
+      });
+      return set;
+    }
+
+    function stagePoolSize(stage) {
+      return Object.keys(stagePoolIdSet(stage)).length;
+    }
+
+    // Default to the deepest stage that already has an eligible field, so the page
+    // opens on whatever stage is currently in play.
+    function defaultStage() {
+      for (var i = GEN_STAGES.length - 1; i >= 0; i--) {
+        if (stagePoolSize(GEN_STAGES[i]) > 0) return GEN_STAGES[i];
+      }
+      return '1';
+    }
+
+    function renderStageTabs() {
+      var container = document.getElementById('stageTabs');
+      var html = '';
+      GEN_STAGES.forEach(function(s) {
+        var count = stagePoolSize(s);
+        var isActive = s === state.selectedStage;
+        var classes = ['stage-tab'];
+        if (isActive) classes.push('active');
+        if (count === 0) classes.push('empty');
+        html += '<button class="' + classes.join(' ') + '" role="tab" data-stage="' + s + '"' +
+          ' aria-selected="' + (isActive ? 'true' : 'false') + '">' +
+          'Stage ' + s + '<span class="stage-tab-count">' + count + '</span></button>';
+      });
+      container.innerHTML = html;
+
+      container.querySelectorAll('.stage-tab').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var stage = btn.getAttribute('data-stage');
+          if (stage === state.selectedStage) return;
+          state.selectedStage = stage;
+          render();
+        });
+      });
+    }
+
     function renderDuplicateBrowsers() {
       var section = document.getElementById('dupeSection');
       var container = document.getElementById('dupeList');
       var countLabel = document.getElementById('dupe-count');
 
+      var poolIds = stagePoolIdSet(state.selectedStage);
       var byBrowser = {};
       state.availability.forEach(function(a) {
+        if (!poolIds[a.tornId]) return;
         var bid = String(a.browserId || '').trim();
         if (!bid) return;
         if (!byBrowser[bid]) byBrowser[bid] = [];
@@ -205,6 +270,12 @@
     }
 
     function computeStats() {
+      var poolIds = stagePoolIdSet(state.selectedStage);
+      var activePlayers = state.players.filter(function(p) { return poolIds[p.tornId]; });
+      var activeAvailability = state.availability.filter(function(a) {
+        return poolIds[a.tornId];
+      });
+
       var validHours = [];
       for (var hh = 0; hh < 24; hh += 2) validHours.push(hh);
 
@@ -213,7 +284,7 @@
         hourCounts[h] = { picks: [] };
       });
 
-      state.availability.forEach(function(a) {
+      activeAvailability.forEach(function(a) {
         var ids = parseAvailableSlotIds(a.availableSlotIds);
         var seenHours = {};
         ids.forEach(function(slotId) {
@@ -243,8 +314,8 @@
       });
 
       var submittedIds = {};
-      state.availability.forEach(function(a) { submittedIds[a.tornId] = true; });
-      var nonResponders = state.players.filter(function(p) { return !submittedIds[p.tornId]; });
+      activeAvailability.forEach(function(a) { submittedIds[a.tornId] = true; });
+      var nonResponders = activePlayers.filter(function(p) { return !submittedIds[p.tornId]; });
 
       var topHour = hours[0];
       var topHourDisplay = (topHour && topHour.totalPicks > 0)
@@ -255,8 +326,8 @@
         hours: hours,
         nonResponders: nonResponders,
         topHourDisplay: topHourDisplay,
-        registeredCount: state.players.length,
-        submittedCount: state.availability.length
+        registeredCount: activePlayers.length,
+        submittedCount: activeAvailability.length
       };
     }
 

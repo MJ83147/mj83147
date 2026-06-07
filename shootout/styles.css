@@ -3313,7 +3313,8 @@ body.stewards .slot-chip-local {
 }
 
 /* --- Stage tabs --- */
-body.stewards .stage-tabs {
+body.stewards .stage-tabs,
+body.avail-admin .stage-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -3322,7 +3323,8 @@ body.stewards .stage-tabs {
   padding-bottom: 0;
 }
 
-body.stewards .stage-tab {
+body.stewards .stage-tab,
+body.avail-admin .stage-tab {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -3342,26 +3344,31 @@ body.stewards .stage-tab {
   transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
 
-body.stewards .stage-tab:hover {
+body.stewards .stage-tab:hover,
+body.avail-admin .stage-tab:hover {
   color: var(--text);
 }
 
-body.stewards .stage-tab.empty {
+body.stewards .stage-tab.empty,
+body.avail-admin .stage-tab.empty {
   opacity: 0.55;
 }
 
-body.stewards .stage-tab.empty.active {
+body.stewards .stage-tab.empty.active,
+body.avail-admin .stage-tab.empty.active {
   opacity: 1;
 }
 
-body.stewards .stage-tab.active {
+body.stewards .stage-tab.active,
+body.avail-admin .stage-tab.active {
   color: var(--accent);
   background: var(--surface-2);
   border-color: var(--border);
   border-bottom-color: var(--surface-2);
 }
 
-body.stewards .stage-tab-count {
+body.stewards .stage-tab-count,
+body.avail-admin .stage-tab-count {
   font-size: 10px;
   font-weight: 600;
   padding: 2px 6px;
@@ -3370,12 +3377,14 @@ body.stewards .stage-tab-count {
   color: var(--text-muted);
 }
 
-body.stewards .stage-tab.active .stage-tab-count {
+body.stewards .stage-tab.active .stage-tab-count,
+body.avail-admin .stage-tab.active .stage-tab-count {
   background: var(--accent-dim);
   color: var(--bg);
 }
 
-body.stewards .stage-tab.all-complete .stage-tab-count {
+body.stewards .stage-tab.all-complete .stage-tab-count,
+body.avail-admin .stage-tab.all-complete .stage-tab-count {
   background: var(--green);
   color: #fff;
 }
