@@ -6,7 +6,7 @@
   <title>Progressive Shootout Tournament</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260607">
+  <link rel="stylesheet" href="styles.css?v=20260607b">
 </head>
 <body class="leaderboard">
 
@@ -125,8 +125,8 @@
       </div>
       <div class="stage-body">
         <div class="stage-tabs">
-          <button class="stage-tab active" onclick="switchStageTab(this, 'main')">Main Game</button>
-          <button class="stage-tab" onclick="switchStageTab(this, 'rebuy')">Rebuy <span class="stage-tab-amount">25M</span></button>
+          <button class="stage-tab active" data-tab="main" onclick="switchStageTab(this, 'main')"><span class="stage-tab-label">Main Game</span><span class="stage-tab-status" id="s1-main-status"></span></button>
+          <button class="stage-tab" data-tab="rebuy" onclick="switchStageTab(this, 'rebuy')"><span class="stage-tab-label">Rebuy <span class="stage-tab-amount">25M</span></span><span class="stage-tab-status" id="r25-rebuy-status"></span></button>
         </div>
         <div class="stage-tab-panel active" data-tab="main">
           <div class="stage-subsection">
@@ -170,8 +170,8 @@
       </div>
       <div class="stage-body">
         <div class="stage-tabs">
-          <button class="stage-tab active" onclick="switchStageTab(this, 'main')">Main Game</button>
-          <button class="stage-tab" onclick="switchStageTab(this, 'rebuy')">Rebuy <span class="stage-tab-amount">50M</span></button>
+          <button class="stage-tab active" data-tab="main" onclick="switchStageTab(this, 'main')"><span class="stage-tab-label">Main Game</span><span class="stage-tab-status" id="s2-main-status"></span></button>
+          <button class="stage-tab" data-tab="rebuy" onclick="switchStageTab(this, 'rebuy')"><span class="stage-tab-label">Rebuy <span class="stage-tab-amount">50M</span></span><span class="stage-tab-status" id="r50-rebuy-status"></span></button>
         </div>
         <div class="stage-tab-panel active" data-tab="main">
           <div class="stage-subsection">
@@ -215,8 +215,8 @@
       </div>
       <div class="stage-body">
         <div class="stage-tabs">
-          <button class="stage-tab active" onclick="switchStageTab(this, 'main')">Main Game</button>
-          <button class="stage-tab" onclick="switchStageTab(this, 'rebuy')">Rebuy <span class="stage-tab-amount">75M</span></button>
+          <button class="stage-tab active" data-tab="main" onclick="switchStageTab(this, 'main')"><span class="stage-tab-label">Main Game</span><span class="stage-tab-status" id="s3-main-status"></span></button>
+          <button class="stage-tab" data-tab="rebuy" onclick="switchStageTab(this, 'rebuy')"><span class="stage-tab-label">Rebuy <span class="stage-tab-amount">75M</span></span><span class="stage-tab-status" id="r75-rebuy-status"></span></button>
         </div>
         <div class="stage-tab-panel active" data-tab="main">
           <div class="stage-subsection">
@@ -858,6 +858,8 @@
           s1Summary.textContent = '9-player tables, top 3 advance · ' + done + ' / ' + s1Tables.length + ' complete';
         }
       }
+
+      updateStageTabs();
     }
 
     function renderStageContent(stageKey, queueKey, ids) {
@@ -1025,14 +1027,69 @@
     }
 
     // Switch between the Main Game and Rebuy tabs within a single stage panel.
-    function switchStageTab(btnEl, tab) {
+    function switchStageTab(btnEl, tab, isAuto) {
       var body = btnEl.closest('.stage-body');
       if (!body) return;
+      // A manual click pins the choice so later re-renders don't yank it away.
+      if (!isAuto) {
+        var panel = btnEl.closest('.stage-panel');
+        if (panel) panel.dataset.tabPinned = '1';
+      }
       body.querySelectorAll('.stage-tab').forEach(function(b) {
         b.classList.toggle('active', b === btnEl);
       });
       body.querySelectorAll('.stage-tab-panel').forEach(function(p) {
         p.classList.toggle('active', p.getAttribute('data-tab') === tab);
+      });
+    }
+
+    // Per-stage tab config: the main section prefix and its rebuy-tier prefix.
+    var STAGE_TABS = [
+      { stage: '1', main: 's1', rebuy: 'r25' },
+      { stage: '2', main: 's2', rebuy: 'r50' },
+      { stage: '3', main: 's3', rebuy: 'r75' }
+    ];
+
+    function countOf(id) {
+      var el = document.getElementById(id);
+      return el ? (parseInt(el.textContent, 10) || 0) : 0;
+    }
+
+    // Small status pill shown on each tab: live action > waiting > done > nothing.
+    function tabStatusHTML(prefix) {
+      var live = countOf(prefix + '-live-count');
+      var queue = countOf(prefix + '-queue-count');
+      var complete = countOf(prefix + '-complete-count');
+      if (live > 0) return '<span class="tab-pill live"><span class="pulse-dot"></span>' + live + ' live</span>';
+      if (queue > 0) return '<span class="tab-pill wait">' + queue + ' waiting</span>';
+      if (complete > 0) return '<span class="tab-pill done">✓ done</span>';
+      return '';
+    }
+
+    // Does a section have any current/upcoming action (live tables or a queue)?
+    function sectionActive(prefix) {
+      return countOf(prefix + '-live-count') > 0 || countOf(prefix + '-queue-count') > 0;
+    }
+
+    // After stages render, refresh each tab's status pill and, unless the user has
+    // pinned a tab, open the one where the action currently is.
+    function updateStageTabs() {
+      STAGE_TABS.forEach(function(cfg) {
+        var mainStatus = document.getElementById(cfg.main + '-main-status');
+        var rebuyStatus = document.getElementById(cfg.rebuy + '-rebuy-status');
+        if (mainStatus) mainStatus.innerHTML = tabStatusHTML(cfg.main);
+        if (rebuyStatus) rebuyStatus.innerHTML = tabStatusHTML(cfg.rebuy);
+
+        var panel = document.querySelector('.stage-panel[data-stage="' + cfg.stage + '"]');
+        if (!panel || panel.dataset.tabPinned) return;
+
+        // Default to whichever side has live/queued action. Main wins ties; only
+        // hand the default to rebuy when main is done and rebuy is live/waiting.
+        var defaultTab = 'main';
+        if (!sectionActive(cfg.main) && sectionActive(cfg.rebuy)) defaultTab = 'rebuy';
+
+        var btn = panel.querySelector('.stage-tab[data-tab="' + defaultTab + '"]');
+        if (btn && !btn.classList.contains('active')) switchStageTab(btn, defaultTab, true);
       });
     }
 
