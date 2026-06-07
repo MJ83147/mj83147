@@ -156,7 +156,16 @@
         });
     }
 
-    var GEN_STAGES = ['1', '2', '3'];
+    // Generatable stages in tournament order, matching the backend
+    // VALID_GEN_STAGES (Stage 4 is managed manually, so it's excluded).
+    var GEN_STAGES = ['1', 'rebuy_25', '2', 'rebuy_50', '3', 'rebuy_75'];
+
+    function stageTabLabel(stage) {
+      if (stage === 'rebuy_25') return '25M Rebuy';
+      if (stage === 'rebuy_50') return '50M Rebuy';
+      if (stage === 'rebuy_75') return '75M Rebuy';
+      return 'Stage ' + stage;
+    }
 
     function render() {
       renderStageTabs();
@@ -168,8 +177,9 @@
     }
 
     // Players eligible for a given stage, mirroring the backend getStagePool_:
-    // Stage 1 is the whole registered field; Stage 2/3 are only the players who
-    // queued in from completed results (advancers + confirmed rebuys). Returns a
+    // Stage 1 is the whole registered field; every later stage (including the
+    // rebuy tiers) is only the players who queued in from completed results —
+    // advancers for stage_N, confirmed rebuys for rebuy_NN. Returns a
     // { tornId: true } set so callers can filter players and availability by it.
     function stagePoolIdSet(stage) {
       var set = {};
@@ -177,7 +187,7 @@
         state.players.forEach(function(p) { set[p.tornId] = true; });
         return set;
       }
-      var queueKey = 'stage_' + stage;
+      var queueKey = /^rebuy_/.test(stage) ? stage : ('stage_' + stage);
       (state.queues || []).forEach(function(q) {
         if (q.queuedFor === queueKey) set[q.tornId] = true;
       });
@@ -208,7 +218,7 @@
         if (count === 0) classes.push('empty');
         html += '<button class="' + classes.join(' ') + '" role="tab" data-stage="' + s + '"' +
           ' aria-selected="' + (isActive ? 'true' : 'false') + '">' +
-          'Stage ' + s + '<span class="stage-tab-count">' + count + '</span></button>';
+          esc(stageTabLabel(s)) + '<span class="stage-tab-count">' + count + '</span></button>';
       });
       container.innerHTML = html;
 
