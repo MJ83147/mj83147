@@ -124,40 +124,37 @@
         <span class="stage-summary" id="s1-summary">Awaiting tournament start</span>
       </div>
       <div class="stage-body">
-        <div class="stage-subsection">
-          <div class="stage-subsection-title">Live tables <span class="stage-subsection-count" id="s1-live-count">0</span></div>
-          <div id="s1-live-body"><div class="stage-placeholder">No live tables yet.</div></div>
+        <div class="stage-tabs">
+          <button class="stage-tab active" onclick="switchStageTab(this, 'main')">Main Game</button>
+          <button class="stage-tab" onclick="switchStageTab(this, 'rebuy')">Rebuy <span class="stage-tab-amount">25M</span></button>
         </div>
-        <div class="stage-subsection">
-          <div class="stage-subsection-title">Complete tables <span class="stage-subsection-count" id="s1-complete-count">0</span></div>
-          <div id="s1-complete-body"><div class="stage-placeholder">No completed tables yet.</div></div>
-        </div>
-        <div class="stage-subsection">
-          <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="s1-queue-count">0</span></div>
-          <div id="s1-queue-body"><div class="stage-placeholder">All registered players will appear here when the tournament starts.</div></div>
-        </div>
-        <div class="rebuy-nested collapsed">
-          <div class="rebuy-header" onclick="toggleRebuy(this)">
-            <div class="rebuy-header-left">
-              <span class="rebuy-chevron">▼</span>
-              <span class="rebuy-title">Rebuy Tables</span>
-              <span class="rebuy-amount">25M</span>
-            </div>
-            <span class="stage-summary">For players who lose at Stage 1</span>
+        <div class="stage-tab-panel active" data-tab="main">
+          <div class="stage-subsection">
+            <div class="stage-subsection-title">Live tables <span class="stage-subsection-count" id="s1-live-count">0</span></div>
+            <div id="s1-live-body"><div class="stage-placeholder">No live tables yet.</div></div>
           </div>
-          <div class="rebuy-body">
-            <div class="stage-subsection">
-              <div class="stage-subsection-title">Live <span class="stage-subsection-count" id="r25-live-count">0</span></div>
-              <div id="r25-live-body"><div class="stage-placeholder">No live rebuy tables.</div></div>
-            </div>
-            <div class="stage-subsection">
-              <div class="stage-subsection-title">Complete <span class="stage-subsection-count" id="r25-complete-count">0</span></div>
-              <div id="r25-complete-body"><div class="stage-placeholder">No completed rebuy tables.</div></div>
-            </div>
-            <div class="stage-subsection">
-              <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="r25-queue-count">0</span></div>
-              <div id="r25-queue-body"><div class="stage-placeholder">Eliminated Stage 1 players who have paid the 25M rebuy will appear here.</div></div>
-            </div>
+          <div class="stage-subsection">
+            <div class="stage-subsection-title">Complete tables <span class="stage-subsection-count" id="s1-complete-count">0</span></div>
+            <div id="s1-complete-body"><div class="stage-placeholder">No completed tables yet.</div></div>
+          </div>
+          <div class="stage-subsection" id="s1-queue-section">
+            <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="s1-queue-count">0</span></div>
+            <div id="s1-queue-body"><div class="stage-placeholder">All registered players will appear here when the tournament starts.</div></div>
+          </div>
+        </div>
+        <div class="stage-tab-panel" data-tab="rebuy">
+          <div class="stage-tab-note">25M rebuy — for players who lose at Stage 1. Winner advances to Stage 2.</div>
+          <div class="stage-subsection">
+            <div class="stage-subsection-title">Live <span class="stage-subsection-count" id="r25-live-count">0</span></div>
+            <div id="r25-live-body"><div class="stage-placeholder">No live rebuy tables.</div></div>
+          </div>
+          <div class="stage-subsection">
+            <div class="stage-subsection-title">Complete <span class="stage-subsection-count" id="r25-complete-count">0</span></div>
+            <div id="r25-complete-body"><div class="stage-placeholder">No completed rebuy tables.</div></div>
+          </div>
+          <div class="stage-subsection" id="r25-queue-section">
+            <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="r25-queue-count">0</span></div>
+            <div id="r25-queue-body"><div class="stage-placeholder">Eliminated Stage 1 players who have paid the 25M rebuy will appear here.</div></div>
           </div>
         </div>
       </div>
@@ -172,40 +169,37 @@
         <span class="stage-summary">6-player tables. 1st → Stage 4, 2nd → Stage 3</span>
       </div>
       <div class="stage-body">
-        <div class="stage-subsection">
-          <div class="stage-subsection-title">Live tables <span class="stage-subsection-count" id="s2-live-count">0</span></div>
-          <div id="s2-live-body"><div class="stage-placeholder">No live tables yet.</div></div>
+        <div class="stage-tabs">
+          <button class="stage-tab active" onclick="switchStageTab(this, 'main')">Main Game</button>
+          <button class="stage-tab" onclick="switchStageTab(this, 'rebuy')">Rebuy <span class="stage-tab-amount">50M</span></button>
         </div>
-        <div class="stage-subsection">
-          <div class="stage-subsection-title">Complete tables <span class="stage-subsection-count" id="s2-complete-count">0</span></div>
-          <div id="s2-complete-body"><div class="stage-placeholder">No completed tables yet.</div></div>
-        </div>
-        <div class="stage-subsection">
-          <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="s2-queue-count">0</span></div>
-          <div id="s2-queue-body"><div class="stage-placeholder">Players advancing into Stage 2 will appear here.</div></div>
-        </div>
-        <div class="rebuy-nested collapsed">
-          <div class="rebuy-header" onclick="toggleRebuy(this)">
-            <div class="rebuy-header-left">
-              <span class="rebuy-chevron">▼</span>
-              <span class="rebuy-title">Rebuy Tables</span>
-              <span class="rebuy-amount">50M</span>
-            </div>
-            <span class="stage-summary">For players who lose at Stage 2</span>
+        <div class="stage-tab-panel active" data-tab="main">
+          <div class="stage-subsection">
+            <div class="stage-subsection-title">Live tables <span class="stage-subsection-count" id="s2-live-count">0</span></div>
+            <div id="s2-live-body"><div class="stage-placeholder">No live tables yet.</div></div>
           </div>
-          <div class="rebuy-body">
-            <div class="stage-subsection">
-              <div class="stage-subsection-title">Live <span class="stage-subsection-count" id="r50-live-count">0</span></div>
-              <div id="r50-live-body"><div class="stage-placeholder">No live rebuy tables.</div></div>
-            </div>
-            <div class="stage-subsection">
-              <div class="stage-subsection-title">Complete <span class="stage-subsection-count" id="r50-complete-count">0</span></div>
-              <div id="r50-complete-body"><div class="stage-placeholder">No completed rebuy tables.</div></div>
-            </div>
-            <div class="stage-subsection">
-              <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="r50-queue-count">0</span></div>
-              <div id="r50-queue-body"><div class="stage-placeholder">Eliminated Stage 2 players who have paid the 50M rebuy will appear here.</div></div>
-            </div>
+          <div class="stage-subsection">
+            <div class="stage-subsection-title">Complete tables <span class="stage-subsection-count" id="s2-complete-count">0</span></div>
+            <div id="s2-complete-body"><div class="stage-placeholder">No completed tables yet.</div></div>
+          </div>
+          <div class="stage-subsection" id="s2-queue-section">
+            <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="s2-queue-count">0</span></div>
+            <div id="s2-queue-body"><div class="stage-placeholder">Players advancing into Stage 2 will appear here.</div></div>
+          </div>
+        </div>
+        <div class="stage-tab-panel" data-tab="rebuy">
+          <div class="stage-tab-note">50M rebuy — for players who lose at Stage 2. Winner advances to Stage 3.</div>
+          <div class="stage-subsection">
+            <div class="stage-subsection-title">Live <span class="stage-subsection-count" id="r50-live-count">0</span></div>
+            <div id="r50-live-body"><div class="stage-placeholder">No live rebuy tables.</div></div>
+          </div>
+          <div class="stage-subsection">
+            <div class="stage-subsection-title">Complete <span class="stage-subsection-count" id="r50-complete-count">0</span></div>
+            <div id="r50-complete-body"><div class="stage-placeholder">No completed rebuy tables.</div></div>
+          </div>
+          <div class="stage-subsection" id="r50-queue-section">
+            <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="r50-queue-count">0</span></div>
+            <div id="r50-queue-body"><div class="stage-placeholder">Eliminated Stage 2 players who have paid the 50M rebuy will appear here.</div></div>
           </div>
         </div>
       </div>
@@ -220,40 +214,37 @@
         <span class="stage-summary">6-player tables. Winner advances to Stage 4</span>
       </div>
       <div class="stage-body">
-        <div class="stage-subsection">
-          <div class="stage-subsection-title">Live tables <span class="stage-subsection-count" id="s3-live-count">0</span></div>
-          <div id="s3-live-body"><div class="stage-placeholder">No live tables yet.</div></div>
+        <div class="stage-tabs">
+          <button class="stage-tab active" onclick="switchStageTab(this, 'main')">Main Game</button>
+          <button class="stage-tab" onclick="switchStageTab(this, 'rebuy')">Rebuy <span class="stage-tab-amount">75M</span></button>
         </div>
-        <div class="stage-subsection">
-          <div class="stage-subsection-title">Complete tables <span class="stage-subsection-count" id="s3-complete-count">0</span></div>
-          <div id="s3-complete-body"><div class="stage-placeholder">No completed tables yet.</div></div>
-        </div>
-        <div class="stage-subsection">
-          <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="s3-queue-count">0</span></div>
-          <div id="s3-queue-body"><div class="stage-placeholder">Players advancing into Stage 3 will appear here.</div></div>
-        </div>
-        <div class="rebuy-nested collapsed">
-          <div class="rebuy-header" onclick="toggleRebuy(this)">
-            <div class="rebuy-header-left">
-              <span class="rebuy-chevron">▼</span>
-              <span class="rebuy-title">Rebuy Tables</span>
-              <span class="rebuy-amount">75M</span>
-            </div>
-            <span class="stage-summary">For players who lose at Stage 3</span>
+        <div class="stage-tab-panel active" data-tab="main">
+          <div class="stage-subsection">
+            <div class="stage-subsection-title">Live tables <span class="stage-subsection-count" id="s3-live-count">0</span></div>
+            <div id="s3-live-body"><div class="stage-placeholder">No live tables yet.</div></div>
           </div>
-          <div class="rebuy-body">
-            <div class="stage-subsection">
-              <div class="stage-subsection-title">Live <span class="stage-subsection-count" id="r75-live-count">0</span></div>
-              <div id="r75-live-body"><div class="stage-placeholder">No live rebuy tables.</div></div>
-            </div>
-            <div class="stage-subsection">
-              <div class="stage-subsection-title">Complete <span class="stage-subsection-count" id="r75-complete-count">0</span></div>
-              <div id="r75-complete-body"><div class="stage-placeholder">No completed rebuy tables.</div></div>
-            </div>
-            <div class="stage-subsection">
-              <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="r75-queue-count">0</span></div>
-              <div id="r75-queue-body"><div class="stage-placeholder">Eliminated Stage 3 players who have paid the 75M rebuy will appear here.</div></div>
-            </div>
+          <div class="stage-subsection">
+            <div class="stage-subsection-title">Complete tables <span class="stage-subsection-count" id="s3-complete-count">0</span></div>
+            <div id="s3-complete-body"><div class="stage-placeholder">No completed tables yet.</div></div>
+          </div>
+          <div class="stage-subsection" id="s3-queue-section">
+            <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="s3-queue-count">0</span></div>
+            <div id="s3-queue-body"><div class="stage-placeholder">Players advancing into Stage 3 will appear here.</div></div>
+          </div>
+        </div>
+        <div class="stage-tab-panel" data-tab="rebuy">
+          <div class="stage-tab-note">75M rebuy — for players who lose at Stage 3. Winner advances to Stage 4.</div>
+          <div class="stage-subsection">
+            <div class="stage-subsection-title">Live <span class="stage-subsection-count" id="r75-live-count">0</span></div>
+            <div id="r75-live-body"><div class="stage-placeholder">No live rebuy tables.</div></div>
+          </div>
+          <div class="stage-subsection">
+            <div class="stage-subsection-title">Complete <span class="stage-subsection-count" id="r75-complete-count">0</span></div>
+            <div id="r75-complete-body"><div class="stage-placeholder">No completed rebuy tables.</div></div>
+          </div>
+          <div class="stage-subsection" id="r75-queue-section">
+            <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="r75-queue-count">0</span></div>
+            <div id="r75-queue-body"><div class="stage-placeholder">Eliminated Stage 3 players who have paid the 75M rebuy will appear here.</div></div>
           </div>
         </div>
       </div>
@@ -902,6 +893,9 @@
           existingBody.innerHTML = '<div class="stage-placeholder">No queued players yet.</div>';
         }
       }
+
+      // Once tables have been drawn, the queue is no longer useful — hide it.
+      setQueueVisibility(ids.queueBody, live.length + complete.length === 0);
     }
 
     function renderRebuyContent(stageKey, ids) {
@@ -933,6 +927,17 @@
           existingBody.innerHTML = '<div class="stage-placeholder">No players have paid the rebuy yet.</div>';
         }
       }
+
+      // Once rebuy tables have been drawn, the queue is no longer useful — hide it.
+      setQueueVisibility(ids.queueBody, live.length + complete.length === 0);
+    }
+
+    // Show/hide the queue subsection. The wrapping section shares the body id with
+    // a '-section' suffix (e.g. 's1-queue-body' -> 's1-queue-section').
+    function setQueueVisibility(queueBodyId, show) {
+      var sectionId = queueBodyId.replace(/-body$/, '-section');
+      var section = document.getElementById(sectionId);
+      if (section) section.style.display = show ? '' : 'none';
     }
 
     function sortByTableNumber(a, b) {
@@ -1019,8 +1024,16 @@
       headerEl.parentElement.classList.toggle('collapsed');
     }
 
-    function toggleRebuy(headerEl) {
-      headerEl.parentElement.classList.toggle('collapsed');
+    // Switch between the Main Game and Rebuy tabs within a single stage panel.
+    function switchStageTab(btnEl, tab) {
+      var body = btnEl.closest('.stage-body');
+      if (!body) return;
+      body.querySelectorAll('.stage-tab').forEach(function(b) {
+        b.classList.toggle('active', b === btnEl);
+      });
+      body.querySelectorAll('.stage-tab-panel').forEach(function(p) {
+        p.classList.toggle('active', p.getAttribute('data-tab') === tab);
+      });
     }
 
     // --- SEARCH ---
