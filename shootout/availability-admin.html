@@ -198,11 +198,28 @@
       return Object.keys(stagePoolIdSet(stage)).length;
     }
 
-    // Default to the deepest stage that already has an eligible field, so the page
-    // opens on whatever stage is currently in play.
+    function stageTables(stage) {
+      return (state.tables || []).filter(function(t) { return String(t.stage) === String(stage); });
+    }
+
+    // Open on the next stage that still needs work: the earliest stage (in
+    // tournament order) whose tables haven't all been completed yet. A stage with
+    // tables still in progress is "next"; a stage with no tables but an eligible
+    // pool is "next" (ready to generate). Completed stages and empty rebuy tiers
+    // nobody bought into are skipped. If everything is done, fall back to the
+    // deepest stage that had a field.
     function defaultStage() {
-      for (var i = GEN_STAGES.length - 1; i >= 0; i--) {
-        if (stagePoolSize(GEN_STAGES[i]) > 0) return GEN_STAGES[i];
+      for (var i = 0; i < GEN_STAGES.length; i++) {
+        var s = GEN_STAGES[i];
+        var tbls = stageTables(s);
+        if (tbls.length > 0) {
+          if (!tbls.every(function(t) { return t.status === 'complete'; })) return s;
+        } else if (stagePoolSize(s) > 0) {
+          return s;
+        }
+      }
+      for (var j = GEN_STAGES.length - 1; j >= 0; j--) {
+        if (stagePoolSize(GEN_STAGES[j]) > 0) return GEN_STAGES[j];
       }
       return '1';
     }
