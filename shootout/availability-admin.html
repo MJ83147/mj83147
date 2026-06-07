@@ -55,12 +55,10 @@
         <div class="section-title">
           <span>Generate tables from availability</span>
         </div>
-        <p class="section-blurb">Run the algorithm for a given stage. Stuck players (1 slot picked) are placed first, then everyone else is fitted to whichever of their picked times most needs the player. Non-submitters fill remaining gaps. You can refine the result by dragging before committing.</p>
+        <p class="section-blurb">Runs the algorithm for the stage selected above. Stuck players (1 slot picked) are placed first, then everyone else is fitted to whichever of their picked times most needs the player. Non-submitters fill remaining gaps. You can refine the result by dragging before committing.</p>
 
         <div class="generate-buttons">
-          <button class="btn-generate" id="btnGenerateS1" data-stage="1" disabled>Generate Stage 1 tables</button>
-          <button class="btn-generate" id="btnGenerateS2" data-stage="2" disabled>Generate Stage 2 tables</button>
-          <button class="btn-generate" id="btnGenerateS3" data-stage="3" disabled>Generate Stage 3 tables</button>
+          <button class="btn-generate" id="btnGenerate" disabled>Generate tables</button>
         </div>
 
         <div class="btn-generate-note" id="generateNote"></div>
@@ -148,7 +146,6 @@
           document.getElementById('loadingState').classList.add('hidden');
           document.getElementById('content').classList.remove('hidden');
           render();
-          updateGenerateButtons();
           bindGenerateButtons();
         })
         .catch(function(err) {
@@ -169,6 +166,7 @@
 
     function render() {
       renderStageTabs();
+      updateGenerateButton();
       var stats = computeStats();
       renderStats(stats);
       renderHourList(stats);
@@ -244,6 +242,7 @@
           var stage = btn.getAttribute('data-stage');
           if (stage === state.selectedStage) return;
           state.selectedStage = stage;
+          cancelPreview();
           render();
         });
       });
@@ -473,61 +472,77 @@
       if (generateButtonsBound) return;
       generateButtonsBound = true;
 
-      document.getElementById('btnGenerateS1').addEventListener('click', function() { runPreview('1'); });
-      document.getElementById('btnGenerateS2').addEventListener('click', function() { runPreview('2'); });
-      document.getElementById('btnGenerateS3').addEventListener('click', function() { runPreview('3'); });
+      document.getElementById('btnGenerate').addEventListener('click', function() { runPreview(state.selectedStage); });
       document.getElementById('btnPreviewCancel').addEventListener('click', cancelPreview);
       document.getElementById('btnPreviewRefine').addEventListener('click', openRefine);
       document.getElementById('btnPreviewCommit').addEventListener('click', commitPreview);
     }
 
-    function updateGenerateButtons() {
+    // Stages that must be fully complete before `stage` can be generated, mirroring
+    // checkStageGate_ on the backend. Main-stage prerequisites must exist AND be
+    // complete; rebuy prerequisites only need to be complete if any were created.
+    var STAGE_PREREQS = {
+      'rebuy_25': [{ stage: '1', label: 'Stage 1' }],
+      '2':        [{ stage: '1', label: 'Stage 1' }, { stage: 'rebuy_25', label: '25M rebuy', rebuy: true }],
+      'rebuy_50': [{ stage: '2', label: 'Stage 2' }],
+      '3':        [{ stage: '2', label: 'Stage 2' }, { stage: 'rebuy_50', label: '50M rebuy', rebuy: true }],
+      'rebuy_75': [{ stage: '3', label: 'Stage 3' }]
+    };
+
+    // Whether the selected stage can be generated right now, plus a note explaining
+    // why not. Keeps the single Generate button in lockstep with the chosen tab.
+    function generateGate(stage) {
       var status = (state.settings && state.settings.tournament_status) || 'setup';
-      var tables = state.tables || [];
-      var note = '';
+      var label = stageTabLabel(stage);
 
-      var s1Btn = document.getElementById('btnGenerateS1');
-      var s2Btn = document.getElementById('btnGenerateS2');
-      var s3Btn = document.getElementById('btnGenerateS3');
-
-      var hasS1 = tables.some(function(t) { return String(t.stage) === '1'; });
-      var hasPlayers = state.players && state.players.length >= 2;
-      s1Btn.disabled = !((status === 'setup' || status === 'active') && !hasS1 && hasPlayers);
-
-      var s1Tables = tables.filter(function(t) { return String(t.stage) === '1'; });
-      var rebuy25 = tables.filter(function(t) { return String(t.stage) === 'rebuy_25'; });
-      var s1AllDone = s1Tables.length > 0 && s1Tables.every(function(t) { return t.status === 'complete'; });
-      var r25AllDone = rebuy25.every(function(t) { return t.status === 'complete'; });
-      var hasS2 = tables.some(function(t) { return String(t.stage) === '2'; });
-      s2Btn.disabled = !(status === 'active' && s1AllDone && r25AllDone && !hasS2);
-
-      var s2Tables = tables.filter(function(t) { return String(t.stage) === '2'; });
-      var rebuy50 = tables.filter(function(t) { return String(t.stage) === 'rebuy_50'; });
-      var s2AllDone = s2Tables.length > 0 && s2Tables.every(function(t) { return t.status === 'complete'; });
-      var r50AllDone = rebuy50.every(function(t) { return t.status === 'complete'; });
-      var hasS3 = tables.some(function(t) { return String(t.stage) === '3'; });
-      s3Btn.disabled = !(status === 'active' && s2AllDone && r50AllDone && !hasS3);
-
-      if (status === 'setup' && (!state.players || state.players.length < 2)) {
-        note = 'Add at least 2 players in the tournament admin before generating Stage 1.';
-      } else if (status === 'setup') {
-        note = 'Committing Stage 1 tables will lock the roster and start the tournament.';
-      } else if (hasS1 && !hasS2 && !s1AllDone) {
-        note = 'Stage 1 tables exist. Once all Stage 1 and 25M rebuy tables are complete, you can generate Stage 2.';
-      } else if (hasS2 && !hasS3 && !s2AllDone) {
-        note = 'Stage 2 tables exist. Once all Stage 2 and 50M rebuy tables are complete, you can generate Stage 3.';
-      } else if (hasS3) {
-        note = 'All stages generated. Stage 4 is managed manually.';
-      } else if (s1Btn.disabled && s2Btn.disabled && s3Btn.disabled) {
-        note = 'Nothing to generate right now.';
+      if (stageTables(stage).length > 0) {
+        return { enabled: false, note: label + ' tables have already been generated.' };
       }
-      document.getElementById('generateNote').textContent = note;
+
+      if (stage === '1') {
+        if (!(status === 'setup' || status === 'active')) return { enabled: false, note: '' };
+        if (!(state.players && state.players.length >= 2)) {
+          return { enabled: false, note: 'Add at least 2 players in the tournament admin before generating Stage 1.' };
+        }
+        return { enabled: true, note: status === 'setup' ? 'Committing Stage 1 tables will lock the roster and start the tournament.' : '' };
+      }
+
+      if (status !== 'active') {
+        return { enabled: false, note: 'The tournament must be active to generate ' + label + ' tables.' };
+      }
+
+      var prereqs = STAGE_PREREQS[stage] || [];
+      for (var i = 0; i < prereqs.length; i++) {
+        var pr = prereqs[i];
+        var tbls = stageTables(pr.stage);
+        if (!pr.rebuy && tbls.length === 0) {
+          return { enabled: false, note: 'No ' + pr.label + ' tables exist yet — generate and complete them first.' };
+        }
+        if (tbls.some(function(t) { return t.status !== 'complete'; })) {
+          return { enabled: false, note: 'All ' + pr.label + ' tables must be complete before generating ' + label + ' tables.' };
+        }
+      }
+
+      if (stagePoolSize(stage) === 0) {
+        return { enabled: false, note: 'No players are eligible for ' + label + ' yet.' };
+      }
+
+      return { enabled: true, note: '' };
+    }
+
+    function updateGenerateButton() {
+      var stage = state.selectedStage;
+      var btn = document.getElementById('btnGenerate');
+      var gate = generateGate(stage);
+      btn.textContent = 'Generate ' + stageTabLabel(stage) + ' tables';
+      btn.disabled = !gate.enabled;
+      document.getElementById('generateNote').textContent = gate.note || '';
     }
 
     function runPreview(stage) {
       hidePreviewError();
       document.getElementById('previewPanel').classList.remove('hidden');
-      document.getElementById('previewTitle').textContent = 'Stage ' + stage + ' preview (not yet committed)';
+      document.getElementById('previewTitle').textContent = stageTabLabel(stage) + ' preview (not yet committed)';
       document.getElementById('previewBody').innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">Running algorithm…</div>';
       document.getElementById('previewStats').innerHTML = '';
       document.getElementById('btnPreviewCommit').disabled = true;
@@ -662,7 +677,7 @@
       var totalTables = 0;
       (currentPreview.plan || []).forEach(function(s) { totalTables += s.tables.length; });
 
-      var ok = confirm('Create ' + totalTables + ' Stage ' + stage + ' tables? Players will be locked in and the tables will go live.');
+      var ok = confirm('Create ' + totalTables + ' ' + stageTabLabel(stage) + ' tables? Players will be locked in and the tables will go live.');
       if (!ok) return;
 
       var commitBtn = document.getElementById('btnPreviewCommit');
@@ -681,7 +696,7 @@
             showPreviewError(data.error);
             return;
           }
-          toast(data.message || ('Stage ' + stage + ' tables created'), 'success');
+          toast(data.message || (stageTabLabel(stage) + ' tables created'), 'success');
           cancelPreview();
           fetchState();
         })
