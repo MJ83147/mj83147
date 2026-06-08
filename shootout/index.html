@@ -763,11 +763,33 @@
       });
       if (liveTable) return locationToTier(liveTable.stage);
 
-      var queued = queues.find(function(q) { return q.tornId === pid; });
-      if (queued) return locationToTier(queued.queuedFor);
+      // A player can hold several queue rows over time — e.g. a rebuy winner keeps
+      // their original 'rebuy_25' row AND gains a 'stage_2' row on advancing. Pick the
+      // DEEPEST by progression so winners show at the stage they advanced to, not the
+      // stale rebuy row that happens to come first in the sheet.
+      var myQueues = queues.filter(function(q) { return q.tornId === pid; });
+      if (myQueues.length) {
+        var deepest = myQueues.reduce(function(best, q) {
+          return queueDepth(q.queuedFor) > queueDepth(best.queuedFor) ? q : best;
+        });
+        return locationToTier(deepest.queuedFor);
+      }
 
       if (player.currentStage) return locationToTier(player.currentStage);
       return 's1';
+    }
+
+    // Progression depth for queue destinations, mirroring the backend ordering
+    // (1 < rebuy_25 < 2 < rebuy_50 < 3 < rebuy_75 < 4 < final). Used to break ties
+    // when a player holds more than one queue row.
+    function queueDepth(loc) {
+      var DEPTH = {
+        '1': 0, 'stage_1': 0, 'rebuy_25': 1, '2': 2, 'stage_2': 2,
+        'rebuy_50': 3, '3': 4, 'stage_3': 4, 'rebuy_75': 5,
+        '4': 6, 'stage_4': 6, 'final': 7
+      };
+      var d = DEPTH[String(loc || '')];
+      return d == null ? -1 : d;
     }
 
     function stageLostAtFor(pid) {
