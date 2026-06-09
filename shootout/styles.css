@@ -1257,6 +1257,144 @@ body {
 
     body.avail-admin .preview-error.hidden { display: none; }
 
+    body.avail-admin .preview-flagged {
+      padding: 14px 16px;
+      background: rgba(224, 168, 0, 0.08);
+      border: 1px solid var(--amber, #e0a800);
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+
+    body.avail-admin .preview-flagged-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--amber, #e0a800);
+      margin-bottom: 4px;
+    }
+
+    body.avail-admin .preview-flagged-note {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    body.avail-admin .preview-contact {
+      padding: 8px 10px;
+      background: rgba(224, 168, 0, 0.06);
+      border: 1px solid rgba(224, 168, 0, 0.25);
+      border-radius: 4px;
+      margin-top: 8px;
+    }
+
+    body.avail-admin .preview-contact-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    body.avail-admin .preview-contact-name {
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    body.avail-admin .preview-contact-cur {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    body.avail-admin .preview-contact-row {
+      display: flex;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    body.avail-admin .preview-contact-label {
+      flex: 0 0 64px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding-top: 1px;
+    }
+
+    body.avail-admin .preview-whatif {
+      padding: 14px 16px;
+      background: rgba(64, 160, 96, 0.07);
+      border: 1px solid rgba(64, 160, 96, 0.35);
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+
+    body.avail-admin .preview-whatif-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--green, #57b97a);
+      margin-bottom: 4px;
+    }
+
+    body.avail-admin .preview-whatif-note {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 10px;
+    }
+
+    body.avail-admin .preview-whatif-changes {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 12px;
+    }
+
+    body.avail-admin .preview-whatif-change {
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    body.avail-admin .preview-whatif-arrow {
+      font-weight: 700;
+      color: var(--green, #57b97a);
+    }
+
+    body.avail-admin .preview-whatif-was {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    body.avail-admin .preview-whatif-tables {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      border-top: 1px solid rgba(64, 160, 96, 0.2);
+      padding-top: 10px;
+    }
+
+    body.avail-admin .preview-whatif-table {
+      display: flex;
+      gap: 10px;
+      font-size: 12px;
+    }
+
+    body.avail-admin .preview-whatif-time {
+      flex: 0 0 72px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    body.avail-admin .preview-whatif-names {
+      color: var(--text-muted);
+    }
+
     body.avail-admin .non-responders-list {
       display: flex;
       flex-wrap: wrap;
@@ -2256,6 +2394,19 @@ body {
       text-transform: uppercase;
       letter-spacing: 1px;
       color: var(--accent);
+    }
+
+    body.leaderboard .stage-date {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      background: var(--surface-3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 7px;
     }
 
     body.leaderboard .stage-summary {

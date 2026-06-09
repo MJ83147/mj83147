@@ -574,6 +574,14 @@
         });
     }
 
+    // Current table sizes across the whole plan, as a "6, 3, 3, 5" string.
+    function planSizes(plan) {
+      var sizes = [];
+      (plan || []).forEach(function(s) { (s.tables || []).forEach(function(t) { sizes.push(t.size); }); });
+      sizes.sort(function(a, b) { return b - a; });
+      return sizes.join(', ');
+    }
+
     function renderPreview(data) {
       var stats = data.stats || {};
       var totalTables = 0;
@@ -590,6 +598,58 @@
       document.getElementById('previewStats').innerHTML = statsHtml;
 
       var html = '';
+
+      // Couldn't-place advisory: after building the full tables, these players
+      // can't be seated in one at any time they picked. Nobody is moved — the tool
+      // just names them and suggests EITHER moving them one slot, OR who to pull
+      // into their time. The organiser makes the asks; a re-run reflects changes.
+      var flagged = data.flagged || [];
+      if (flagged.length) {
+        html += '<div class="preview-flagged">';
+        html += '  <div class="preview-flagged-title">⚠ ' + flagged.length + ' player' + (flagged.length === 1 ? '' : 's') +
+                ' couldn\'t be placed in a full table</div>';
+        html += '  <div class="preview-flagged-note">Their picked times never have enough others free. Nobody has been moved — ' +
+                'either ask them to play one slot over, or pull a listed neighbour into their time, then re-run.</div>';
+        flagged.forEach(function(f) {
+          var picked = (f.selectedTimes || []).join(', ');
+          var moveOpts = (f.suggestTimes || []);
+          var pulls = (f.pullCandidates || []);
+          html += '<div class="preview-contact">';
+          html += '  <div class="preview-contact-head"><span class="preview-contact-name">' + esc(f.name) + '</span>' +
+                  '<span class="preview-contact-cur">picked ' + esc(picked || '—') + ' — only ' + f.maxTable + ' ever free</span></div>';
+          html += '  <div class="preview-contact-row"><span class="preview-contact-label">Move them</span><span>' +
+                  (moveOpts.length ? esc(moveOpts.join('  ·  ')) : 'no adjacent time helps — ask them to add a slot') + '</span></div>';
+          html += '  <div class="preview-contact-row"><span class="preview-contact-label">Or pull</span><span>' +
+                  (pulls.length ? esc(pulls.join(';  ')) : 'nobody picked an adjacent time') + '</span></div>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
+      // Separate "what-if" section: the fewest changes that reach the ideal
+      // layout, the resulting number, and an example of the tables it produces.
+      var wi = data.whatIf;
+      if (wi && wi.changes && wi.changes.length) {
+        html += '<div class="preview-whatif">';
+        html += '  <div class="preview-whatif-title">If you make these changes → ' + esc((wi.layout || []).join(', ')) + '</div>';
+        html += '  <div class="preview-whatif-note">Moving ' + wi.moveCount + ' player' + (wi.moveCount === 1 ? '' : 's') +
+                ' off the times they picked turns today\'s ' + esc((data.idealLayout && data.plan ? planSizes(data.plan) : '')) +
+                ' into <strong>' + esc((wi.layout || []).join(', ')) + '</strong>. This is only an example — nobody is moved unless you arrange it.</div>';
+        html += '  <div class="preview-whatif-changes">';
+        wi.changes.forEach(function(c) {
+          html += '<div class="preview-whatif-change">' + esc(c.name) + ' <span class="preview-whatif-arrow">play ' + esc(c.to) +
+                  '</span> <span class="preview-whatif-was">(picked ' + esc((c.picked || []).join(', ')) + ')</span></div>';
+        });
+        html += '  </div>';
+        html += '  <div class="preview-whatif-tables">';
+        (wi.tables || []).forEach(function(t) {
+          html += '<div class="preview-whatif-table"><span class="preview-whatif-time">' + esc(t.time) + ' · ' + t.size + '</span>' +
+                  '<span class="preview-whatif-names">' + esc((t.names || []).join(', ')) + '</span></div>';
+        });
+        html += '  </div>';
+        html += '</div>';
+      }
+
       (data.plan || []).forEach(function(entry) {
         html += renderPreviewSlot(entry, data.tableSize);
       });
