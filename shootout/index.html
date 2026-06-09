@@ -165,6 +165,7 @@
         <div class="stage-header-left">
           <span class="stage-chevron">▼</span>
           <span class="stage-title">Stage 2</span>
+          <span class="stage-date">Wed 10 Jun</span>
         </div>
         <span class="stage-summary">6-player tables. 1st → Stage 4, 2nd → Stage 3</span>
       </div>
@@ -210,6 +211,7 @@
         <div class="stage-header-left">
           <span class="stage-chevron">▼</span>
           <span class="stage-title">Stage 3</span>
+          <span class="stage-date">Mon 15 Jun</span>
         </div>
         <span class="stage-summary">6-player tables. Winner advances to Stage 4</span>
       </div>
@@ -255,6 +257,7 @@
         <div class="stage-header-left">
           <span class="stage-chevron">▼</span>
           <span class="stage-title">Stage 4</span>
+          <span class="stage-date">Phase 1 · Sat 20 Jun</span>
         </div>
         <span class="stage-summary">9-player tables. Top 3 advance until the Final Table</span>
       </div>
@@ -1091,8 +1094,10 @@
       var queue = countOf(prefix + '-queue-count');
       var complete = countOf(prefix + '-complete-count');
       if (live > 0) return '<span class="tab-pill live"><span class="pulse-dot"></span>' + live + ' live</span>';
-      if (queue > 0) return '<span class="tab-pill wait">' + queue + ' waiting</span>';
+      // Once tables have been drawn the queue is hidden in the panel (see
+      // setQueueVisibility), so don't advertise "waiting" — the round is done.
       if (complete > 0) return '<span class="tab-pill done">✓ done</span>';
+      if (queue > 0) return '<span class="tab-pill wait">' + queue + ' waiting</span>';
       return '';
     }
 
