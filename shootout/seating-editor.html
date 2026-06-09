@@ -757,7 +757,7 @@
     // Identify currently-short slots so we can hint other players who could fix them
     var shortSlotsSet = {};
     slotIds.forEach(function(slotId) {
-      var n = slots[slotId].length;
+      var n = (slots[slotId] || []).length;
       if (n === 0) return;
       var sizes = layoutForCount(n, TABLE_SIZE);
       var hasShort = sizes.some(function(s) { return s !== TABLE_SIZE; });
@@ -767,7 +767,7 @@
     var html = '<div class="slots-row">';
     var tableNum = 1; // global running table number, matches commit order
     slotIds.forEach(function(slotId) {
-      var n = slots[slotId].length;
+      var n = (slots[slotId] || []).length;
       html += renderSlotColumn(slotId, shortSlotsSet, tableNum);
       if (n > 0) tableNum += layoutForCount(n, TABLE_SIZE).length;
     });
