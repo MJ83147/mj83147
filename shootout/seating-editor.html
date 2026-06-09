@@ -134,17 +134,17 @@
 
     .editor-main {
       padding: 16px 24px 80px;
-      overflow-x: auto;
     }
     .slots-row {
       display: flex;
+      flex-wrap: wrap;
       gap: 10px;
       align-items: flex-start;
-      min-width: min-content;
     }
 
     .slot-column {
-      flex: 0 0 240px;
+      flex: 1 1 220px;
+      max-width: 300px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -864,17 +864,17 @@
 
     var html = '<div class="' + classes.join(' ') + '" draggable="true" data-torn-id="' + esc(p.tornId) + '" data-current-slot="' + esc(currentSlot) + '">';
     html += '<span class="player-pill-name">' + esc(p.name) + '</span>';
-    // The other times this player marked that actually have a column in this
-    // plan — i.e. slots they could realistically be dragged to.
+    // Every other time this player marked as available, shown under their name so
+    // you can see where else they could go at a glance.
     var picks = AVAIL_BY_TORN_ID[p.tornId] || [];
     var others = [];
     for (var i = 0; i < picks.length; i++) {
-      if (picks[i] !== currentSlot && slots.hasOwnProperty(picks[i])) {
-        others.push(fmtSlot(picks[i]));
-      }
+      if (picks[i] !== currentSlot) others.push(fmtSlot(picks[i]));
     }
     if (others.length) {
-      html += '<span class="player-pill-slots">' + esc(others.join(' · ')) + '</span>';
+      html += '<span class="player-pill-slots">also: ' + esc(others.join(' · ')) + '</span>';
+    } else if (p.source === 'non' || picks.length === 0) {
+      html += '<span class="player-pill-slots">no times picked</span>';
     }
     html += '</div>';
     return html;
