@@ -375,6 +375,12 @@
 
   var dragState = { tornId: null, fromSlot: null };
 
+  // Every TCT slot the tournament runs (mirrors availability.html): 00:00–22:00,
+  // two hours apart. The editor shows ALL of these as columns — including empty
+  // ones — so a player can be dragged to any time, not only times already in use.
+  var ALL_SLOT_IDS = [];
+  for (var _h = 0; _h < 24; _h += 2) ALL_SLOT_IDS.push('slot_' + _h);
+
   // ============================================================
   // BOOT
   // ============================================================
@@ -512,7 +518,14 @@
   }
 
   function renderSlots() {
-    var slotIds = Object.keys(slots).sort(function(a, b) {
+    // Show every TCT slot as a column, not just the ones the algorithm used, so
+    // players can be dragged into a currently-empty time. Include any plan slot
+    // outside the standard set (defensive) and sort by hour.
+    var seen = {};
+    var slotIds = ALL_SLOT_IDS.slice();
+    slotIds.forEach(function(s) { seen[s] = true; });
+    Object.keys(slots).forEach(function(s) { if (!seen[s]) { slotIds.push(s); seen[s] = true; } });
+    slotIds.sort(function(a, b) {
       return slotHour(a) - slotHour(b);
     });
 
@@ -542,7 +555,7 @@
   }
 
   function renderSlotColumn(slotId, shortSlotsSet, startTableNum) {
-    var players = slots[slotId];
+    var players = slots[slotId] || [];
     var n = players.length;
 
     var statusClass = 'dim';
