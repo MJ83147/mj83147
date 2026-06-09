@@ -896,6 +896,34 @@
       }
 
       updateStageTabs();
+      openActiveStageOnce();
+    }
+
+    // On first load, expand the stage that's actually in play and collapse the
+    // rest, so the page opens on the current action instead of a finished stage.
+    // Active = shallowest stage with live tables or a waiting queue; otherwise the
+    // deepest stage that has any completed tables; otherwise Stage 1. Runs once so
+    // it never fights the user's own expand/collapse on later refreshes.
+    var defaultStageOpened = false;
+    function openActiveStageOnce() {
+      if (defaultStageOpened) return;
+      defaultStageOpened = true;
+
+      var active = 0;
+      for (var s = 1; s <= 4; s++) {
+        if (countOf('s' + s + '-live-count') > 0 || countOf('s' + s + '-queue-count') > 0) { active = s; break; }
+      }
+      if (!active) {
+        for (var d = 4; d >= 1; d--) {
+          if (countOf('s' + d + '-complete-count') > 0) { active = d; break; }
+        }
+      }
+      if (!active) active = 1;
+
+      document.querySelectorAll('.stage-panel[data-stage]').forEach(function(panel) {
+        if (panel.getAttribute('data-stage') === String(active)) panel.classList.remove('collapsed');
+        else panel.classList.add('collapsed');
+      });
     }
 
     function renderStageContent(stageKey, queueKey, ids) {
