@@ -522,10 +522,11 @@
         if (load[a.stewardId] !== undefined) load[a.stewardId]++;
       });
 
-      var slotMap = {}; // stewardId -> { slotId: true }
+      var slotMap = {}; // stewardId -> { slotId: true } — only for tables still running
       state.stewardAssignments.forEach(function(a) {
         var t = tables.filter(function(tt) { return tt.tableId === a.tableId; })[0];
         if (!t) return;
+        if (t.status === 'complete') return; // a finished table no longer occupies the steward
         if (!slotMap[a.stewardId]) slotMap[a.stewardId] = {};
         slotMap[a.stewardId][t.timeSlotId] = true;
       });
