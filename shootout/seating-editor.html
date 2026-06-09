@@ -96,6 +96,41 @@
     .warning-item {
       padding: 2px 0;
     }
+    .advisory-strip {
+      padding: 10px 24px;
+      background: rgba(224, 168, 0, 0.06);
+      border-bottom: 1px solid rgba(224, 168, 0, 0.3);
+      font-size: 12px;
+      color: var(--text);
+      max-height: 260px;
+      overflow-y: auto;
+    }
+    .adv-title {
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--accent, #e0a800);
+      margin-bottom: 6px;
+    }
+    .adv-row { margin-top: 6px; }
+    .adv-name { font-weight: 700; }
+    .adv-dim { color: var(--text-dim); font-family: var(--font-mono); font-size: 10px; }
+    .adv-sub { padding-left: 12px; color: var(--text-muted); line-height: 1.5; }
+    .adv-lbl {
+      display: inline-block;
+      min-width: 56px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      text-transform: uppercase;
+    }
+    .adv-whatif {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(224, 168, 0, 0.2);
+    }
+    .adv-whatif-title { font-weight: 700; color: var(--green, #57b97a); margin-bottom: 4px; }
+    .adv-whatif-change { padding-left: 12px; line-height: 1.5; }
+    .adv-whatif-change strong { color: var(--green, #57b97a); }
 
     .editor-main {
       padding: 16px 24px 80px;
@@ -329,6 +364,7 @@
 
   <div class="diag-strip" id="diagStrip"></div>
   <div class="warnings-strip" id="warningsStrip" style="display:none;"></div>
+  <div class="advisory-strip" id="advisoryStrip" style="display:none;"></div>
 
   <main class="editor-main" id="editorMain">
     <div class="empty-state">Loading…</div>
@@ -448,7 +484,196 @@
   function render() {
     renderDiag();
     renderWarnings();
+    renderAdvisory();
     renderSlots();
+  }
+
+  // ----- Flag / suggest / what-if, recomputed live from the current seating -----
+
+  function minHealthyTable() {
+    if (TABLE_SIZE <= 3) return 2;
+    if (TABLE_SIZE >= 9) return 6;
+    return 5;
+  }
+
+  // Everyone in the draw (seated + non-pool), with the slots they picked.
+  function allPoolPlayers() {
+    var out = [];
+    Object.keys(slots).forEach(function(slotId) {
+      slots[slotId].forEach(function(p) { out.push(p); });
+    });
+    nonPool.forEach(function(p) { out.push(p); });
+    return out;
+  }
+
+  // How many players are FREE at each slot (a non-submitter is free anywhere).
+  function fieldCounts(players) {
+    var f = {};
+    ALL_SLOT_IDS.forEach(function(s) { f[s] = 0; });
+    players.forEach(function(p) {
+      var picks = AVAIL_BY_TORN_ID[p.tornId] || [];
+      if (picks.length === 0) { ALL_SLOT_IDS.forEach(function(s) { f[s]++; }); return; }
+      picks.forEach(function(s) { if (f.hasOwnProperty(s)) f[s]++; });
+    });
+    return f;
+  }
+
+  function neighbourSlots(slotId) {
+    var h = slotHour(slotId), out = [];
+    if (h - 2 >= 0) out.push('slot_' + (h - 2));
+    if (h + 2 < 24) out.push('slot_' + (h + 2));
+    return out;
+  }
+
+  function renderAdvisory() {
+    var strip = document.getElementById('advisoryStrip');
+    var players = allPoolPlayers();
+    var minTable = minHealthyTable();
+    var fieldAt = fieldCounts(players);
+
+    // Which slot each player currently sits in (for "don't suggest their own").
+    var seatOf = {};
+    Object.keys(slots).forEach(function(slotId) {
+      slots[slotId].forEach(function(p) { seatOf[p.tornId] = slotId; });
+    });
+
+    // Flag: submitters whose busiest picked time never reaches minTable.
+    var flagged = [];
+    players.forEach(function(p) {
+      var picks = AVAIL_BY_TORN_ID[p.tornId] || [];
+      if (picks.length === 0) return; // non-submitter, can sit anywhere
+      var best = 0;
+      picks.forEach(function(s) { best = Math.max(best, Math.min(fieldAt[s] || 0, TABLE_SIZE)); });
+      if (best < minTable) flagged.push({ p: p, picks: picks, best: best });
+    });
+
+    var html = '';
+
+    if (flagged.length) {
+      html += '<div class="adv-title">⚠ ' + flagged.length + ' player' + (flagged.length === 1 ? '' : 's') +
+              ' can\'t fill a table at their picked times</div>';
+      flagged.forEach(function(f) {
+        var picked = {};
+        f.picks.forEach(function(s) { picked[s] = true; });
+        var cand = {};
+        f.picks.forEach(function(s) {
+          neighbourSlots(s).forEach(function(ns) { if (!picked[ns]) cand[ns] = true; });
+        });
+        var moveOpts = Object.keys(cand).sort(function(a, b) {
+          return (fieldAt[b] || 0) - (fieldAt[a] || 0) || slotHour(a) - slotHour(b);
+        }).map(function(ns) { return fmtSlot(ns) + ' (' + (fieldAt[ns] || 0) + ' free)'; });
+
+        var mySlot = seatOf[f.p.tornId];
+        var pulls = [];
+        players.forEach(function(q) {
+          if (q.tornId === f.p.tornId) return;
+          if (seatOf[q.tornId] === mySlot) return;
+          var qpicks = AVAIL_BY_TORN_ID[q.tornId] || [];
+          var near = [];
+          qpicks.forEach(function(s) { if (cand[s]) near.push(fmtSlot(s)); });
+          if (near.length) pulls.push({ name: q.name, near: near, flex: qpicks.length || 99 });
+        });
+        pulls.sort(function(a, b) { return a.flex - b.flex; });
+        var pullTxt = pulls.slice(0, 6).map(function(x) { return x.name + ' (picked ' + x.near.join(', ') + ')'; });
+
+        html += '<div class="adv-row"><span class="adv-name">' + esc(f.p.name) + '</span> ' +
+                '<span class="adv-dim">picked ' + esc(f.picks.map(fmtSlot).join(', ')) + ' — only ' + f.best + ' free</span></div>';
+        html += '<div class="adv-sub"><span class="adv-lbl">move</span>' +
+                esc(moveOpts.length ? moveOpts.join('  ·  ') : 'no adjacent time helps — ask them to add a slot') + '</div>';
+        html += '<div class="adv-sub"><span class="adv-lbl">or pull</span>' +
+                esc(pullTxt.length ? pullTxt.join(';  ') : 'nobody picked an adjacent time') + '</div>';
+      });
+    }
+
+    // What-if: fewest moves to the ideal layout.
+    var ideal = layoutForCount(players.length, TABLE_SIZE);
+    var wi = minMoveToIdeal(players, ideal);
+    if (wi && wi.changes.length) {
+      html += '<div class="adv-whatif"><div class="adv-whatif-title">If you make these changes → ' +
+              esc(wi.layout.join(', ')) + '</div>';
+      wi.changes.forEach(function(c) {
+        html += '<div class="adv-whatif-change">' + esc(c.name) + ' → <strong>play ' + esc(c.to) +
+                '</strong> <span class="adv-dim">(picked ' + esc(c.picked.join(', ')) + ')</span></div>';
+      });
+      html += '</div>';
+    }
+
+    if (!html) { strip.style.display = 'none'; strip.innerHTML = ''; return; }
+    strip.style.display = '';
+    strip.innerHTML = html;
+  }
+
+  // Fewest players who'd have to move off their picks to reach the ideal sizes.
+  function minMoveToIdeal(players, idealSizes) {
+    var N = players.length, K = idealSizes ? idealSizes.length : 0;
+    if (K < 1) return null;
+    var pickOf = {};
+    players.forEach(function(p) {
+      var picks = AVAIL_BY_TORN_ID[p.tornId] || [];
+      var set = {};
+      (picks.length ? picks : ALL_SLOT_IDS).forEach(function(s) { set[s] = true; });
+      pickOf[p.tornId] = set;
+    });
+    var pickCount = {};
+    ALL_SLOT_IDS.forEach(function(s) { pickCount[s] = 0; });
+    players.forEach(function(p) { for (var k in pickOf[p.tornId]) pickCount[k]++; });
+    var usable = ALL_SLOT_IDS.filter(function(s) { return pickCount[s] > 0; });
+    if (usable.length < K) return null;
+
+    function dist(p, slot) {
+      var h = slotHour(slot), best = 99, set = pickOf[p.tornId];
+      for (var k in set) best = Math.min(best, Math.abs(slotHour(k) - h));
+      return best;
+    }
+    function evaluate(combo) {
+      var order = combo.slice().sort(function(a, b) { return pickCount[b] - pickCount[a]; });
+      var cap = {}; order.forEach(function(s, i) { cap[s] = idealSizes[i]; });
+      var place = {}; combo.forEach(function(s) { place[s] = []; });
+      var scored = players.map(function(p) {
+        var opts = combo.filter(function(s) { return pickOf[p.tornId][s]; });
+        return { p: p, opts: opts };
+      });
+      scored.sort(function(a, b) {
+        return a.opts.length - b.opts.length ||
+               (Object.keys(pickOf[a.p.tornId]).length - Object.keys(pickOf[b.p.tornId]).length);
+      });
+      var movers = [];
+      scored.forEach(function(x) {
+        var avail = x.opts.filter(function(s) { return place[s].length < cap[s]; })
+                          .sort(function(a, b) { return (cap[a] - place[a].length) - (cap[b] - place[b].length); });
+        if (avail.length) place[avail[0]].push(x.p);
+        else movers.push(x.p);
+      });
+      var moverPlan = [];
+      movers.forEach(function(p) {
+        var openS = combo.filter(function(s) { return place[s].length < cap[s]; })
+                         .sort(function(a, b) { return dist(p, a) - dist(p, b); });
+        if (openS.length) {
+          place[openS[0]].push(p);
+          moverPlan.push({ name: p.name, picked: Object.keys(pickOf[p.tornId]).map(fmtSlot), to: fmtSlot(openS[0]) });
+        }
+      });
+      var placed = 0; combo.forEach(function(s) { placed += place[s].length; });
+      return { moverCount: moverPlan.length, moverPlan: moverPlan, place: place, order: order, placed: placed };
+    }
+    var best = null, combo = [], evals = { n: 0 };
+    function rec(start) {
+      if (best && best.r.moverCount === 0) return;
+      if (evals.n > 20000) return;
+      if (combo.length === K) {
+        evals.n++;
+        var r = evaluate(combo);
+        if (r.placed >= N && (!best || r.moverCount < best.r.moverCount)) best = { r: r, combo: combo.slice() };
+        return;
+      }
+      for (var i = start; i < usable.length; i++) { combo.push(usable[i]); rec(i + 1); combo.pop(); }
+    }
+    rec(0);
+    if (!best) return null;
+    var r = best.r;
+    var tables = r.order.map(function(s) { return { time: fmtSlot(s), size: r.place[s].length }; });
+    tables.sort(function(a, b) { return parseInt(a.time, 10) - parseInt(b.time, 10); });
+    return { moveCount: r.moverCount, changes: r.moverPlan, layout: tables.map(function(t) { return t.size; }) };
   }
 
   function renderDiag() {
