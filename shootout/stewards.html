@@ -960,7 +960,8 @@
         if (playerCount >= 4 && !place2) { toast('2nd place required', 'error'); return; }
         if (playerCount >= 7 && !place3) { toast('3rd place required', 'error'); return; }
       } else if (stage === '2') {
-        if (playerCount >= 2 && !place2) { toast('2nd place required', 'error'); return; }
+        // Short Stage 2 tables (4 or fewer) are walkovers — only 1st advances.
+        if (playerCount >= 5 && !place2) { toast('2nd place required', 'error'); return; }
       }
 
       var action = isComplete ? 'editTableResult' : 'recordTableResult';
@@ -1083,7 +1084,9 @@
         html += '<select class="srr-place">';
         html += '<option value="">—</option>';
         html += '<option value="1"' + (sel === '1' ? ' selected' : '') + '>1st</option>';
-        if (stage === '1' || stage === '2') html += '<option value="2"' + (sel === '2' ? ' selected' : '') + '>2nd</option>';
+        // Stage 2 only sends a 2nd through on tables of 5+; short tables are 1st-only.
+        var allowSecond = stage === '1' || (stage === '2' && t.players.length >= 5);
+        if (allowSecond) html += '<option value="2"' + (sel === '2' ? ' selected' : '') + '>2nd</option>';
         if (stage === '1') html += '<option value="3"' + (sel === '3' ? ' selected' : '') + '>3rd</option>';
         html += '</select>';
         // Rebuy tables are knockouts — losers are out for good, so no re-rebuy tick.
