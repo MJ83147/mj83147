@@ -3143,6 +3143,12 @@ body {
       margin-bottom: 12px;
     }
 
+    body.leaderboard .payout-intro-bonus {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border, rgba(255,255,255,0.08));
+    }
+
     body.leaderboard .payout-place {
       font-family: var(--font-mono);
       font-size: 14px;

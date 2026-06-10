@@ -635,18 +635,42 @@
       { place: 12, pct: 1.25 }
     ];
 
+    // Stage 4 phase 1 runs 3 tables; the top 3 at each advance to the final table.
+    // To reward finishing 1st over scraping in 3rd, each table carries a guaranteed
+    // winner bonus that's reserved off the top of the prize pool BEFORE the top-12
+    // split: 1st is guaranteed 40m, 2nd gets their buy-in back, 3rd just takes the
+    // seat. The reserved total is set aside and never enters the percentage split.
+    function getStage4BonusConfig() {
+      var settings = (state && state.settings) ? state.settings : {};
+      var buyIn = Number(settings.buy_in) || 25000000;
+      return {
+        tables: Number(settings.stage4_tables) || 3,
+        first: Number(settings.stage4_first_bonus) || 40000000,
+        second: Number(settings.stage4_second_bonus) || buyIn // 2nd gets their buy-in back
+      };
+    }
+
+    function getReservedBonusTotal() {
+      var c = getStage4BonusConfig();
+      return c.tables * (c.first + c.second);
+    }
+
     function getPrizePool() {
       var counts = getPlayerCountsByStatus();
       var buyIn = (state && state.settings && state.settings.buy_in) ? Number(state.settings.buy_in) : 25000000;
       var playerPool = counts.registered * buyIn;
       var donationTotal = getDonationTotal();
       var rebuyStats = getRebuyStats();
+      var total = playerPool + donationTotal + rebuyStats.total;
+      var reserved = getReservedBonusTotal();
       return {
         playerPool: playerPool,
         donationTotal: donationTotal,
         rebuyTotal: rebuyStats.total,
         rebuyCount: rebuyStats.count,
-        total: playerPool + donationTotal + rebuyStats.total
+        total: total,
+        reserved: reserved,
+        distributable: Math.max(0, total - reserved)
       };
     }
 
@@ -1302,18 +1326,33 @@
 
     function renderPayoutModal() {
       var body = document.getElementById('payoutModalBody');
-      var pool = getPrizePool().total;
+      var p = getPrizePool();
+      var bonus = getStage4BonusConfig();
+      var distributable = p.distributable;
 
-      var html = '<p class="payout-intro">How the <strong>' + formatMoney(pool) + '</strong> prize pool is split among the top ' + PAYOUT_STRUCTURE.length + ' finishers. Amounts update as the pool grows.</p>';
+      var html = '';
+      if (p.reserved > 0) {
+        html += '<p class="payout-intro">The <strong>' + formatMoney(p.total) + '</strong> prize pool first sets aside <strong>' + formatMoney(p.reserved) + '</strong> for the Stage 4 winner bonuses. The remaining <strong>' + formatMoney(distributable) + '</strong> is split among the top ' + PAYOUT_STRUCTURE.length + ' finishers. Amounts update as the pool grows.</p>';
+      } else {
+        html += '<p class="payout-intro">How the <strong>' + formatMoney(distributable) + '</strong> prize pool is split among the top ' + PAYOUT_STRUCTURE.length + ' finishers. Amounts update as the pool grows.</p>';
+      }
 
       PAYOUT_STRUCTURE.forEach(function(row) {
-        var amount = pool * (row.pct / 100);
+        var amount = distributable * (row.pct / 100);
         html += '<div class="donor-list-item">';
         html += '  <span class="payout-place">' + ordinal(row.place) + '</span>';
         html += '  <span class="payout-pct">' + row.pct + '%</span>';
         html += '  <span class="donor-list-amount">' + formatMoneyPrecise(amount) + '</span>';
         html += '</div>';
       });
+
+      if (p.reserved > 0) {
+        html += '<p class="payout-intro payout-intro-bonus">Stage 4 winner bonuses &mdash; reserved off the top, one per table (' + bonus.tables + ' tables):</p>';
+        html += '<div class="donor-list-item"><span class="payout-place">1st</span><span class="payout-pct">' + bonus.tables + '&times;</span><span class="donor-list-amount">' + formatMoneyPrecise(bonus.first) + '</span></div>';
+        html += '<div class="donor-list-item"><span class="payout-place">2nd</span><span class="payout-pct">' + bonus.tables + '&times;</span><span class="donor-list-amount">' + formatMoneyPrecise(bonus.second) + ' (buy-in back)</span></div>';
+        html += '<div class="donor-list-item"><span class="payout-place">3rd</span><span class="payout-pct">' + bonus.tables + '&times;</span><span class="donor-list-amount">seat only</span></div>';
+        html += '<div class="donor-total-row"><span class="donor-total-label">Reserved total</span><span class="donor-total-amount">' + formatMoneyPrecise(p.reserved) + '</span></div>';
+      }
 
       body.innerHTML = html;
     }
