@@ -1219,7 +1219,11 @@
         return t.players && t.players.indexOf(pid) !== -1;
       });
       var liveTable = playerTables.find(function(t) { return t.status === 'live'; });
-      var queued = queues.find(function(q) { return q.tornId === pid; });
+      // A player keeps every queue row they've ever earned (e.g. an old stage_2
+      // row plus a stage_4 row after winning their Stage 2 table). The one that
+      // reflects where they ARE is the DEEPEST, so pick that, not the first.
+      var queued = queues.filter(function(q) { return q.tornId === pid; })
+        .sort(function(a, b) { return queueDepth(b.queuedFor) - queueDepth(a.queuedFor); })[0];
 
       // Path so far: completed tables and finishing position
       var pathParts = [];
