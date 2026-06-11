@@ -640,11 +640,23 @@
     // winner bonus that's reserved off the top of the prize pool BEFORE the top-12
     // split: 1st is guaranteed 40m, 2nd gets their buy-in back, 3rd just takes the
     // seat. The reserved total is set aside and never enters the percentage split.
+    // How many Phase 1 tables Stage 4 runs. Turnout (17-22 players) decides this:
+    // 17-18 -> 2 tables, 19-22 -> 3. The count drives the reserve, so it follows,
+    // in order: an explicit admin override, the real Phase 1 tables once generated,
+    // else 3 as the pre-Stage-4 assumption.
+    function getStage4TableCount() {
+      var settings = (state && state.settings) ? state.settings : {};
+      if (settings.stage4_tables) return Number(settings.stage4_tables);
+      var tables = (state && state.tables) ? state.tables : [];
+      var live = tables.filter(function(t) { return String(t.stage) === '4'; }).length;
+      return live > 0 ? live : 3;
+    }
+
     function getStage4BonusConfig() {
       var settings = (state && state.settings) ? state.settings : {};
       var buyIn = Number(settings.buy_in) || 25000000;
       return {
-        tables: Number(settings.stage4_tables) || 3,
+        tables: getStage4TableCount(),
         first: Number(settings.stage4_first_bonus) || 40000000,
         second: Number(settings.stage4_second_bonus) || buyIn // 2nd gets their buy-in back
       };
@@ -1351,7 +1363,6 @@
         html += '<div class="donor-list-item"><span class="payout-place">1st</span><span class="payout-pct">' + bonus.tables + '&times;</span><span class="donor-list-amount">' + formatMoneyPrecise(bonus.first) + '</span></div>';
         html += '<div class="donor-list-item"><span class="payout-place">2nd</span><span class="payout-pct">' + bonus.tables + '&times;</span><span class="donor-list-amount">' + formatMoneyPrecise(bonus.second) + ' (buy-in back)</span></div>';
         html += '<div class="donor-list-item"><span class="payout-place">3rd</span><span class="payout-pct">' + bonus.tables + '&times;</span><span class="donor-list-amount">seat only</span></div>';
-        html += '<div class="donor-total-row"><span class="donor-total-label">Reserved total</span><span class="donor-total-amount">' + formatMoneyPrecise(p.reserved) + '</span></div>';
       }
 
       body.innerHTML = html;
