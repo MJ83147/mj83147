@@ -946,9 +946,21 @@
       defaultStageOpened = true;
 
       var active = 0;
+      // 1. A stage with live tables is where the action is right now.
       for (var s = 1; s <= 4; s++) {
-        if (countOf('s' + s + '-live-count') > 0 || countOf('s' + s + '-queue-count') > 0) { active = s; break; }
+        if (countOf('s' + s + '-live-count') > 0) { active = s; break; }
       }
+      // 2. Otherwise the shallowest stage with players queued but NO tables drawn
+      //    yet — the next one to run. A finished stage keeps a stale queue count,
+      //    so it only counts as "waiting" if nothing has been drawn there.
+      if (!active) {
+        for (var q = 1; q <= 4; q++) {
+          if (countOf('s' + q + '-queue-count') > 0 &&
+              countOf('s' + q + '-live-count') === 0 &&
+              countOf('s' + q + '-complete-count') === 0) { active = q; break; }
+        }
+      }
+      // 3. Otherwise the deepest stage that has completed tables.
       if (!active) {
         for (var d = 4; d >= 1; d--) {
           if (countOf('s' + d + '-complete-count') > 0) { active = d; break; }
