@@ -2443,15 +2443,36 @@ body {
       padding-bottom: 4px;
       border-bottom: 1px solid var(--border);
       display: flex;
-      justify-content: space-between;
+      justify-content: flex-start;
       align-items: baseline;
+      gap: 8px;
     }
 
     body.leaderboard .stage-subsection-count {
       font-size: 10px;
       color: var(--text-dim);
       font-weight: 500;
+      margin-left: auto;
     }
+
+    body.leaderboard .stage-subsection-note {
+      font-size: 10px;
+      letter-spacing: 0.4px;
+      color: var(--green, #4caf50);
+      font-weight: 600;
+      text-transform: none;
+    }
+
+    body.leaderboard .stage-subsection-group-title {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent, #e8a832);
+      margin: 18px 0 10px;
+    }
+    body.leaderboard .stage-subsection-group-title:first-child { margin-top: 0; }
 
     body.leaderboard .stage-placeholder {
       font-size: 12px;
@@ -2835,6 +2856,10 @@ body {
     body.leaderboard .tier-final .ladder-icon { background: rgba(232, 168, 50, 0.15); color: var(--accent); }
     body.leaderboard .tier-final .ladder-label { color: var(--accent); }
 
+    body.leaderboard .tier-money .ladder-rail { border-left-color: #2f7d4f; }
+    body.leaderboard .tier-money .ladder-icon { background: rgba(76, 175, 80, 0.14); color: var(--green, #4caf50); }
+    body.leaderboard .tier-money .ladder-label { color: var(--green, #4caf50); }
+
     body.leaderboard .tier-s4 .ladder-rail { border-left-color: #8a6a2a; }
     body.leaderboard .tier-s3 .ladder-rail { border-left-color: #6a6f7a; }
     body.leaderboard .tier-s2 .ladder-rail { border-left-color: #565b66; }
@@ -3165,6 +3190,17 @@ body {
       text-align: right;
       min-width: 56px;
       margin-right: 16px;
+    }
+
+    body.leaderboard .payout-winner {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent, #e8a832);
+      margin-right: 16px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 140px;
     }
 
     body.leaderboard .donor-total-row {

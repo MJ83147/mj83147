@@ -15,6 +15,8 @@
     .steward-result-summary { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; margin-bottom: 8px; }
     .steward-result-summary .srs-place { font-weight: 700; color: var(--green, #4caf50); margin-right: 4px; }
     .steward-result-bar { display: flex; }
+    .steward-result-note { font-size: 11.5px; opacity: 0.7; margin-bottom: 8px; line-height: 1.4; }
+    .steward-result-pending { font-size: 12px; opacity: 0.6; font-style: italic; padding: 4px 0; }
     .btn-result-toggle, .btn-result-submit, .btn-result-cancel {
       font-family: var(--font-body); font-size: 12px; font-weight: 600; cursor: pointer;
       border-radius: 5px; padding: 7px 12px; border: 1px solid var(--border, rgba(255,255,255,0.15));
@@ -339,12 +341,36 @@
         ]
       },
       {
-        label: 'Stage 4',
+        label: 'Stage 4 — Phase 1',
         messages: [
-          { label: 'Top 3 advance', text:
-"congrats you've secured a top 3 finish in stage 4 which means you advance to the next stage 4 table. Progression continues until the final table so keep an eye on discord or ping your steward on torn for more details" },
-          { label: 'Eliminated', text:
+          { label: '1st (40m bonus + final)', text:
+"congrats you won your stage 4 table! that's a guaranteed 40m bonus on top of wherever you finish, and a seat at the final table where everyone gets paid 1st-9th. keep an eye on discord or ping your steward on torn for the final table time" },
+          { label: '2nd (25m bonus + final)', text:
+"congrats you came 2nd on your stage 4 table! that's your 25m buy-in back as a bonus, plus a seat at the final table where everyone gets paid 1st-9th. keep an eye on discord or ping your steward on torn for the final table time" },
+          { label: '3rd (final table)', text:
+"congrats you came 3rd on your stage 4 table which secures a seat at the final table where everyone gets paid 1st-9th. keep an eye on discord or ping your steward on torn for the final table time" },
+          { label: '4th-6th (money table)', text:
+"good run — a 4th-6th finish on your stage 4 table puts you on the money table, where the top 3 take the 10th-12th paid spots. keep an eye on discord or ping your steward on torn for the money table time" },
+          { label: '7th+ (out)', text:
 "unlucky result, that's the end of the road this time. There's no rebuy at stage 4. Thanks for playing and keep an eye on discord for how the rest of the tournament plays out" }
+        ]
+      },
+      {
+        label: 'Stage 4 — Final Table',
+        messages: [
+          { label: 'Champion', text:
+"that's it — you've WON the whole shootout 🏆 congratulations, you're the champion. your steward will be in touch about the payout" },
+          { label: 'Paid 2nd-9th', text:
+"great run at the final table — you've locked in a top-9 paid finish. your steward will confirm your exact placing and payout, keep an eye on discord" }
+        ]
+      },
+      {
+        label: 'Stage 4 — Money Table',
+        messages: [
+          { label: 'Paid 10th-12th', text:
+"nice — you finished in the money on the money table, taking one of the 10th-12th paid spots. your steward will confirm your exact placing and payout, keep an eye on discord" },
+          { label: 'Out of the money', text:
+"unlucky, you just missed the money on the money table this time. thanks for playing and a great run to reach stage 4 — keep an eye on discord for how it finishes" }
         ]
       }
     ];
@@ -711,14 +737,18 @@
       });
     }
 
-    // Order stage groups the way the tournament flows: each stage followed by its rebuy.
-    var STAGE_ORDER = ['1', 'rebuy_25', '2', 'rebuy_50', '3', 'rebuy_75', '4'];
+    // Order stage groups the way the tournament flows: each stage followed by its
+    // rebuy, then Stage 4 Phase 1 and the two Phase 2 tables it feeds.
+    var STAGE_ORDER = ['1', 'rebuy_25', '2', 'rebuy_50', '3', 'rebuy_75', '4', 'money', 'final'];
 
     function stageGroupLabel(stage) {
       if (stage === 'rebuy_25') return 'Rebuy — Stage 1 (25M)';
       if (stage === 'rebuy_50') return 'Rebuy — Stage 2 (50M)';
       if (stage === 'rebuy_75') return 'Rebuy — Stage 3 (75M)';
-      if (stage === '1' || stage === '2' || stage === '3' || stage === '4') return 'Stage ' + stage;
+      if (stage === '4') return 'Stage 4 — Phase 1';
+      if (stage === 'money') return 'Stage 4 — Money Table';
+      if (stage === 'final') return 'Stage 4 — Final Table';
+      if (stage === '1' || stage === '2' || stage === '3') return 'Stage ' + stage;
       return stage;
     }
 
@@ -732,7 +762,11 @@
       var container = document.getElementById('tablesBySlot');
       var countLabel = document.getElementById('tablesCount');
 
-      var tables = (state.tables || []).filter(function(t) { return t.timeSlotId; });
+      // Scheduled tables carry a time slot; the final/money tables don't (they
+      // fill from Phase 1 results) but still need to be operable here.
+      var tables = (state.tables || []).filter(function(t) {
+        return t.timeSlotId || t.stage === 'final' || t.stage === 'money';
+      });
       countLabel.textContent = tables.length + ' table' + (tables.length === 1 ? '' : 's');
 
       // Assignment map: tableId -> stewardId
@@ -892,16 +926,20 @@
     function wireResultBox(box) {
       var form = box.querySelector('.steward-result-form');
       var toggle = box.querySelector('.btn-result-toggle');
+      // Pending (empty final/money) and completed ordered boxes are display-only.
+      if (!form || !toggle) return;
       toggle.addEventListener('click', function() {
         form.classList.toggle('hidden');
       });
-      box.querySelector('.btn-result-cancel').addEventListener('click', function() {
+      var cancel = box.querySelector('.btn-result-cancel');
+      if (cancel) cancel.addEventListener('click', function() {
         form.classList.add('hidden');
       });
       box.querySelectorAll('.srr-place').forEach(function(sel) {
         sel.addEventListener('change', function() { onPlaceChange(box, sel); });
       });
-      box.querySelector('.btn-result-submit').addEventListener('click', function() {
+      var submit = box.querySelector('.btn-result-submit');
+      if (submit) submit.addEventListener('click', function() {
         submitResult(box);
       });
     }
@@ -934,6 +972,11 @@
       var tableId = box.getAttribute('data-table-id');
       var stage = box.getAttribute('data-stage');
       var isComplete = box.getAttribute('data-complete') === '1';
+
+      // Stage 4 (Phase 1 / final / money) records a full ordered list of places.
+      if (box.getAttribute('data-ordered') === '1') {
+        return submitOrderedResult(box, tableId, stage);
+      }
 
       var rows = box.querySelectorAll('.steward-result-row');
       var placeByNum = {};
@@ -973,6 +1016,42 @@
         place2: place2,
         place3: place3,
         rebuys: rebuys.join(',')
+      }, function(data) {
+        toast(data.message || 'Result saved', 'success');
+        fetchState();
+      }).then(function() {
+        if (submitBtn) submitBtn.disabled = false;
+      });
+    }
+
+    // Stage 4 ordered submit: gather places 1..k, require them contiguous from 1,
+    // and send the finishing order as a comma-separated `places` list.
+    function submitOrderedResult(box, tableId, stage) {
+      var rows = box.querySelectorAll('.steward-result-row');
+      var cfg = orderedResultConfig(stage, rows.length);
+      var byPlace = {};
+      for (var i = 0; i < rows.length; i++) {
+        var pid = rows[i].getAttribute('data-pid');
+        var place = rows[i].querySelector('.srr-place').value;
+        if (!place) continue;
+        if (byPlace[place]) { toast('Two players selected for the same place', 'error'); return; }
+        byPlace[place] = pid;
+      }
+
+      var ordered = [];
+      for (var n = 1; n <= cfg.requireCount; n++) {
+        if (!byPlace[String(n)]) {
+          toast('Set ' + ordinalLabel(n) + ' place', 'error');
+          return;
+        }
+        ordered.push(byPlace[String(n)]);
+      }
+
+      var submitBtn = box.querySelector('.btn-result-submit');
+      submitBtn.disabled = true;
+      apiCall('recordTableResult', {
+        tableId: tableId,
+        places: ordered.join(',')
       }, function(data) {
         toast(data.message || 'Result saved', 'success');
         fetchState();
@@ -1044,7 +1123,8 @@
       html += '    <button class="btn-copy" data-torn-ids="' + esc(tornIds.join(',')) + '">Copy Torn IDs (' + tornIds.length + ')</button>';
       html += '  </div>';
 
-      if (stage === '1' || stage === '2' || stage === '3' || isRebuyStage(stage)) {
+      if (stage === '1' || stage === '2' || stage === '3' || isRebuyStage(stage) ||
+          stage === '4' || stage === 'final' || stage === 'money') {
         html += renderResultSection(t, stage);
       }
 
@@ -1053,6 +1133,9 @@
     }
 
     function renderResultSection(t, stage) {
+      var ordered = orderedResultConfig(stage, t.players.length);
+      if (ordered) return renderOrderedResultSection(t, stage, ordered);
+
       var isComplete = (t.status === 'complete');
       var html = '<div class="steward-result" data-table-id="' + esc(t.tableId) + '" data-stage="' + esc(stage) + '" data-complete="' + (isComplete ? '1' : '0') + '">';
 
@@ -1107,11 +1190,85 @@
       return html;
     }
 
-    function resultSummaryItem(label, pid) {
+    // Stage 4 result entry: a place dropdown 1st..config.count per seat. 4 = Phase 1
+    // (1-6), final (full order), money (top 3). No rebuy, no in-place editing.
+    function renderOrderedResultSection(t, stage, cfg) {
+      var isComplete = (t.status === 'complete');
+      var seated = t.players.length;
+      var html = '<div class="steward-result" data-table-id="' + esc(t.tableId) + '" data-stage="' + esc(stage) + '" data-complete="' + (isComplete ? '1' : '0') + '" data-ordered="1">';
+
+      // Final/money tables fill as Phase 1 results land. Only allow recording once
+      // every seat is filled (i.e. all Phase 1 tables are in).
+      if (!isComplete && (stage === 'final' || stage === 'money')) {
+        var capacity = t.tableSize || 9;
+        if (seated < capacity) {
+          html += '<div class="steward-result-pending">' +
+                  (seated === 0
+                    ? 'Waiting for Phase 1 results — players appear here as their tables finish.'
+                    : seated + ' / ' + capacity + ' seated — finish the Phase 1 tables to fill this table.') +
+                  '</div>';
+          html += '</div>';
+          return html;
+        }
+      }
+
+      if (isComplete) {
+        var startPlace = (stage === 'money') ? 10 : 1;
+        var placings = (state.placings || []).filter(function(pl) { return pl.tableId === t.tableId; })
+          .sort(function(a, b) { return a.place - b.place; });
+        html += '<div class="steward-result-summary">';
+        if (placings.length) {
+          placings.forEach(function(pl) {
+            var crown = (stage === 'final' && pl.place === 1) ? ' 👑' : '';
+            html += resultSummaryItem(ordinalLabel(pl.place), pl.tornId, crown);
+          });
+        } else {
+          // Phase 1 has no Placings rows — show the three advancers we stored.
+          html += resultSummaryItem('1st', t.place1, '');
+          if (t.place2) html += resultSummaryItem('2nd', t.place2, '');
+          if (t.place3) html += resultSummaryItem('3rd', t.place3, '');
+        }
+        html += '</div>';
+        html += '</div>';
+        return html; // ordered results are not editable in place
+      }
+
+      html += '<div class="steward-result-note">' + esc(cfg.note) + '</div>';
+      html += '<div class="steward-result-bar">';
+      html += '<button class="btn-result-toggle">Record result</button>';
+      html += '</div>';
+
+      html += '<div class="steward-result-form hidden">';
+      html += '<div class="steward-result-rows">';
+      t.players.forEach(function(pid) {
+        var player = state.players.filter(function(p) { return p.tornId === pid; })[0];
+        var name = player ? player.name : '(unknown)';
+        html += '<div class="steward-result-row" data-pid="' + esc(pid) + '">';
+        html += '<span class="srr-name">' + esc(name) + ' <span class="srr-id">#' + esc(pid) + '</span></span>';
+        html += '<select class="srr-place">';
+        html += '<option value="">—</option>';
+        for (var n = 1; n <= cfg.count; n++) {
+          html += '<option value="' + n + '">' + ordinalLabel(n) + '</option>';
+        }
+        html += '</select>';
+        html += '</div>';
+      });
+      html += '</div>';
+      html += '<div class="steward-result-actions">';
+      html += '<button class="btn-result-submit">Submit result</button>';
+      html += '<button class="btn-result-cancel">Cancel</button>';
+      html += '</div>';
+      html += '</div>';
+
+      html += '</div>';
+      return html;
+    }
+
+    function resultSummaryItem(label, pid, extra) {
       if (!pid) return '';
       var player = state.players.filter(function(p) { return p.tornId === pid; })[0];
       var name = player ? player.name : ('#' + pid);
-      return '<span><span class="srs-place">' + label + '</span>' + esc(name) + '</span>';
+      return '<span><span class="srs-place">' + label + '</span>' + esc(name) + (extra || '') + '</span>';
     }
 
     function isRebuyTicked(tableId, pid) {
@@ -1160,8 +1317,28 @@
       if (stage === 'rebuy_25') return '25M Rebuy';
       if (stage === 'rebuy_50') return '50M Rebuy';
       if (stage === 'rebuy_75') return '75M Rebuy';
+      if (stage === '4') return 'Stage 4 · Phase 1';
+      if (stage === 'money') return 'Money Table';
+      if (stage === 'final') return 'Final Table';
       if (stage === '1' || stage === '2' || stage === '3') return 'Stage ' + stage;
       return stage;
+    }
+
+    // Stage 4 records full finishing order instead of just a top 3. Returns the
+    // ordered-result config for these stages, or null for the legacy stages.
+    //   '4'     — 1st-6th: 1-3 to the final table, 4-6 to the money table, 7th+ out
+    //   'final' — full order, pays overall 1st-9th (1st = champion)
+    //   'money' — top 3, pays overall 10th-12th; the rest finish out of the money
+    function orderedResultConfig(stage, seatCount) {
+      if (stage === '4')     return { count: Math.min(6, seatCount), requireCount: Math.min(6, seatCount), note: '1st–3rd → final table · 4th–6th → money table · 7th+ out' };
+      if (stage === 'final') return { count: seatCount, requireCount: seatCount, note: 'Full finishing order — pays 1st through ' + ordinalLabel(seatCount) };
+      if (stage === 'money') return { count: Math.min(3, seatCount), requireCount: Math.min(3, seatCount), note: 'Top 3 take 10th–12th · the rest finish out of the money' };
+      return null;
+    }
+
+    function ordinalLabel(n) {
+      var s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
     }
 
     function toast(message, type) {
