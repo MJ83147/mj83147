@@ -3203,6 +3203,115 @@ body {
       max-width: 140px;
     }
 
+    /* --- PAYOUT BOARD (replaces the standings ladder once Stage 4 begins) --- */
+    body.leaderboard .payout-board { display: flex; flex-direction: column; gap: 6px; }
+
+    body.leaderboard .payout-board-champion {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      border: 1px solid var(--border, rgba(255,255,255,0.1));
+      border-radius: 8px;
+      background: rgba(232, 168, 50, 0.06);
+    }
+    body.leaderboard .payout-board-champion.crowned {
+      border-color: var(--accent, #e8a832);
+      background: rgba(232, 168, 50, 0.12);
+    }
+    body.leaderboard .payout-board-champion .pbc-crown { font-size: 22px; line-height: 1; }
+    body.leaderboard .payout-board-champion .pbc-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+    body.leaderboard .payout-board-champion .pbc-name {
+      margin-left: auto;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--accent, #e8a832);
+    }
+
+    body.leaderboard .payout-board-rows { display: flex; flex-direction: column; }
+
+    body.leaderboard .payout-board-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 4px;
+      border-bottom: 1px solid var(--border, rgba(255,255,255,0.07));
+    }
+    body.leaderboard .payout-board-row:last-child { border-bottom: none; }
+    body.leaderboard .payout-board-row.filled .pbr-name { color: var(--text, #fff); }
+
+    body.leaderboard .payout-board-row .pbr-place {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      min-width: 52px;
+    }
+    body.leaderboard .payout-board-row .pbr-name {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    body.leaderboard .payout-board-row .pbr-tbd {
+      font-size: 11px;
+      font-weight: 500;
+      font-style: italic;
+      color: var(--text-dim);
+      letter-spacing: 0.3px;
+    }
+    body.leaderboard .payout-board-row .pbr-pct {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-dim);
+      text-align: right;
+      min-width: 44px;
+    }
+    body.leaderboard .payout-board-row .pbr-amount {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--green, #4caf50);
+      text-align: right;
+      min-width: 96px;
+    }
+
+    body.leaderboard .payout-board-bonus-title {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent, #e8a832);
+      margin: 16px 0 6px;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    body.leaderboard .payout-board-bonus-title span {
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: none;
+      letter-spacing: 0;
+      color: var(--text-dim);
+    }
+
+    @media (max-width: 560px) {
+      body.leaderboard .payout-board-row .pbr-pct { display: none; }
+      body.leaderboard .payout-board-row .pbr-amount { min-width: 78px; }
+    }
+
     body.leaderboard .donor-total-row {
       display: flex;
       align-items: center;

@@ -108,12 +108,12 @@
       <div class="stage-header" onclick="toggleStage(this)">
         <div class="stage-header-left">
           <span class="stage-chevron">▼</span>
-          <span class="stage-title">Standings</span>
+          <span class="stage-title" id="standings-title">Standings</span>
         </div>
         <span class="stage-summary" id="standings-summary">Awaiting tournament start</span>
       </div>
       <div class="stage-body">
-        <div class="ladder-note">Ranked by how deep each player has reached. The closer to the top, the closer to the title.</div>
+        <div class="ladder-note" id="standings-note">Ranked by how deep each player has reached. The closer to the top, the closer to the title.</div>
         <div id="ladder-body"><div class="stage-placeholder">Standings will appear once the tournament begins.</div></div>
       </div>
     </div>
@@ -858,17 +858,44 @@
       return e ? Number(e.stageLostAt) || 0 : 0;
     }
 
+    // The payout board takes over the standings panel once the field funnels into
+    // Stage 4 — i.e. every 75M rebuy table is in, or Stage 4 tables already exist.
+    function payoutBoardActive() {
+      var tables = (state && state.tables) ? state.tables : [];
+      var rebuy75 = tables.filter(function(t) { return String(t.stage) === 'rebuy_75'; });
+      var stage4 = tables.filter(function(t) {
+        var s = String(t.stage);
+        return s === '4' || s === 'final' || s === 'money';
+      });
+      var rebuysDone = rebuy75.length > 0 && rebuy75.every(function(t) { return t.status === 'complete'; });
+      return rebuysDone || stage4.length > 0;
+    }
+
     function renderStandings() {
       var status = (state && state.settings && state.settings.tournament_status) || 'setup';
       var players = (state && state.players) ? state.players : [];
       var summaryEl = document.getElementById('standings-summary');
       var bodyEl = document.getElementById('ladder-body');
+      var titleEl = document.getElementById('standings-title');
+      var noteEl = document.getElementById('standings-note');
 
       if (status === 'setup' || players.length === 0) {
+        if (titleEl) titleEl.textContent = 'Standings';
+        if (noteEl) noteEl.style.display = '';
         summaryEl.textContent = 'Awaiting tournament start';
         bodyEl.innerHTML = '<div class="stage-placeholder">Standings will appear once the tournament begins.</div>';
         return;
       }
+
+      // Once Stage 4 is reached, swap the ladder for the live payout board.
+      if (payoutBoardActive()) {
+        if (titleEl) titleEl.textContent = 'Payout Board';
+        if (noteEl) noteEl.style.display = 'none';
+        renderPayoutBoard(summaryEl, bodyEl);
+        return;
+      }
+      if (titleEl) titleEl.textContent = 'Standings';
+      if (noteEl) noteEl.style.display = '';
 
       // Bucket every player into a tier.
       var buckets = {};
@@ -922,6 +949,78 @@
       });
 
       bodyEl.innerHTML = html || '<div class="stage-placeholder">Standings will appear once the tournament begins.</div>';
+    }
+
+    // The live payout board — same shape as the payout modal, but with a name slot
+    // per paid place that fills in as the final and money tables resolve.
+    function renderPayoutBoard(summaryEl, bodyEl) {
+      var p = getPrizePool();
+      var bonus = getStage4BonusConfig();
+      var distributable = p.distributable;
+
+      // overall finishing place -> player name (final table 1-9, money table 10-12)
+      var placeName = {};
+      ((state && state.placings) || []).forEach(function(pl) {
+        var pr = findPlayerByTornId(pl.tornId);
+        placeName[pl.place] = pr ? pr.name : ('#' + pl.tornId);
+      });
+      var decided = Object.keys(placeName).length;
+
+      summaryEl.textContent = formatMoney(distributable) + ' across the top ' + PAYOUT_STRUCTURE.length +
+        (p.reserved > 0 ? ' · ' + formatMoney(p.reserved) + ' in bonuses' : '') +
+        ' · ' + decided + '/' + PAYOUT_STRUCTURE.length + ' decided';
+
+      var html = '<div class="payout-board">';
+
+      var champ = placeName[1];
+      html += '<div class="payout-board-champion' + (champ ? ' crowned' : '') + '">';
+      html += '<span class="pbc-crown">' + (champ ? '👑' : '🏆') + '</span>';
+      html += '<span class="pbc-label">Champion</span>';
+      html += '<span class="pbc-name">' + (champ ? esc(champ) : '<span class="pbr-tbd">to be decided</span>') + '</span>';
+      html += '</div>';
+
+      html += '<div class="payout-board-rows">';
+      PAYOUT_STRUCTURE.forEach(function(row) {
+        var amount = distributable * (row.pct / 100);
+        var nm = placeName[row.place];
+        var origin = row.place <= 9 ? 'Final table' : 'Money table';
+        html += '<div class="payout-board-row' + (nm ? ' filled' : '') + '">';
+        html += '<span class="pbr-place">' + ordinal(row.place) + '</span>';
+        html += '<span class="pbr-name">' + (nm ? esc(nm) : '<span class="pbr-tbd">' + origin + '</span>') + '</span>';
+        html += '<span class="pbr-pct">' + row.pct + '%</span>';
+        html += '<span class="pbr-amount">' + formatMoneyPrecise(amount) + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+
+      if (p.reserved > 0) {
+        var recordedBonuses = (state && state.bonuses) ? state.bonuses.slice() : [];
+        html += '<div class="payout-board-bonus-title">Stage 4 winner bonuses <span>reserved off the top</span></div>';
+        html += '<div class="payout-board-rows">';
+        if (recordedBonuses.length > 0) {
+          recordedBonuses.sort(function(a, b) { return b.amount - a.amount; }).forEach(function(b) {
+            var pr = findPlayerByTornId(b.tornId);
+            var nm = pr ? pr.name : ('#' + b.tornId);
+            html += '<div class="payout-board-row filled">';
+            html += '<span class="pbr-place">' + esc(b.tableId) + '</span>';
+            html += '<span class="pbr-name">' + esc(nm) + '</span>';
+            html += '<span class="pbr-pct"></span>';
+            html += '<span class="pbr-amount">' + formatMoneyPrecise(b.amount) + '</span>';
+            html += '</div>';
+          });
+        } else {
+          html += '<div class="payout-board-row"><span class="pbr-place">1st &times;' + bonus.tables + '</span>' +
+                  '<span class="pbr-name"><span class="pbr-tbd">one per Phase 1 table</span></span>' +
+                  '<span class="pbr-pct"></span><span class="pbr-amount">' + formatMoneyPrecise(bonus.first) + '</span></div>';
+          html += '<div class="payout-board-row"><span class="pbr-place">2nd &times;' + bonus.tables + '</span>' +
+                  '<span class="pbr-name"><span class="pbr-tbd">buy-in back, one per table</span></span>' +
+                  '<span class="pbr-pct"></span><span class="pbr-amount">' + formatMoneyPrecise(bonus.second) + '</span></div>';
+        }
+        html += '</div>';
+      }
+
+      html += '</div>';
+      bodyEl.innerHTML = html;
     }
 
     // --- STAGES (live/complete/queue rendering) ---
