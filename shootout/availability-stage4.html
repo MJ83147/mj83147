@@ -15,6 +15,10 @@
        page and shared stylesheet are untouched while this is in preview. */
     /* Give the three blocks far more room than the default narrow form column. */
     body.avail .form-section { max-width: 1160px; }
+    /* Wider intro so it isn't squeezed into five lines. */
+    body.avail .hero-blurb, body.avail .hero-note { max-width: 880px; }
+    /* Separate cards for "who are you" and the blocks. */
+    #formCard .form-card + .form-card { margin-top: 16px; }
     .block-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; }
     @media (max-width: 640px) { .block-grid { grid-template-columns: 1fr; } }
     .block-card {
@@ -78,8 +82,9 @@
       <div>Loading…</div>
     </div>
 
-    <div id="formCard" class="form-card hidden">
+    <div id="formCard" class="hidden">
 
+      <div class="form-card">
       <!-- STEP 1: Pick yourself -->
       <div class="form-step" id="step1">
         <div class="form-step-header">
@@ -105,7 +110,9 @@
           <strong>You've already submitted picks.</strong> Update them below if you want to change them.
         </div>
       </div>
+      </div><!-- /form-card (who are you) -->
 
+      <div class="form-card">
       <!-- STEP 2: Pick blocks -->
       <div class="form-step step-disabled" id="step2">
         <div class="form-step-header">
@@ -125,6 +132,7 @@
       </div>
 
       <div class="form-message" id="formMessage"></div>
+      </div><!-- /form-card (blocks) -->
 
     </div>
   </section>
