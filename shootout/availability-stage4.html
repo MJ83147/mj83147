@@ -13,13 +13,18 @@
   <style>
     /* Stage 4 block picker — self-contained styles so the live availability
        page and shared stylesheet are untouched while this is in preview. */
-    .block-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; align-items: start; }
+    /* Give the three blocks far more room than the default narrow form column. */
+    body.avail .form-section { max-width: 1160px; }
+    .block-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; }
     @media (max-width: 640px) { .block-grid { grid-template-columns: 1fr; } }
     .block-card {
-      border: 1px solid var(--border, rgba(255,255,255,0.12)); border-radius: 8px;
-      background: var(--surface, rgba(255,255,255,0.02)); padding: 14px 16px;
+      border: 1px solid var(--border, rgba(255,255,255,0.12)); border-radius: 10px;
+      background: var(--surface, rgba(255,255,255,0.02)); padding: 22px 22px 20px;
       cursor: pointer; transition: border-color .15s, background .15s;
     }
+    .block-game { font-size: 18px; }
+    .block-tct { font-size: 16px; }
+    .block-local { font-size: 14px; }
     .block-card:hover { border-color: var(--text-muted, #888); }
     .block-card.selected {
       border-color: var(--green, #3dba6a); background: rgba(61, 186, 106, 0.07);
