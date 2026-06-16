@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Progressive Shootout // Stage 4 Availability (preview)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=20260606">
+  <style>
+    /* Stage 4 block picker — self-contained styles so the live availability
+       page and shared stylesheet are untouched while this is in preview. */
+    .preview-ribbon {
+      max-width: 760px; margin: 0 auto 4px; padding: 8px 14px;
+      background: rgba(232, 168, 50, 0.1); border: 1px solid var(--accent, #e0a92e);
+      border-radius: 6px; font-family: var(--font-mono, monospace); font-size: 12px;
+      color: var(--accent, #e0a92e); text-align: center;
+    }
+    .block-grid { display: flex; flex-direction: column; gap: 12px; }
+    .block-card {
+      border: 1px solid var(--border, rgba(255,255,255,0.12)); border-radius: 8px;
+      background: var(--surface, rgba(255,255,255,0.02)); padding: 14px 16px;
+      cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    .block-card:hover { border-color: var(--text-muted, #888); }
+    .block-card.selected {
+      border-color: var(--green, #3dba6a); background: rgba(61, 186, 106, 0.07);
+    }
+    .block-card-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; }
+    .block-game { font-family: var(--font-mono, monospace); font-weight: 800; font-size: 15px; color: var(--text, #fff); }
+    .block-tct { font-family: var(--font-mono, monospace); font-weight: 700; font-size: 14px; color: var(--accent, #e0a92e); }
+    .block-local { font-size: 13px; color: var(--text-muted, #aaa); }
+    .block-local strong { color: var(--text, #fff); }
+    .block-pick {
+      margin-left: auto; font-family: var(--font-mono, monospace); font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim, #777);
+    }
+    .block-card.selected .block-pick { color: var(--green, #3dba6a); }
+    .block-zones-toggle {
+      margin-top: 10px; background: none; border: none; padding: 0; cursor: pointer;
+      font-family: var(--font-mono, monospace); font-size: 11px; color: var(--text-muted, #aaa);
+      text-decoration: underline; text-underline-offset: 2px;
+    }
+    .block-zones { margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; }
+    .block-zones.hidden { display: none; }
+    .block-zone-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 2px 0; }
+    .block-zone-name { color: var(--text-muted, #aaa); }
+    .block-zone-time { font-family: var(--font-mono, monospace); color: var(--text, #fff); white-space: nowrap; }
+    @media (max-width: 560px) { .block-zones { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body class="avail">
+
+  <header class="header">
+    <h1><a href="./">PROGRESSIVE SHOOTOUT</a> // STAGE 4 AVAILABILITY</h1>
+    <div class="header-right">
+      <a class="btn-pill" href="./">Tournament</a>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="preview-ribbon">PREVIEW BUILD — not yet linked for players. Submissions still save to the live sheet (slot_0 / slot_9 / slot_20).</div>
+    <div class="stage-banner">
+      <span class="stage-banner-label">Final stage</span>
+      <span class="stage-banner-name">Stage 4</span>
+      <span class="stage-banner-date">date TBC</span>
+    </div>
+    <h1 class="hero-title">Which games can you play?</h1>
+    <p class="hero-blurb">Stage 4 runs as <strong>three fixed game times</strong> each day. Pick <strong>every block you could play</strong> — the more you tick, the easier you are to schedule. Your local time is shown on each block; hit <strong>"See all timezones"</strong> for the full breakdown.</p>
+    <p class="hero-note">Block times are TCT (UTC). <strong>00:00 starts the day, not ends it</strong> — so Game 1 is the very start of the day.</p>
+  </section>
+
+  <section class="form-section">
+
+    <div id="loadingState" class="loading-state">
+      <div class="spinner"></div>
+      <div>Loading…</div>
+    </div>
+
+    <div id="formCard" class="form-card hidden">
+
+      <!-- STEP 1: Pick yourself -->
+      <div class="form-step" id="step1">
+        <div class="form-step-header">
+          <span class="form-step-num">01</span>
+          <span class="form-step-title">Who are you?</span>
+        </div>
+        <p class="form-step-help">Start typing your name and pick yourself from the list. If someone's already picked your name, you can still submit — it'll overwrite the existing picks.</p>
+
+        <div class="autocomplete-wrap" id="autocompleteWrap">
+          <input type="text" class="form-input" id="playerInput" placeholder="Start typing your name…" autocomplete="off">
+          <div class="autocomplete-dropdown" id="autocompleteDropdown"></div>
+        </div>
+
+        <div class="selected-player" id="selectedPlayer">
+          <div class="selected-player-info">
+            <span class="selected-player-name" id="selectedName"></span>
+            <span class="selected-player-id" id="selectedId"></span>
+          </div>
+          <button class="btn-change" id="btnChange">Change</button>
+        </div>
+
+        <div class="existing-notice" id="existingNotice">
+          <strong>You've already submitted picks.</strong> Update them below if you want to change them.
+        </div>
+      </div>
+
+      <!-- STEP 2: Pick blocks -->
+      <div class="form-step step-disabled" id="step2">
+        <div class="form-step-header">
+          <span class="form-step-num">02</span>
+          <span class="form-step-title">Pick every game block you could play</span>
+        </div>
+        <p class="form-step-help">Tap a block to select or deselect it. Pick as many as you can.</p>
+
+        <div class="block-grid" id="blockGrid"></div>
+      </div>
+
+      <div class="submit-row">
+        <div class="submit-summary" id="submitSummary">
+          Pick yourself and your game blocks to submit.
+        </div>
+        <button class="btn-submit" id="btnSubmit" disabled>Submit Availability</button>
+      </div>
+
+      <div class="form-message" id="formMessage"></div>
+
+    </div>
+  </section>
+
+  <div class="toast-container" id="toasts"></div>
+
+  <footer class="site-footer">
+    Made by <a href="https://www.torn.com/profiles.php?XID=3583736" target="_blank" rel="noopener">Systoned</a>
+  </footer>
+
+  <script src="config.js"></script>
+  <script>
+
+    var state = { players: [], availability: [] };
+    var selection = { player: null, slotIds: {} };
+
+    // Stage 4 = three fixed daily game blocks. slotId maps onto the existing
+    // availability sheet (slot_0 = 00:00, slot_9 = 09:00, slot_20 = 20:00 TCT).
+    var BLOCKS = [
+      { slotId: 'slot_0', game: 'Game 1', tctHour: 0, zones: [
+        ['US West Coast', '5:00pm (prev day)'], ['US Central', '7:00pm (prev day)'],
+        ['US East / Canada (Toronto)', '8:00pm (prev day)'], ['Brazil (São Paulo)', '9:00pm (prev day)'],
+        ['UK', '1:00am'], ['Central Europe', '2:00am'], ['Japan / Korea', '9:00am'],
+        ['Australia (Sydney/Melbourne)', '10:00am'], ['New Zealand', '12:00pm']
+      ]},
+      { slotId: 'slot_9', game: 'Game 2', tctHour: 9, zones: [
+        ['UK', '10:00am'], ['Central Europe (FR/DE/NL)', '11:00am'], ['Eastern Europe (RO/GR/FI)', '12:00pm'],
+        ['India', '2:30pm'], ['Singapore / China / Philippines', '5:00pm'], ['Japan / Korea', '6:00pm'],
+        ['Australia (Sydney/Melbourne)', '7:00pm'], ['New Zealand', '9:00pm']
+      ]},
+      { slotId: 'slot_20', game: 'Game 3', tctHour: 20, zones: [
+        ['US West Coast', '1:00pm'], ['US Central', '3:00pm'], ['US East / Canada (Toronto)', '4:00pm'],
+        ['Brazil (São Paulo)', '5:00pm'], ['UK', '9:00pm'], ['Central Europe', '10:00pm'],
+        ['Eastern Europe', '11:00pm']
+      ]}
+    ];
+
+    document.addEventListener('DOMContentLoaded', function() {
+      fetchState();
+      bindEvents();
+    });
+
+    function fetchState() {
+      fetch(API_URL + '?action=getState')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          state.players = data.players || [];
+          state.availability = data.availability || [];
+          document.getElementById('loadingState').classList.add('hidden');
+          document.getElementById('formCard').classList.remove('hidden');
+          renderBlocks();
+        })
+        .catch(function() {
+          document.getElementById('loadingState').innerHTML = 'Failed to load. Refresh the page.';
+        });
+    }
+
+    function bindEvents() {
+      var input = document.getElementById('playerInput');
+      input.addEventListener('input', onPlayerInput);
+      input.addEventListener('keydown', onPlayerKeydown);
+      input.addEventListener('focus', function() { if (input.value.trim()) onPlayerInput(); });
+      document.addEventListener('click', function(e) {
+        if (!document.getElementById('autocompleteWrap').contains(e.target)) closeDropdown();
+      });
+      document.getElementById('btnChange').addEventListener('click', resetPlayerSelection);
+      document.getElementById('btnSubmit').addEventListener('click', submit);
+    }
+
+    // ===== AUTOCOMPLETE =====
+    var highlightedIndex = -1;
+    var currentMatches = [];
+
+    function onPlayerInput() {
+      var query = document.getElementById('playerInput').value.trim().toLowerCase();
+      var dropdown = document.getElementById('autocompleteDropdown');
+      if (!query) { closeDropdown(); return; }
+      currentMatches = state.players.filter(function(p) {
+        return p.name.toLowerCase().indexOf(query) !== -1 || p.tornId.indexOf(query) !== -1;
+      }).slice(0, 8);
+      if (currentMatches.length === 0) {
+        dropdown.innerHTML = '<div class="autocomplete-empty">No registered players match.</div>';
+        dropdown.classList.add('open'); highlightedIndex = -1; return;
+      }
+      var html = '';
+      currentMatches.forEach(function(p, i) {
+        html += '<div class="autocomplete-option" data-index="' + i + '">';
+        html += '  <span class="autocomplete-name">' + esc(p.name) + '</span>';
+        html += '  <span class="autocomplete-id">#' + esc(p.tornId) + '</span>';
+        html += '</div>';
+      });
+      dropdown.innerHTML = html;
+      dropdown.classList.add('open');
+      highlightedIndex = -1;
+      dropdown.querySelectorAll('.autocomplete-option').forEach(function(el) {
+        el.addEventListener('click', function() {
+          selectPlayer(currentMatches[parseInt(el.getAttribute('data-index'), 10)]);
+        });
+      });
+    }
+
+    function onPlayerKeydown(e) {
+      var dropdown = document.getElementById('autocompleteDropdown');
+      if (!dropdown.classList.contains('open') || currentMatches.length === 0) return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); highlightedIndex = Math.min(currentMatches.length - 1, highlightedIndex + 1); updateHighlight(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); highlightedIndex = Math.max(0, highlightedIndex - 1); updateHighlight(); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (highlightedIndex >= 0) selectPlayer(currentMatches[highlightedIndex]); else if (currentMatches.length === 1) selectPlayer(currentMatches[0]); }
+      else if (e.key === 'Escape') { closeDropdown(); }
+    }
+
+    function updateHighlight() {
+      document.querySelectorAll('.autocomplete-option').forEach(function(el, i) {
+        el.classList.toggle('highlighted', i === highlightedIndex);
+      });
+    }
+
+    function closeDropdown() {
+      document.getElementById('autocompleteDropdown').classList.remove('open');
+      highlightedIndex = -1;
+    }
+
+    function selectPlayer(player) {
+      selection.player = player;
+      selection.slotIds = {};
+      document.getElementById('playerInput').classList.add('hidden');
+      document.getElementById('selectedPlayer').classList.add('show');
+      document.getElementById('selectedName').textContent = player.name;
+      document.getElementById('selectedId').textContent = '#' + player.tornId;
+      closeDropdown();
+      var existing = state.availability.filter(function(a) { return a.tornId === player.tornId; })[0];
+      if (existing) {
+        parseAvailableSlotIds(existing.availableSlotIds).forEach(function(id) { selection.slotIds[id] = true; });
+        document.getElementById('existingNotice').classList.add('show');
+      } else {
+        document.getElementById('existingNotice').classList.remove('show');
+      }
+      document.getElementById('step2').classList.remove('step-disabled');
+      renderBlocks();
+      updateSubmitState();
+    }
+
+    function parseAvailableSlotIds(value) {
+      if (Array.isArray(value)) return value.filter(Boolean);
+      if (typeof value === 'string' && value) {
+        return value.split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+      }
+      return [];
+    }
+
+    function resetPlayerSelection() {
+      selection.player = null;
+      selection.slotIds = {};
+      document.getElementById('playerInput').classList.remove('hidden');
+      document.getElementById('playerInput').value = '';
+      document.getElementById('playerInput').focus();
+      document.getElementById('selectedPlayer').classList.remove('show');
+      document.getElementById('existingNotice').classList.remove('show');
+      document.getElementById('step2').classList.add('step-disabled');
+      renderBlocks();
+      updateSubmitState();
+      hideMessage();
+    }
+
+    // ===== BLOCKS =====
+    function renderBlocks() {
+      var container = document.getElementById('blockGrid');
+      var html = '';
+      BLOCKS.forEach(function(block) {
+        var selected = !!selection.slotIds[block.slotId];
+        var local = formatLocalTime(block.tctHour);
+        html += '<div class="block-card' + (selected ? ' selected' : '') + '" data-slot-id="' + block.slotId + '">';
+        html += '  <div class="block-card-head">';
+        html += '    <span class="block-game">' + esc(block.game) + '</span>';
+        html += '    <span class="block-tct">' + pad2(block.tctHour) + ':00 TCT</span>';
+        html += '    <span class="block-local">= <strong>' + esc(local) + '</strong> your time</span>';
+        html += '    <span class="block-pick">' + (selected ? '✓ selected' : 'tap to pick') + '</span>';
+        html += '  </div>';
+        html += '  <button type="button" class="block-zones-toggle" data-toggle="' + block.slotId + '">See all timezones ▾</button>';
+        html += '  <div class="block-zones hidden" id="zones-' + block.slotId + '">';
+        block.zones.forEach(function(z) {
+          html += '<div class="block-zone-row"><span class="block-zone-name">' + esc(z[0]) + '</span><span class="block-zone-time">' + esc(z[1]) + '</span></div>';
+        });
+        html += '  </div>';
+        html += '</div>';
+      });
+      container.innerHTML = html;
+
+      // Toggle timezone list (don't let it change the pick).
+      container.querySelectorAll('.block-zones-toggle').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var id = btn.getAttribute('data-toggle');
+          var panel = document.getElementById('zones-' + id);
+          var open = panel.classList.toggle('hidden') === false;
+          btn.textContent = open ? 'Hide timezones ▴' : 'See all timezones ▾';
+        });
+      });
+
+      // Pick/unpick the block.
+      container.querySelectorAll('.block-card').forEach(function(card) {
+        card.addEventListener('click', function() {
+          if (!selection.player) return;
+          var slotId = card.getAttribute('data-slot-id');
+          if (selection.slotIds[slotId]) delete selection.slotIds[slotId];
+          else selection.slotIds[slotId] = true;
+          renderBlocks();
+          updateSubmitState();
+        });
+      });
+    }
+
+    function formatLocalTime(tctHour) {
+      var d = new Date();
+      d.setUTCHours(tctHour, 0, 0, 0);
+      var h = d.getHours();
+      var m = d.getMinutes();
+      var ampm = h >= 12 ? 'pm' : 'am';
+      var displayHour = h % 12;
+      if (displayHour === 0) displayHour = 12;
+      var minStr = m === 0 ? '' : ':' + pad2(m);
+      return displayHour + minStr + ampm;
+    }
+
+    function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+    function selectedSlotIds() {
+      return Object.keys(selection.slotIds).filter(function(id) { return selection.slotIds[id]; });
+    }
+
+    function blockLabelFor(slotId) {
+      var b = BLOCKS.filter(function(x) { return x.slotId === slotId; })[0];
+      return b ? b.game : slotId;
+    }
+
+    // ===== SUBMIT =====
+    function updateSubmitState() {
+      var btn = document.getElementById('btnSubmit');
+      var summary = document.getElementById('submitSummary');
+      if (!selection.player) {
+        btn.disabled = true;
+        summary.textContent = 'Pick yourself and your game blocks to submit.';
+        return;
+      }
+      var ids = selectedSlotIds();
+      if (ids.length === 0) {
+        btn.disabled = true;
+        summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong> — tap every game block you could play.';
+        return;
+      }
+      btn.disabled = false;
+      var labels = BLOCKS.filter(function(b) { return selection.slotIds[b.slotId]; }).map(function(b) { return b.game; });
+      summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong> — ' + ids.length + ' block' + (ids.length === 1 ? '' : 's') + ' selected: <strong>' + esc(labels.join(', ')) + '</strong>.';
+    }
+
+    function getBrowserId() {
+      var key = 'shootout_browser_id';
+      try {
+        var existing = localStorage.getItem(key);
+        if (existing) return existing;
+        var fresh = (typeof crypto !== 'undefined' && crypto.randomUUID)
+          ? crypto.randomUUID()
+          : 'b_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+        localStorage.setItem(key, fresh);
+        return fresh;
+      } catch (_) { return ''; }
+    }
+
+    function submit() {
+      if (!selection.player) return;
+      var ids = selectedSlotIds();
+      if (ids.length === 0) return;
+      var btn = document.getElementById('btnSubmit');
+      btn.disabled = true;
+      btn.textContent = 'Submitting…';
+      hideMessage();
+      var url = API_URL +
+        '?action=submitAvailability' +
+        '&tornId=' + encodeURIComponent(selection.player.tornId) +
+        '&availableSlotIds=' + encodeURIComponent(ids.join(',')) +
+        '&browserId=' + encodeURIComponent(getBrowserId());
+      fetch(url)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          btn.textContent = 'Submit Availability';
+          if (data.error) {
+            showMessage(data.error, 'error');
+            btn.disabled = false;
+          } else {
+            showMessage((data.message || 'Saved') + '. You can come back and change your picks any time.', 'success');
+            toast('Availability saved', 'success');
+            fetchState();
+          }
+        })
+        .catch(function(err) {
+          btn.textContent = 'Submit Availability';
+          btn.disabled = false;
+          showMessage('Submission failed: ' + err.message, 'error');
+        });
+    }
+
+    function showMessage(text, type) {
+      var el = document.getElementById('formMessage');
+      el.textContent = text;
+      el.className = 'form-message show ' + type;
+    }
+
+    function hideMessage() {
+      document.getElementById('formMessage').className = 'form-message';
+    }
+
+    function toast(message, type) {
+      var container = document.getElementById('toasts');
+      var el = document.createElement('div');
+      el.className = 'toast toast-' + (type || 'success');
+      el.textContent = message;
+      container.appendChild(el);
+      setTimeout(function() { el.remove(); }, 3000);
+    }
+
+    function esc(str) {
+      if (str === null || str === undefined) return '';
+      var div = document.createElement('div');
+      div.textContent = String(str);
+      return div.innerHTML;
+    }
+  </script>
+
+</body>
+</html>
