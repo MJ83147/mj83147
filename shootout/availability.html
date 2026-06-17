@@ -19,8 +19,10 @@
     body.avail .hero-blurb, body.avail .hero-note { max-width: 880px; }
     /* Separate cards for "who are you" and the blocks. */
     #formCard .form-card + .form-card { margin-top: 16px; }
-    .block-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; }
-    @media (max-width: 640px) { .block-grid { grid-template-columns: 1fr; } }
+    /* Responsive: 3 across on desktop, drop to fewer columns as width shrinks,
+       single column on phones. Cards never squeeze below a readable width. */
+    .block-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 20px; align-items: start; }
+    @media (max-width: 620px) { .block-grid { grid-template-columns: 1fr; } }
     .block-card {
       border: 2px solid #4a566b; border-radius: 12px;
       background: #2c3441; padding: 22px 22px 20px;
@@ -423,6 +425,9 @@
     function renderBlocks() {
       var container = document.getElementById('blockGrid');
       var taken = seatsTaken(selection.player ? selection.player.tornId : null);
+      // On phones/tablets the full timezone lists are too much — start collapsed
+      // there, but keep them open on desktop where there's room.
+      var zonesCollapsed = !!(window.innerWidth && window.innerWidth < 900);
       var html = '';
       BLOCKS.forEach(function(block) {
         var selected = !!selection.slotIds[block.slotId];
@@ -443,8 +448,8 @@
         html += '  <div class="block-seats' + (full ? ' full' : '') + '">' +
                 (full ? '<strong>FULL</strong> · ' + SEAT_CAP + ' of ' + SEAT_CAP + ' seats taken'
                       : '<strong>' + left + '</strong> of ' + SEAT_CAP + ' seats left') + '</div>';
-        html += '  <button type="button" class="block-zones-toggle" data-toggle="' + block.slotId + '">Hide timezones ▴</button>';
-        html += '  <div class="block-zones" id="zones-' + block.slotId + '">';
+        html += '  <button type="button" class="block-zones-toggle" data-toggle="' + block.slotId + '">' + (zonesCollapsed ? 'See all timezones ▾' : 'Hide timezones ▴') + '</button>';
+        html += '  <div class="block-zones' + (zonesCollapsed ? ' hidden' : '') + '" id="zones-' + block.slotId + '">';
         block.zones.forEach(function(z) {
           html += '<div class="block-zone-row"><span class="block-zone-name">' + esc(z[0]) + '</span><span class="block-zone-time">' + esc(z[1]) + '</span></div>';
         });
@@ -464,13 +469,25 @@
         });
       });
 
-      // Pick/unpick the block.
+      // Claim/unclaim a game. You only ever get ONE real seat, so claiming a
+      // game that has seats drops any other game you'd claimed. Full games are
+      // waitlist-only and toggle independently (you can sit one + waitlist a full).
       container.querySelectorAll('.block-card').forEach(function(card) {
         card.addEventListener('click', function() {
           if (!selection.player) return;
           var slotId = card.getAttribute('data-slot-id');
-          if (selection.slotIds[slotId]) delete selection.slotIds[slotId];
-          else selection.slotIds[slotId] = true;
+          var t = seatsTaken(selection.player.tornId);
+          var clickedFull = (SEAT_CAP - (t[slotId] || 0)) <= 0;
+          if (selection.slotIds[slotId]) {
+            delete selection.slotIds[slotId];
+          } else {
+            if (!clickedFull) {
+              BLOCK_SLOTS.forEach(function(s) {
+                if (s !== slotId && selection.slotIds[s] && (SEAT_CAP - (t[s] || 0)) > 0) delete selection.slotIds[s];
+              });
+            }
+            selection.slotIds[slotId] = true;
+          }
           renderBlocks();
           updateSubmitState();
         });
