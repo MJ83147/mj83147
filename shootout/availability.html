@@ -22,35 +22,32 @@
     .block-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; }
     @media (max-width: 640px) { .block-grid { grid-template-columns: 1fr; } }
     .block-card {
-      border: 1.5px solid rgba(255,255,255,0.18); border-radius: 12px;
-      background: rgba(255,255,255,0.05); padding: 22px 22px 20px;
-      cursor: pointer; box-shadow: 0 3px 14px rgba(0,0,0,0.3);
+      border: 2px solid rgba(255,255,255,0.34); border-radius: 12px;
+      background: #232832; padding: 22px 22px 20px;
+      cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
       transition: border-color .15s, background .15s, transform .1s, box-shadow .15s;
     }
-    .block-game { font-size: 19px; }
-    .block-tct { font-size: 16px; }
-    .block-local { font-size: 14px; }
     .block-card:hover {
-      border-color: var(--accent, #e0a92e); background: rgba(255,255,255,0.08);
-      transform: translateY(-2px); box-shadow: 0 7px 22px rgba(0,0,0,0.45);
+      border-color: var(--accent, #e0a92e); background: #2b313d;
+      transform: translateY(-2px); box-shadow: 0 9px 26px rgba(0,0,0,0.55);
     }
     .block-card.selected {
-      border-color: var(--green, #3dba6a); background: rgba(61, 186, 106, 0.14);
-      box-shadow: 0 0 0 1.5px var(--green, #3dba6a), 0 7px 22px rgba(0,0,0,0.45);
+      border-color: var(--green, #3dba6a); background: rgba(61, 186, 106, 0.22);
+      box-shadow: 0 0 0 2px var(--green, #3dba6a), 0 9px 26px rgba(0,0,0,0.55);
     }
-    .block-card-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; }
-    .block-game { font-family: var(--font-mono, monospace); font-weight: 800; font-size: 15px; color: var(--text, #fff); }
-    .block-tct { font-family: var(--font-mono, monospace); font-weight: 700; font-size: 14px; color: var(--accent, #e0a92e); }
-    .block-local { font-size: 13px; color: var(--text-muted, #aaa); }
-    .block-local strong { color: var(--text, #fff); }
+    .block-card-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+    .block-game { font-family: var(--font-mono, monospace); font-weight: 800; font-size: 19px; color: #fff; }
+    .block-tct { font-family: var(--font-mono, monospace); font-weight: 700; font-size: 16px; color: var(--accent, #e0a92e); }
+    .block-local { font-size: 14px; color: #c7ccd6; }
+    .block-local strong { color: #fff; }
     .block-pick {
-      margin-left: auto; font-family: var(--font-mono, monospace); font-size: 11px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .5px; color: var(--accent, #e0a92e);
+      margin-left: auto; font-family: var(--font-mono, monospace); font-size: 11px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: .5px;
+      color: #14171d; background: var(--accent, #e0a92e); padding: 5px 12px; border-radius: 999px;
     }
-    .block-card.selected .block-pick { color: var(--green, #3dba6a); }
-    .block-card.full { opacity: 0.85; }
-    .block-card.full.selected { border-color: var(--accent, #e0a92e); background: rgba(232, 168, 50, 0.06); }
-    .block-card.full .block-pick { color: var(--accent, #e0a92e); }
+    .block-card.selected .block-pick { background: var(--green, #3dba6a); color: #0e1411; }
+    .block-card.full .block-pick { background: transparent; color: var(--accent, #e0a92e); border: 1.5px solid var(--accent, #e0a92e); }
+    .block-card.full.selected { border-color: var(--accent, #e0a92e); background: rgba(232, 168, 50, 0.16); box-shadow: 0 0 0 2px var(--accent, #e0a92e), 0 9px 26px rgba(0,0,0,0.55); }
     .block-seats {
       margin-top: 10px; font-size: 13px; color: var(--green, #3dba6a);
       font-family: var(--font-mono, monospace);
@@ -65,8 +62,20 @@
     .block-zones { margin-top: 8px; display: flex; flex-direction: column; gap: 1px; }
     .block-zones.hidden { display: none; }
     .block-zone-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 2px 0; }
-    .block-zone-name { color: var(--text-muted, #aaa); }
-    .block-zone-time { font-family: var(--font-mono, monospace); color: var(--text, #fff); white-space: nowrap; }
+    .block-zone-name { color: #c7ccd6; }
+    .block-zone-time { font-family: var(--font-mono, monospace); color: #fff; white-space: nowrap; }
+    .block-seats { color: #4fd07f; }
+    .block-seats.full { color: var(--accent, #e0a92e); }
+    .block-zones-toggle { color: #c7ccd6; }
+
+    /* Brighter page text — the theme defaults read too muted on this dark bg. */
+    body.avail .form-step-title { color: #fff; }
+    body.avail .form-step-help { color: #c2c8d2; }
+    body.avail .submit-summary { color: #d2d7e0; }
+    body.avail .hero-blurb { color: #d2d7e0; }
+    body.avail .hero-note { color: #b4bac5; }
+    body.avail .hero-blurb strong, body.avail .hero-note strong, body.avail .form-step-help strong { color: #fff; }
+    body.avail .existing-notice { color: #d2d7e0; }
   </style>
 </head>
 <body class="avail">
@@ -81,8 +90,8 @@
   <section class="hero">
     <div class="stage-banner">
       <span class="stage-banner-label">Final stage</span>
-      <span class="stage-banner-name">Stage 4</span>
-      <span class="stage-banner-date">date TBC</span>
+      <span class="stage-banner-name">Stage 4 · Phase 1</span>
+      <span class="stage-banner-date">Saturday 20th June</span>
     </div>
     <h1 class="hero-title">Which games can you play?</h1>
     <p class="hero-blurb">Stage 4 runs as <strong>three fixed game times</strong>, <strong>7 seats each</strong>. Seats are <strong>first come, first served</strong> — claim the game you'll play. Your local time is shown on each; hit <strong>"See all timezones"</strong> for the full breakdown. If your game's full you can join its waitlist, but you must also claim one that still has seats.</p>
