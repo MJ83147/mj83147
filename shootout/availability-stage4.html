@@ -43,6 +43,15 @@
       text-transform: uppercase; letter-spacing: .5px; color: var(--text-dim, #777);
     }
     .block-card.selected .block-pick { color: var(--green, #3dba6a); }
+    .block-card.full { opacity: 0.85; }
+    .block-card.full.selected { border-color: var(--accent, #e0a92e); background: rgba(232, 168, 50, 0.06); }
+    .block-card.full .block-pick { color: var(--accent, #e0a92e); }
+    .block-seats {
+      margin-top: 10px; font-size: 13px; color: var(--green, #3dba6a);
+      font-family: var(--font-mono, monospace);
+    }
+    .block-seats strong { font-size: 15px; }
+    .block-seats.full { color: var(--accent, #e0a92e); }
     .block-zones-toggle {
       margin-top: 10px; background: none; border: none; padding: 0; cursor: pointer;
       font-family: var(--font-mono, monospace); font-size: 11px; color: var(--text-muted, #aaa);
@@ -71,7 +80,7 @@
       <span class="stage-banner-date">date TBC</span>
     </div>
     <h1 class="hero-title">Which games can you play?</h1>
-    <p class="hero-blurb">Stage 4 runs as <strong>three fixed game times</strong>. Pick <strong>every block you could play</strong> — the more you tick, the easier you are to schedule. Your local time is shown on each block; hit <strong>"See all timezones"</strong> for the full breakdown.</p>
+    <p class="hero-blurb">Stage 4 runs as <strong>three fixed game times</strong>, <strong>7 seats each</strong>. Seats are <strong>first come, first served</strong> — claim the game you'll play. Your local time is shown on each; hit <strong>"See all timezones"</strong> for the full breakdown. If your game's full you can join its waitlist, but you must also claim one that still has seats.</p>
     <p class="hero-note">Block times are TCT (UTC). <strong>00:00 starts the day, not ends it</strong> — so Game 1 is the very start of the day.</p>
   </section>
 
@@ -117,9 +126,9 @@
       <div class="form-step step-disabled" id="step2">
         <div class="form-step-header">
           <span class="form-step-num">02</span>
-          <span class="form-step-title">Pick every game block you could play</span>
+          <span class="form-step-title">Claim your game — first come, first served</span>
         </div>
-        <p class="form-step-help">Tap a block to select or deselect it. Pick as many as you can.</p>
+        <p class="form-step-help">7 seats per game. Tap the game you'll play. If it's full you can still join the waitlist, but you must also claim a game that has seats left.</p>
 
         <div class="block-grid" id="blockGrid"></div>
       </div>
@@ -146,8 +155,14 @@
   <script src="config.js"></script>
   <script>
 
-    var state = { players: [], availability: [] };
+    var state = { players: [], availability: [], queues: [] };
     var selection = { player: null, slotIds: {} };
+
+    // First-come-first-served seating: 7 seats per game block, allocated in
+    // submission-time order. Counts are derived live from the availability rows
+    // of the Stage 4 field (players queued for stage_4) — no backend change.
+    var SEAT_CAP = 7;
+    var BLOCK_SLOTS = ['slot_0', 'slot_9', 'slot_20'];
 
     // Stage 4 = three fixed daily game blocks. slotId maps onto the existing
     // availability sheet (slot_0 = 00:00, slot_9 = 09:00, slot_20 = 20:00 TCT).
@@ -181,6 +196,7 @@
         .then(function(data) {
           state.players = data.players || [];
           state.availability = data.availability || [];
+          state.queues = data.queues || [];
           document.getElementById('loadingState').classList.add('hidden');
           document.getElementById('formCard').classList.remove('hidden');
           renderBlocks();
@@ -296,20 +312,60 @@
       hideMessage();
     }
 
+    // ===== FCFS SEATS =====
+    // The Stage 4 field = players queued for stage_4 (one row per player).
+    function stage4PoolSet() {
+      var set = {};
+      (state.queues || []).forEach(function(q) { if (q.queuedFor === 'stage_4') set[q.tornId] = true; });
+      return set;
+    }
+
+    // Seats taken per block, allocated first-come-first-served by submission time.
+    // Each pooled player takes ONE seat — their earliest-game pick that still has
+    // room. excludeTornId is left out so the current player doesn't block their own
+    // view of availability.
+    function seatsTaken(excludeTornId) {
+      var pool = stage4PoolSet();
+      var rows = (state.availability || []).filter(function(a) {
+        return pool[a.tornId] && a.tornId !== excludeTornId;
+      }).map(function(a) {
+        var picks = parseAvailableSlotIds(a.availableSlotIds).filter(function(s) { return BLOCK_SLOTS.indexOf(s) !== -1; });
+        return { tornId: a.tornId, picks: picks, t: String(a.submittedAt || '') };
+      }).filter(function(r) { return r.picks.length; });
+      rows.sort(function(x, y) { return x.t < y.t ? -1 : x.t > y.t ? 1 : (x.tornId < y.tornId ? -1 : 1); });
+      var taken = { slot_0: 0, slot_9: 0, slot_20: 0 };
+      rows.forEach(function(r) {
+        for (var i = 0; i < BLOCK_SLOTS.length; i++) {
+          var b = BLOCK_SLOTS[i];
+          if (r.picks.indexOf(b) !== -1 && taken[b] < SEAT_CAP) { taken[b]++; break; }
+        }
+      });
+      return taken;
+    }
+
     // ===== BLOCKS =====
     function renderBlocks() {
       var container = document.getElementById('blockGrid');
+      var taken = seatsTaken(selection.player ? selection.player.tornId : null);
       var html = '';
       BLOCKS.forEach(function(block) {
         var selected = !!selection.slotIds[block.slotId];
         var local = formatLocalTime(block.tctHour);
-        html += '<div class="block-card' + (selected ? ' selected' : '') + '" data-slot-id="' + block.slotId + '">';
+        var left = Math.max(0, SEAT_CAP - (taken[block.slotId] || 0));
+        var full = left <= 0;
+        var pickLabel = full
+          ? (selected ? '✓ waitlist' : 'FULL — waitlist')
+          : (selected ? '✓ your seat' : 'tap to claim');
+        html += '<div class="block-card' + (selected ? ' selected' : '') + (full ? ' full' : '') + '" data-slot-id="' + block.slotId + '">';
         html += '  <div class="block-card-head">';
         html += '    <span class="block-game">' + esc(block.game) + '</span>';
         html += '    <span class="block-tct">' + pad2(block.tctHour) + ':00 TCT</span>';
         html += '    <span class="block-local">= <strong>' + esc(local) + '</strong> your time</span>';
-        html += '    <span class="block-pick">' + (selected ? '✓ selected' : 'tap to pick') + '</span>';
+        html += '    <span class="block-pick">' + pickLabel + '</span>';
         html += '  </div>';
+        html += '  <div class="block-seats' + (full ? ' full' : '') + '">' +
+                (full ? '<strong>FULL</strong> · ' + SEAT_CAP + '/' + SEAT_CAP + ' seats — join the waitlist'
+                      : '<strong>' + left + '</strong> of ' + SEAT_CAP + ' seats left') + '</div>';
         html += '  <button type="button" class="block-zones-toggle" data-toggle="' + block.slotId + '">See all timezones ▾</button>';
         html += '  <div class="block-zones hidden" id="zones-' + block.slotId + '">';
         block.zones.forEach(function(z) {
@@ -379,12 +435,29 @@
       var ids = selectedSlotIds();
       if (ids.length === 0) {
         btn.disabled = true;
-        summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong> — tap every game block you could play.';
+        summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong> — tap the game you\'ll play.';
         return;
       }
+      var taken = seatsTaken(selection.player.tornId);
+      var roomPicks = BLOCKS.filter(function(b) { return selection.slotIds[b.slotId] && (SEAT_CAP - (taken[b.slotId] || 0)) > 0; });
+      var fullPicks = BLOCKS.filter(function(b) { return selection.slotIds[b.slotId] && (SEAT_CAP - (taken[b.slotId] || 0)) <= 0; });
+
+      // Rule: you can waitlist a full game, but only if you also pick one with a
+      // free seat (so you're guaranteed an actual game).
+      if (roomPicks.length === 0) {
+        btn.disabled = true;
+        summary.innerHTML = '<strong>' + esc(fullPicks.map(function(b) { return b.game; }).join(', ')) +
+          '</strong> ' + (fullPicks.length === 1 ? 'is' : 'are') + ' full — also pick a game that still has seats to lock in a spot.';
+        return;
+      }
+
       btn.disabled = false;
-      var labels = BLOCKS.filter(function(b) { return selection.slotIds[b.slotId]; }).map(function(b) { return b.game; });
-      summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong> — ' + ids.length + ' block' + (ids.length === 1 ? '' : 's') + ' selected: <strong>' + esc(labels.join(', ')) + '</strong>.';
+      var seat = roomPicks[0]; // earliest game with room = the seat they'll get
+      var msg = '<strong>' + esc(selection.player.name) + '</strong> — seat in <strong>' + esc(seat.game) + '</strong>';
+      if (fullPicks.length) {
+        msg += ', on the waitlist for ' + esc(fullPicks.map(function(b) { return b.game; }).join(', '));
+      }
+      summary.innerHTML = msg + '.';
     }
 
     function getBrowserId() {
