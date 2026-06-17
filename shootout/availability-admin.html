@@ -157,8 +157,9 @@
     }
 
     // Generatable stages in tournament order, matching the backend
-    // VALID_GEN_STAGES (Stage 4 is managed manually, so it's excluded).
-    var GEN_STAGES = ['1', 'rebuy_25', '2', 'rebuy_50', '3', 'rebuy_75'];
+    // VALID_GEN_STAGES. Stage 4 is first-come-first-served: "generating" it just
+    // locks the claims into the three game tables (no packing).
+    var GEN_STAGES = ['1', 'rebuy_25', '2', 'rebuy_50', '3', 'rebuy_75', '4'];
 
     function stageTabLabel(stage) {
       if (stage === 'rebuy_25') return '25M Rebuy';
@@ -602,8 +603,26 @@
 
       var html = '';
 
-      // Suggestions/what-if live in the seating editor (Refine seating), where they
-      // recompute live as you drag. The preview just shows the generated tables.
+      // Stage 4 is first-come-first-served: the preview is the claims locked into
+      // the three game tables. Flag anyone who couldn't be seated (claimed only a
+      // full game) or never claimed, so they can be chased before committing.
+      if (data.fcfs) {
+        var names = function(list) { return (list || []).map(function(p) { return esc(p.name || p.tornId); }).join(', '); };
+        html += '<div class="preview-flagged">';
+        html += '  <div class="preview-flagged-title">First come, first served — these are the claimed games</div>';
+        html += '  <div class="preview-flagged-note">Seated in claim order, 7 per game. Commit to lock these in, or open Refine seating to adjust.</div>';
+        if ((data.unseated || []).length) {
+          html += '<div class="preview-contact-row"><span class="preview-contact-label">No seat</span><span>' +
+                  names(data.unseated) + ' (claimed a full game with no backup — give them a game with room)</span></div>';
+        }
+        if ((data.noClaim || []).length) {
+          html += '<div class="preview-contact-row"><span class="preview-contact-label">Never claimed</span><span>' + names(data.noClaim) + '</span></div>';
+        }
+        if (!(data.unseated || []).length && !(data.noClaim || []).length) {
+          html += '<div class="preview-contact-row"><span>Everyone in the field has a seat. ✓</span></div>';
+        }
+        html += '</div>';
+      }
 
       (data.plan || []).forEach(function(entry) {
         html += renderPreviewSlot(entry, data.tableSize);

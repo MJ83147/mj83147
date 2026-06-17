@@ -750,7 +750,10 @@
     // players can be dragged into a currently-empty time. Include any plan slot
     // outside the standard set (defensive) and sort by hour.
     var seen = {};
-    var slotIds = ALL_SLOT_IDS.slice();
+    // Stage 4 only runs at its three fixed game blocks, so show just those
+    // columns; every other stage uses the standard 2-hourly grid.
+    var baseSlots = (STAGE === '4') ? ['slot_0', 'slot_9', 'slot_20'] : ALL_SLOT_IDS;
+    var slotIds = baseSlots.slice();
     slotIds.forEach(function(s) { seen[s] = true; });
     Object.keys(slots).forEach(function(s) { if (!seen[s]) { slotIds.push(s); seen[s] = true; } });
     slotIds.sort(function(a, b) {
