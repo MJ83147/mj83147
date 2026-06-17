@@ -117,8 +117,7 @@
 
     /* Fit the whole page on one screen — compact the timezone lists into two
        columns and tighten spacing everywhere. */
-    .block-zones { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; margin-top: 6px; }
-    @media (max-width: 760px) { .block-zones { grid-template-columns: 1fr; } }
+    .block-zones { display: flex; flex-direction: column; gap: 1px; margin-top: 6px; }
     .block-zone-row { font-size: 11px; padding: 1px 0; }
     .block-zone-time { font-size: 11px; }
     .block-card { padding: 16px 18px; }
@@ -425,9 +424,9 @@
     function renderBlocks() {
       var container = document.getElementById('blockGrid');
       var taken = seatsTaken(selection.player ? selection.player.tornId : null);
-      // On phones/tablets the full timezone lists are too much — start collapsed
-      // there, but keep them open on desktop where there's room.
-      var zonesCollapsed = !!(window.innerWidth && window.innerWidth < 900);
+      // Timezone lists are long, so keep them collapsed by default everywhere;
+      // players expand the one they care about.
+      var zonesCollapsed = true;
       var html = '';
       BLOCKS.forEach(function(block) {
         var selected = !!selection.slotIds[block.slotId];
