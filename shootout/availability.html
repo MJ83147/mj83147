@@ -112,6 +112,28 @@
     .block-local { font-size: 13px; color: #aeb4bf; margin-top: 5px; }
     .block-local strong { color: #fff; }
     .block-pick { margin-left: 0; flex: 0 0 auto; }
+
+    /* Fit the whole page on one screen — compact the timezone lists into two
+       columns and tighten spacing everywhere. */
+    .block-zones { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; margin-top: 6px; }
+    @media (max-width: 760px) { .block-zones { grid-template-columns: 1fr; } }
+    .block-zone-row { font-size: 11px; padding: 1px 0; }
+    .block-zone-time { font-size: 11px; }
+    .block-card { padding: 16px 18px; }
+    .block-grid { gap: 16px; }
+    .block-game { font-size: 21px; }
+    .block-tct { font-size: 17px; }
+    .block-local { font-size: 12px; margin-top: 3px; }
+    .block-seats { font-size: 15px; margin-top: 9px; }
+    .block-seats strong { font-size: 17px; }
+    .block-zones-toggle { margin-top: 8px; font-size: 12px; }
+    body.avail .hero { padding: 10px 32px 4px; }
+    body.avail .hero-title { font-size: 19px; margin-bottom: 3px; }
+    body.avail .hero-blurb { font-size: 13.5px; }
+    body.avail .form-section { padding-bottom: 16px; }
+    body.avail .form-card { padding: 16px 22px; }
+    #formCard .form-card + .form-card { margin-top: 12px; }
+    body.avail .form-step-help { margin-bottom: 8px; font-size: 13.5px; }
   </style>
 </head>
 <body class="avail">
