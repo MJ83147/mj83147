@@ -78,6 +78,32 @@
     body.avail .btn-submit { background: #ffc24d; color: #1a1d24; }
     body.avail .btn-submit:hover { background: #ffce6b; }
     body.avail .stage-banner-name { color: #ffc24d; }
+
+    /* Bigger type + more room inside, with trimmed page whitespace so the whole
+       thing still fits the viewport without scrolling on desktop. */
+    body.avail .hero { padding: 12px 32px 6px; }
+    body.avail .hero-title { font-size: 21px; margin-bottom: 4px; }
+    body.avail .hero-blurb { font-size: 14px; line-height: 1.5; max-width: 760px; }
+    body.avail .form-section { padding-top: 0; padding-bottom: 24px; }
+    body.avail .form-card { padding: 22px 26px; }
+    #formCard .form-card + .form-card { margin-top: 14px; }
+    body.avail .form-step-help { margin-bottom: 12px; }
+    body.avail .form-step-title { font-size: 17px; }
+    body.avail .form-step-help { font-size: 15px; }
+    body.avail .form-input { font-size: 16px; }
+    body.avail .submit-summary { font-size: 15px; }
+    body.avail .btn-submit { font-size: 16px; }
+
+    .block-grid { gap: 22px; }
+    .block-card { padding: 26px 26px 24px; }
+    .block-game { font-size: 25px; }
+    .block-tct { font-size: 20px; }
+    .block-local { font-size: 16px; margin-top: 9px; }
+    .block-pick { font-size: 12px; padding: 7px 15px; }
+    .block-seats { font-size: 17px; margin-top: 15px; }
+    .block-seats strong { font-size: 20px; }
+    .block-zones-toggle { font-size: 13px; margin-top: 13px; }
+    .block-zone-row { font-size: 13px; }
   </style>
 </head>
 <body class="avail">
@@ -95,9 +121,8 @@
       <span class="stage-banner-name">Stage 4 · Phase 1</span>
       <span class="stage-banner-date">Saturday 20th June</span>
     </div>
-    <h1 class="hero-title">Which games can you play?</h1>
-    <p class="hero-blurb">Stage 4 runs as <strong>three fixed game times</strong>, <strong>7 seats each</strong>. Seats are <strong>first come, first served</strong> — claim the game you'll play. Your local time is shown on each; hit <strong>"See all timezones"</strong> for the full breakdown. If your game's full you can join its waitlist, but you must also claim one that still has seats.</p>
-    <p class="hero-note">Block times are TCT (UTC). <strong>00:00 starts the day, not ends it</strong> — so Game 1 is the very start of the day.</p>
+    <h1 class="hero-title">Which game can you play?</h1>
+    <p class="hero-blurb"><strong>3 games, 7 seats each — first come, first served.</strong> Claim the game you'll play; your local time is on each card. <span style="opacity:.8">00:00 TCT is the start of the day.</span></p>
   </section>
 
   <section class="form-section">
