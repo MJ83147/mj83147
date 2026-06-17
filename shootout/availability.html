@@ -292,9 +292,14 @@
       document.getElementById('selectedName').textContent = player.name;
       document.getElementById('selectedId').textContent = '#' + player.tornId;
       closeDropdown();
+      // Only treat them as "already submitted" if they actually have block picks.
+      // A wiped sheet leaves empty rows (tornId but no slots) — those don't count.
       var existing = state.availability.filter(function(a) { return a.tornId === player.tornId; })[0];
-      if (existing) {
-        parseAvailableSlotIds(existing.availableSlotIds).forEach(function(id) { selection.slotIds[id] = true; });
+      var existingIds = existing
+        ? parseAvailableSlotIds(existing.availableSlotIds).filter(function(id) { return BLOCK_SLOTS.indexOf(id) !== -1; })
+        : [];
+      if (existingIds.length) {
+        existingIds.forEach(function(id) { selection.slotIds[id] = true; });
         document.getElementById('existingNotice').classList.add('show');
       } else {
         document.getElementById('existingNotice').classList.remove('show');
