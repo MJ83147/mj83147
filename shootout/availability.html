@@ -135,6 +135,16 @@
     body.avail .form-card { padding: 16px 22px; }
     #formCard .form-card + .form-card { margin-top: 12px; }
     body.avail .form-step-help { margin-bottom: 8px; font-size: 13.5px; }
+
+    /* Locked banner shown until submissions open. */
+    .locked-note {
+      max-width: 1160px; margin: 0 auto 14px; padding: 14px 18px;
+      background: rgba(255, 194, 77, 0.12); border: 1.5px solid #ffc24d;
+      border-radius: 8px; color: #ffe0a3; font-size: 15px; text-align: center;
+    }
+    .locked-note strong { color: #ffc24d; }
+    body.avail.locked .block-card { cursor: not-allowed; opacity: 0.92; }
+    body.avail.locked .block-card:hover { transform: none; border-color: #4a566b; background: #2c3441; box-shadow: 0 3px 14px rgba(0,0,0,0.45); }
   </style>
 </head>
 <body class="avail">
@@ -157,6 +167,8 @@
   </section>
 
   <section class="form-section">
+
+    <div class="locked-note" id="lockedNote">🔒 <strong>Submissions aren't open yet.</strong> Claiming opens <strong>after the Stage 3 rebuys</strong>. You can look around, but you can't claim a game until then.</div>
 
     <div id="loadingState" class="loading-state">
       <div class="spinner"></div>
@@ -236,6 +248,9 @@
     var SEAT_CAP = 7;
     var BLOCK_SLOTS = ['slot_0', 'slot_9', 'slot_20'];
 
+    // Flip to true once the Stage 3 rebuys are done to open claiming.
+    var SUBMISSIONS_OPEN = false;
+
     // Stage 4 = three fixed daily game blocks. slotId maps onto the existing
     // availability sheet (slot_0 = 00:00, slot_9 = 09:00, slot_20 = 20:00 TCT).
     var BLOCKS = [
@@ -258,6 +273,8 @@
     ];
 
     document.addEventListener('DOMContentLoaded', function() {
+      if (!SUBMISSIONS_OPEN) document.body.classList.add('locked');
+      else { var ln = document.getElementById('lockedNote'); if (ln) ln.style.display = 'none'; }
       fetchState();
       bindEvents();
     });
@@ -473,6 +490,7 @@
       // waitlist-only and toggle independently (you can sit one + waitlist a full).
       container.querySelectorAll('.block-card').forEach(function(card) {
         card.addEventListener('click', function() {
+          if (!SUBMISSIONS_OPEN) return;
           if (!selection.player) return;
           var slotId = card.getAttribute('data-slot-id');
           var t = seatsTaken(selection.player.tornId);
@@ -520,6 +538,12 @@
     function updateSubmitState() {
       var btn = document.getElementById('btnSubmit');
       var summary = document.getElementById('submitSummary');
+      if (!SUBMISSIONS_OPEN) {
+        btn.disabled = true;
+        btn.textContent = 'Submissions closed';
+        summary.innerHTML = 'Claiming opens <strong>after the Stage 3 rebuys</strong>.';
+        return;
+      }
       if (!selection.player) {
         btn.disabled = true;
         summary.textContent = 'Pick yourself and your game blocks to submit.';
@@ -567,6 +591,7 @@
     }
 
     function submit() {
+      if (!SUBMISSIONS_OPEN) return;
       if (!selection.player) return;
       var ids = selectedSlotIds();
       if (ids.length === 0) return;
