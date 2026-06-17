@@ -104,6 +104,14 @@
     .block-seats strong { font-size: 20px; }
     .block-zones-toggle { font-size: 13px; margin-top: 13px; }
     .block-zone-row { font-size: 13px; }
+
+    /* Head: title + time on the left, claim pill pinned top-right; the local
+       time sits small directly under the main time. */
+    .block-card-head { justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; gap: 12px; }
+    .block-titleline { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    .block-local { font-size: 13px; color: #aeb4bf; margin-top: 5px; }
+    .block-local strong { color: #fff; }
+    .block-pick { margin-left: 0; flex: 0 0 auto; }
   </style>
 </head>
 <body class="avail">
@@ -122,7 +130,7 @@
       <span class="stage-banner-date">Saturday 20th June</span>
     </div>
     <h1 class="hero-title">Which game can you play?</h1>
-    <p class="hero-blurb"><strong>3 games, 7 seats each — first come, first served.</strong> Claim the game you'll play; your local time is on each card. <span style="opacity:.8">00:00 TCT is the start of the day.</span></p>
+    <p class="hero-blurb"><strong>3 games, 7 seats each. First come, first served.</strong> Claim the game you'll play; your local time is on each card. <span style="opacity:.8">00:00 TCT is the start of the day.</span></p>
   </section>
 
   <section class="form-section">
@@ -141,7 +149,7 @@
           <span class="form-step-num">01</span>
           <span class="form-step-title">Who are you?</span>
         </div>
-        <p class="form-step-help">Start typing your name and pick yourself from the list. If someone's already picked your name, you can still submit — it'll overwrite the existing picks.</p>
+        <p class="form-step-help">Start typing your name and pick yourself from the list.</p>
 
         <div class="autocomplete-wrap" id="autocompleteWrap">
           <input type="text" class="form-input" id="playerInput" placeholder="Start typing your name…" autocomplete="off">
@@ -167,7 +175,7 @@
       <div class="form-step step-disabled" id="step2">
         <div class="form-step-header">
           <span class="form-step-num">02</span>
-          <span class="form-step-title">Claim your game — first come, first served</span>
+          <span class="form-step-title">Claim your game (first come, first served)</span>
         </div>
         <p class="form-step-help">7 seats per game. Tap the game you'll play. If it's full you can still join the waitlist, but you must also claim a game that has seats left.</p>
 
@@ -400,20 +408,21 @@
         var left = Math.max(0, SEAT_CAP - (taken[block.slotId] || 0));
         var full = left <= 0;
         var pickLabel = full
-          ? (selected ? '✓ waitlist' : 'FULL — waitlist')
+          ? (selected ? '✓ waitlist' : 'join waitlist')
           : (selected ? '✓ your seat' : 'tap to claim');
         html += '<div class="block-card' + (selected ? ' selected' : '') + (full ? ' full' : '') + '" data-slot-id="' + block.slotId + '">';
         html += '  <div class="block-card-head">';
-        html += '    <span class="block-game">' + esc(block.game) + '</span>';
-        html += '    <span class="block-tct">' + pad2(block.tctHour) + ':00 TCT</span>';
+        html += '    <div class="block-head-left">';
+        html += '      <div class="block-titleline"><span class="block-game">' + esc(block.game) + '</span> <span class="block-tct">' + pad2(block.tctHour) + ':00 TCT</span></div>';
+        html += '      <div class="block-local"><strong>' + esc(local) + '</strong> your time</div>';
+        html += '    </div>';
         html += '    <span class="block-pick">' + pickLabel + '</span>';
         html += '  </div>';
-        html += '  <div class="block-local">= <strong>' + esc(local) + '</strong> your time</div>';
         html += '  <div class="block-seats' + (full ? ' full' : '') + '">' +
-                (full ? '<strong>FULL</strong> · ' + SEAT_CAP + '/' + SEAT_CAP + ' seats — join the waitlist'
+                (full ? '<strong>FULL</strong> · ' + SEAT_CAP + ' of ' + SEAT_CAP + ' seats taken'
                       : '<strong>' + left + '</strong> of ' + SEAT_CAP + ' seats left') + '</div>';
-        html += '  <button type="button" class="block-zones-toggle" data-toggle="' + block.slotId + '">See all timezones ▾</button>';
-        html += '  <div class="block-zones hidden" id="zones-' + block.slotId + '">';
+        html += '  <button type="button" class="block-zones-toggle" data-toggle="' + block.slotId + '">Hide timezones ▴</button>';
+        html += '  <div class="block-zones" id="zones-' + block.slotId + '">';
         block.zones.forEach(function(z) {
           html += '<div class="block-zone-row"><span class="block-zone-name">' + esc(z[0]) + '</span><span class="block-zone-time">' + esc(z[1]) + '</span></div>';
         });
@@ -481,7 +490,7 @@
       var ids = selectedSlotIds();
       if (ids.length === 0) {
         btn.disabled = true;
-        summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong> — tap the game you\'ll play.';
+        summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong>, tap the game you\'ll play.';
         return;
       }
       var taken = seatsTaken(selection.player.tornId);
@@ -493,13 +502,13 @@
       if (roomPicks.length === 0) {
         btn.disabled = true;
         summary.innerHTML = '<strong>' + esc(fullPicks.map(function(b) { return b.game; }).join(', ')) +
-          '</strong> ' + (fullPicks.length === 1 ? 'is' : 'are') + ' full — also pick a game that still has seats to lock in a spot.';
+          '</strong> ' + (fullPicks.length === 1 ? 'is' : 'are') + ' full. Also pick a game that still has seats to lock in a spot.';
         return;
       }
 
       btn.disabled = false;
       var seat = roomPicks[0]; // earliest game with room = the seat they'll get
-      var msg = '<strong>' + esc(selection.player.name) + '</strong> — seat in <strong>' + esc(seat.game) + '</strong>';
+      var msg = '<strong>' + esc(selection.player.name) + '</strong>: seat in <strong>' + esc(seat.game) + '</strong>';
       if (fullPicks.length) {
         msg += ', on the waitlist for ' + esc(fullPicks.map(function(b) { return b.game; }).join(', '));
       }
