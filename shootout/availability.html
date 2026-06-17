@@ -22,60 +22,62 @@
     .block-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; }
     @media (max-width: 640px) { .block-grid { grid-template-columns: 1fr; } }
     .block-card {
-      border: 2px solid rgba(255,255,255,0.34); border-radius: 12px;
-      background: #232832; padding: 22px 22px 20px;
-      cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      border: 2px solid #4a566b; border-radius: 12px;
+      background: #2c3441; padding: 22px 22px 20px;
+      cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.45);
       transition: border-color .15s, background .15s, transform .1s, box-shadow .15s;
     }
     .block-card:hover {
-      border-color: var(--accent, #e0a92e); background: #2b313d;
-      transform: translateY(-2px); box-shadow: 0 9px 26px rgba(0,0,0,0.55);
+      border-color: #ffc24d; background: #353f4f;
+      transform: translateY(-2px); box-shadow: 0 9px 28px rgba(0,0,0,0.6);
     }
     .block-card.selected {
-      border-color: var(--green, #3dba6a); background: rgba(61, 186, 106, 0.22);
-      box-shadow: 0 0 0 2px var(--green, #3dba6a), 0 9px 26px rgba(0,0,0,0.55);
+      border-color: #46d27a; background: rgba(70, 210, 122, 0.20);
+      box-shadow: 0 0 0 2px #46d27a, 0 9px 28px rgba(0,0,0,0.6);
     }
     .block-card-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
-    .block-game { font-family: var(--font-mono, monospace); font-weight: 800; font-size: 19px; color: #fff; }
-    .block-tct { font-family: var(--font-mono, monospace); font-weight: 700; font-size: 16px; color: var(--accent, #e0a92e); }
-    .block-local { font-size: 14px; color: #c7ccd6; }
+    .block-game { font-family: var(--font-mono, monospace); font-weight: 800; font-size: 20px; color: #ffffff; }
+    .block-tct { font-family: var(--font-mono, monospace); font-weight: 800; font-size: 17px; color: #ffc24d; }
+    .block-local { font-size: 14px; color: #dbe0e8; margin-top: 6px; }
     .block-local strong { color: #fff; }
     .block-pick {
       margin-left: auto; font-family: var(--font-mono, monospace); font-size: 11px; font-weight: 800;
       text-transform: uppercase; letter-spacing: .5px;
-      color: #14171d; background: var(--accent, #e0a92e); padding: 5px 12px; border-radius: 999px;
+      color: #1a1d24; background: #ffc24d; padding: 6px 13px; border-radius: 999px;
     }
-    .block-card.selected .block-pick { background: var(--green, #3dba6a); color: #0e1411; }
-    .block-card.full .block-pick { background: transparent; color: var(--accent, #e0a92e); border: 1.5px solid var(--accent, #e0a92e); }
-    .block-card.full.selected { border-color: var(--accent, #e0a92e); background: rgba(232, 168, 50, 0.16); box-shadow: 0 0 0 2px var(--accent, #e0a92e), 0 9px 26px rgba(0,0,0,0.55); }
+    .block-card.selected .block-pick { background: #46d27a; color: #0e1411; }
+    .block-card.full .block-pick { background: transparent; color: #ffc24d; border: 1.5px solid #ffc24d; }
+    .block-card.full.selected { border-color: #ffc24d; background: rgba(255, 194, 77, 0.16); box-shadow: 0 0 0 2px #ffc24d, 0 9px 28px rgba(0,0,0,0.6); }
     .block-seats {
-      margin-top: 10px; font-size: 13px; color: var(--green, #3dba6a);
+      margin-top: 12px; font-size: 14px; color: #5ad98a;
       font-family: var(--font-mono, monospace);
     }
-    .block-seats strong { font-size: 15px; }
-    .block-seats.full { color: var(--accent, #e0a92e); }
+    .block-seats strong { font-size: 16px; color: #6fe89c; }
+    .block-seats.full { color: #ffc24d; }
+    .block-seats.full strong { color: #ffd373; }
     .block-zones-toggle {
       margin-top: 10px; background: none; border: none; padding: 0; cursor: pointer;
-      font-family: var(--font-mono, monospace); font-size: 11px; color: var(--text-muted, #aaa);
+      font-family: var(--font-mono, monospace); font-size: 11px; color: #d7dbe3;
       text-decoration: underline; text-underline-offset: 2px;
     }
     .block-zones { margin-top: 8px; display: flex; flex-direction: column; gap: 1px; }
     .block-zones.hidden { display: none; }
     .block-zone-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 2px 0; }
-    .block-zone-name { color: #c7ccd6; }
+    .block-zone-name { color: #d7dbe3; }
     .block-zone-time { font-family: var(--font-mono, monospace); color: #fff; white-space: nowrap; }
-    .block-seats { color: #4fd07f; }
-    .block-seats.full { color: var(--accent, #e0a92e); }
-    .block-zones-toggle { color: #c7ccd6; }
 
-    /* Brighter page text — the theme defaults read too muted on this dark bg. */
+    /* Brighter page text + accents — the theme defaults read too muted. */
+    body.avail .form-step-num { color: #ffc24d; }
     body.avail .form-step-title { color: #fff; }
-    body.avail .form-step-help { color: #c2c8d2; }
-    body.avail .submit-summary { color: #d2d7e0; }
-    body.avail .hero-blurb { color: #d2d7e0; }
-    body.avail .hero-note { color: #b4bac5; }
+    body.avail .form-step-help { color: #ccd2dc; }
+    body.avail .submit-summary { color: #e2e6ed; }
+    body.avail .hero-blurb { color: #e2e6ed; }
+    body.avail .hero-note { color: #bcc2cd; }
     body.avail .hero-blurb strong, body.avail .hero-note strong, body.avail .form-step-help strong { color: #fff; }
-    body.avail .existing-notice { color: #d2d7e0; }
+    body.avail .existing-notice { color: #e2e6ed; }
+    body.avail .btn-submit { background: #ffc24d; color: #1a1d24; }
+    body.avail .btn-submit:hover { background: #ffce6b; }
+    body.avail .stage-banner-name { color: #ffc24d; }
   </style>
 </head>
 <body class="avail">
@@ -379,9 +381,9 @@
         html += '  <div class="block-card-head">';
         html += '    <span class="block-game">' + esc(block.game) + '</span>';
         html += '    <span class="block-tct">' + pad2(block.tctHour) + ':00 TCT</span>';
-        html += '    <span class="block-local">= <strong>' + esc(local) + '</strong> your time</span>';
         html += '    <span class="block-pick">' + pickLabel + '</span>';
         html += '  </div>';
+        html += '  <div class="block-local">= <strong>' + esc(local) + '</strong> your time</div>';
         html += '  <div class="block-seats' + (full ? ' full' : '') + '">' +
                 (full ? '<strong>FULL</strong> · ' + SEAT_CAP + '/' + SEAT_CAP + ' seats — join the waitlist'
                       : '<strong>' + left + '</strong> of ' + SEAT_CAP + ' seats left') + '</div>';
