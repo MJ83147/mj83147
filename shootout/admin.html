@@ -58,6 +58,11 @@
     .s4live-warn { font-size: 13px; color: #ffe0a3; background: rgba(255,194,77,0.1); border: 1px solid rgba(255,194,77,0.3); border-radius: 6px; padding: 8px 12px; margin-top: 8px; }
     .s4live-warn strong { color: #ffc24d; }
     .s4live-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+    .s4live-actions button { font-family: var(--font-body, sans-serif); font-size: 13px; font-weight: 700; padding: 9px 18px; border-radius: 5px; cursor: pointer; }
+    .s4live-actions .btn-cancel { background: var(--surface-2, rgba(255,255,255,0.05)); color: var(--text, #fff); border: 1px solid var(--border-light, rgba(255,255,255,0.28)); }
+    .s4live-actions .btn-cancel:hover { background: rgba(255,255,255,0.1); }
+    .s4live-actions .btn-generate { background: var(--accent, #e0a92e); color: var(--bg, #111); border: none; }
+    .s4live-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
   </style>
   <script src="admin-auth.js"></script>
 </head>
