@@ -41,6 +41,23 @@
     .btn-confirm-rebuy { padding: 5px 12px; font-size: 12px; }
     .paid-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #3a9d5d; }
     @media (max-width: 640px) { .rebuy-admin { grid-template-columns: 1fr; } }
+
+    /* Stage 4 live (first-come-first-served) */
+    .s4live-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+    .s4live-title { font-family: var(--font-mono, monospace); font-size: 14px; font-weight: 700; color: var(--text, #fff); }
+    .s4live-dot { font-family: var(--font-mono, monospace); font-size: 11px; font-weight: 700; color: #46d27a; }
+    .s4live-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 14px 0; }
+    @media (max-width: 760px) { .s4live-grid { grid-template-columns: 1fr; } }
+    .s4live-card { border: 1.5px solid #4a566b; border-radius: 10px; background: #2c3441; padding: 14px 16px; }
+    .s4live-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+    .s4live-game { font-family: var(--font-mono, monospace); font-weight: 800; font-size: 14px; color: #ffc24d; }
+    .s4live-count { font-family: var(--font-mono, monospace); font-weight: 700; font-size: 13px; color: #fff; }
+    .s4live-players { display: flex; flex-wrap: wrap; gap: 6px; }
+    .s4live-chip { font-size: 12px; padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: #e2e6ed; }
+    .s4live-empty { font-size: 12px; color: var(--text-dim, #777); font-style: italic; }
+    .s4live-warn { font-size: 13px; color: #ffe0a3; background: rgba(255,194,77,0.1); border: 1px solid rgba(255,194,77,0.3); border-radius: 6px; padding: 8px 12px; margin-top: 8px; }
+    .s4live-warn strong { color: #ffc24d; }
+    .s4live-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
   </style>
   <script src="admin-auth.js"></script>
 </head>
@@ -445,6 +462,7 @@
     }
 
     function renderStageTab(stage) {
+      stopStage4Live();
       var body = document.getElementById('stageTabBody');
       var tables = tablesForStage(stage);
       var anyComplete = tables.some(function(t) { return t.status === 'complete'; });
@@ -466,6 +484,15 @@
         if (stage === '1') {
           // Stage 1 seating is generated from availability in the availability admin.
           html += renderStartCta();
+        } else if (stage === '4') {
+          var gate4 = gateForStage('4');
+          if (gate4.ok) {
+            // Stage 4 is first-come-first-served — show the tables filling live.
+            html += '<div id="stage4Live"></div>';
+          } else {
+            html += '<div class="stage-empty"><p class="stage-pending"><span class="pending-tag">Pending</span> ' + esc(gate4.reason || 'Not available yet') + '</p></div>';
+            html += renderQueueFor(stage);
+          }
         } else {
           var gate = gateForStage(stage);
           html += '<div class="stage-empty">';
@@ -486,6 +513,152 @@
 
       body.innerHTML = html;
       wireStageTab(stage);
+      if (stage === '4' && tables.length === 0 && gateForStage('4').ok) startStage4Live();
+    }
+
+    // ===== STAGE 4 LIVE (first-come-first-served) =====
+    var stage4Timer = null;
+
+    function stopStage4Live() {
+      if (stage4Timer) { clearInterval(stage4Timer); stage4Timer = null; }
+    }
+
+    function startStage4Live() {
+      stopStage4Live();
+      renderStage4Live();
+      stage4Timer = setInterval(function() {
+        if (!document.getElementById('stage4Live')) { stopStage4Live(); return; }
+        fetch(API_URL + '?action=getState')
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            state.availability = data.availability || [];
+            state.queues = data.queues || [];
+            state.players = data.players || state.players;
+            if (document.getElementById('stage4Live')) renderStage4Live();
+          })
+          .catch(function() {});
+      }, 12000);
+    }
+
+    function parseSlots_(v) {
+      if (!v) return [];
+      return String(v).split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+    }
+
+    // First-come-first-served seating, computed from the live claims (mirrors the
+    // backend stage4ClaimPlan_): seat in submission order into the earliest
+    // claimed game with room (cap 7).
+    function stage4ClaimPlan() {
+      var BLOCKS = ['slot_0', 'slot_9', 'slot_20'], CAP = 7;
+      var nameById = {}; (state.players || []).forEach(function(p) { nameById[p.tornId] = p.name; });
+      var pool = {}; (state.queues || []).forEach(function(q) { if (q.queuedFor === 'stage_4') pool[q.tornId] = true; });
+      var rows = [], noClaim = [];
+      Object.keys(pool).forEach(function(tid) {
+        var a = (state.availability || []).filter(function(x) { return x.tornId === tid; })[0];
+        var picks = a ? parseSlots_(a.availableSlotIds).filter(function(s) { return BLOCKS.indexOf(s) !== -1; }) : [];
+        if (!picks.length) { noClaim.push({ tornId: tid, name: nameById[tid] || tid }); return; }
+        rows.push({ tornId: tid, name: nameById[tid] || tid, picks: picks, t: (a && a.submittedAt) ? String(a.submittedAt) : '' });
+      });
+      rows.sort(function(x, y) { return x.t < y.t ? -1 : x.t > y.t ? 1 : (x.tornId < y.tornId ? -1 : 1); });
+      var seats = {}; BLOCKS.forEach(function(b) { seats[b] = []; });
+      var unseated = [];
+      rows.forEach(function(r) {
+        var placed = false;
+        for (var i = 0; i < BLOCKS.length; i++) {
+          var b = BLOCKS[i];
+          if (r.picks.indexOf(b) !== -1 && seats[b].length < CAP) { seats[b].push(r); placed = true; break; }
+        }
+        if (!placed) unseated.push(r);
+      });
+      return { BLOCKS: BLOCKS, CAP: CAP, seats: seats, unseated: unseated, noClaim: noClaim };
+    }
+
+    var STAGE4_GAME = { 'slot_0': 'Game 1 · 00:00 TCT', 'slot_9': 'Game 2 · 09:00 TCT', 'slot_20': 'Game 3 · 20:00 TCT' };
+
+    function renderStage4Live() {
+      var el = document.getElementById('stage4Live');
+      if (!el) return;
+      var r = stage4ClaimPlan();
+      var html = '';
+      html += '<div class="s4live-head"><span class="s4live-title">Claimed games — first come, first served</span>' +
+              '<span class="s4live-dot">● live</span></div>';
+      html += '<p class="section-blurb">Fills as players claim. Commit to lock these three tables in, or Refine to drag before committing.</p>';
+
+      html += '<div class="s4live-grid">';
+      r.BLOCKS.forEach(function(b) {
+        var players = r.seats[b];
+        html += '<div class="s4live-card">';
+        html += '<div class="s4live-card-head"><span class="s4live-game">' + esc(STAGE4_GAME[b]) + '</span>' +
+                '<span class="s4live-count">' + players.length + ' / ' + r.CAP + '</span></div>';
+        html += '<div class="s4live-players">';
+        if (players.length === 0) html += '<span class="s4live-empty">no claims yet</span>';
+        players.forEach(function(p) { html += '<span class="s4live-chip">' + esc(p.name) + '</span>'; });
+        html += '</div></div>';
+      });
+      html += '</div>';
+
+      if (r.unseated.length) {
+        html += '<div class="s4live-warn"><strong>No seat (' + r.unseated.length + '):</strong> ' +
+                r.unseated.map(function(p) { return esc(p.name); }).join(', ') + ' — claimed only a full game. Ask them to claim one with room.</div>';
+      }
+      if (r.noClaim.length) {
+        html += '<div class="s4live-warn"><strong>Not claimed yet (' + r.noClaim.length + '):</strong> ' +
+                r.noClaim.map(function(p) { return esc(p.name); }).join(', ') + '</div>';
+      }
+
+      var totalSeated = r.BLOCKS.reduce(function(a, b) { return a + r.seats[b].length; }, 0);
+      html += '<div class="s4live-actions">';
+      html += '<button class="btn-cancel" id="btnStage4Refine"' + (totalSeated === 0 ? ' disabled' : '') + '>Refine seating</button>';
+      html += '<button class="btn-generate" id="btnStage4Commit"' + (totalSeated === 0 ? ' disabled' : '') + '>Commit these tables</button>';
+      html += '</div>';
+
+      el.innerHTML = html;
+      var rb = document.getElementById('btnStage4Refine');
+      if (rb) rb.addEventListener('click', stage4Refine);
+      var cb = document.getElementById('btnStage4Commit');
+      if (cb) cb.addEventListener('click', stage4Commit);
+    }
+
+    // Build the commit/editor plan (skip empty games).
+    function stage4PlanForCommit() {
+      var r = stage4ClaimPlan();
+      var counter = 1, plan = [];
+      r.BLOCKS.forEach(function(b) {
+        var players = r.seats[b];
+        if (players.length === 0) return;
+        plan.push({
+          slotId: b,
+          tables: [{
+            tableId: 'S4-T' + counter,
+            size: players.length,
+            playerIds: players.map(function(p) { return p.tornId; }),
+            playerNames: players.map(function(p) { return p.name; }),
+            sources: players.map(function() { return 'available'; })
+          }]
+        });
+        counter++;
+      });
+      return plan;
+    }
+
+    function stage4Refine() {
+      stopStage4Live();
+      var payload = { stage: '4', tableSize: 7, plan: stage4PlanForCommit(), availability: state.availability || [], returnTo: 'admin' };
+      try { sessionStorage.setItem('seatingEditor.plan', JSON.stringify(payload)); }
+      catch (e) { toast('Could not open seating editor: ' + e.message, 'error'); return; }
+      window.location.href = 'seating-editor';
+    }
+
+    function stage4Commit() {
+      var plan = stage4PlanForCommit();
+      if (!plan.length) { toast('No claims to commit yet', 'error'); return; }
+      showConfirm('Lock in ' + plan.length + ' Stage 4 game table(s) from the current claims? Players will be seated and the tables go live.', function() {
+        stopStage4Live();
+        apiCall('commitStageTables', { stage: '4', plan: JSON.stringify(plan) }, function(data) {
+          toast(data.message || 'Stage 4 tables committed', 'success');
+          fetchState();
+        });
+      });
     }
 
     function renderQueueFor(stage) {
