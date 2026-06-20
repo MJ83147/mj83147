@@ -27,6 +27,10 @@
       color: #ffc24d; flex: 0 0 auto;
     }
     .fb-q-label { font-family: var(--font-body); font-weight: 600; font-size: 16px; color: #fff; }
+    .fb-q-multi {
+      font-family: var(--font-mono, monospace); font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .5px; color: #8a92a0; white-space: nowrap;
+    }
 
     /* Multiple-choice options */
     .fb-opts { display: flex; flex-wrap: wrap; gap: 8px; padding-left: 28px; }
@@ -103,12 +107,16 @@
         options: ['Loving it', 'Good', "It's fine", 'Not great', 'Rough'] },
       { key: 'clarity',   label: 'How clear were the rules and stage structure?',
         options: ['Crystal clear', 'Mostly clear', 'A bit confusing', 'Lost most of the time'] },
+      { key: 'interface', label: 'How was the new poker tournament interface to use?',
+        options: ['Easy', 'Mostly easy', 'A bit clunky', 'Confusing'] },
       { key: 'seating',   label: 'How well did the seating & availability scheduling work for you?',
         options: ['Worked great', 'Mostly fine', 'A few issues', "Didn't work for me"] },
       { key: 'pace',      label: 'How was the pace and timing of the stages?',
         options: ['Too slow', 'Just right', 'Too fast'] },
       { key: 'returning', label: 'Would you join another Progressive Shootout?',
-        options: ['Definitely', 'Probably', 'Maybe', 'No'] }
+        options: ['Definitely', 'Probably', 'Maybe', 'No'] },
+      { key: 'channels',  label: 'Which channels do you prefer for updates?', multi: true,
+        options: ['Website', 'Discord', 'Torn forum'] }
     ];
 
     var answers = {};
@@ -130,7 +138,9 @@
         var head = document.createElement('div');
         head.className = 'fb-q-head';
         head.innerHTML = '<span class="fb-q-num">' + pad2(i + 1) + '</span>' +
-                         '<span class="fb-q-label">' + esc(q.label) + '</span>';
+                         '<span class="fb-q-label">' + esc(q.label) +
+                         (q.multi ? ' <span class="fb-q-multi">pick all that apply</span>' : '') +
+                         '</span>';
         block.appendChild(head);
 
         var opts = document.createElement('div');
@@ -138,11 +148,10 @@
         q.options.forEach(function(opt) {
           var b = document.createElement('button');
           b.type = 'button';
-          b.className = 'fb-opt' + (answers[q.key] === opt ? ' selected' : '');
+          b.className = 'fb-opt' + (isSelected(q, opt) ? ' selected' : '');
           b.textContent = opt;
           b.addEventListener('click', function() {
-            // Tap the chosen answer again to clear it.
-            answers[q.key] = (answers[q.key] === opt) ? null : opt;
+            toggleOption(q, opt);
             renderQuestions();
             updateSubmitState();
           });
@@ -153,8 +162,28 @@
       });
     }
 
+    // Single-select answers are a string; multi-select answers are an array.
+    function isSelected(q, opt) {
+      var a = answers[q.key];
+      return q.multi ? (a || []).indexOf(opt) !== -1 : a === opt;
+    }
+
+    function toggleOption(q, opt) {
+      if (q.multi) {
+        var arr = answers[q.key] || [];
+        var i = arr.indexOf(opt);
+        answers[q.key] = (i === -1) ? arr.concat([opt]) : arr.slice(0, i).concat(arr.slice(i + 1));
+      } else {
+        // Tap the chosen answer again to clear it.
+        answers[q.key] = (answers[q.key] === opt) ? null : opt;
+      }
+    }
+
     function answeredCount() {
-      return QUESTIONS.filter(function(q) { return answers[q.key]; }).length;
+      return QUESTIONS.filter(function(q) {
+        var a = answers[q.key];
+        return q.multi ? (a && a.length > 0) : !!a;
+      }).length;
     }
 
     function updateSubmitState() {
@@ -195,7 +224,9 @@
         '&name=' + encodeURIComponent(document.getElementById('nameInput').value.trim()) +
         '&browserId=' + encodeURIComponent(getBrowserId());
       QUESTIONS.forEach(function(q) {
-        url += '&' + q.key + '=' + encodeURIComponent(answers[q.key] || '');
+        var a = answers[q.key];
+        var val = q.multi ? (a || []).join(', ') : (a || '');
+        url += '&' + q.key + '=' + encodeURIComponent(val);
       });
 
       fetch(url)
