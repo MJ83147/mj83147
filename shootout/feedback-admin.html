@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Progressive Shootout // Feedback Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="admin-auth.js"></script>
+  <style>
+    body.fb-admin { background: var(--bg, #0f1115); }
+    .fb-main { max-width: 980px; margin: 0 auto; padding: 24px 20px 60px; }
+
+    .fb-toolbar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 20px; }
+    .fb-stats { display: flex; gap: 12px; flex-wrap: wrap; }
+    .fb-stat {
+      background: #1a1d24; border: 1px solid #2a2f3a; border-radius: 8px;
+      padding: 12px 18px; min-width: 110px;
+    }
+    .fb-stat-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .6px; color: #8a92a0;
+    }
+    .fb-stat-value { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 800; color: #fff; margin-top: 3px; }
+    .fb-stat-value.accent { color: #e8a832; }
+
+    .fb-spacer { flex: 1 1 auto; }
+    .fb-view-toggle { display: inline-flex; background: #1a1d24; border: 1px solid #2a2f3a; border-radius: 999px; padding: 3px; }
+    .fb-view-btn {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .5px;
+      padding: 8px 16px; border-radius: 999px; border: none; cursor: pointer;
+      background: transparent; color: #aab1bd;
+    }
+    .fb-view-btn.active { background: #e8a832; color: #0f1115; }
+    .fb-btn-refresh {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .5px; cursor: pointer;
+      padding: 9px 16px; border-radius: 6px; border: 1px solid #2a2f3a;
+      background: #1a1d24; color: #cbd1db;
+    }
+    .fb-btn-refresh:hover { border-color: #e8a832; color: #fff; }
+
+    /* Charts */
+    .fb-chart-q { background: #1a1d24; border: 1px solid #2a2f3a; border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; }
+    .fb-chart-title {
+      font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 15px; color: #fff;
+      margin-bottom: 4px; display: flex; align-items: baseline; gap: 9px;
+    }
+    .fb-chart-num { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 12px; color: #e8a832; }
+    .fb-chart-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8a92a0; margin-bottom: 14px; }
+    .fb-chart-multi { text-transform: uppercase; letter-spacing: .5px; }
+
+    .fb-bar-row { display: grid; grid-template-columns: 150px 1fr 64px; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .fb-bar-row:last-child { margin-bottom: 0; }
+    .fb-bar-label { font-size: 13px; color: #dbe0e8; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fb-bar-track { background: #0f1115; border-radius: 5px; height: 22px; overflow: hidden; border: 1px solid #23283180; }
+    .fb-bar-fill {
+      height: 100%; background: linear-gradient(90deg, #e8a832, #f0c45f);
+      border-radius: 5px 0 0 5px; min-width: 2px; transition: width .3s;
+    }
+    .fb-bar-fill.zero { background: #2a2f3a; }
+    .fb-bar-val { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #cbd1db; white-space: nowrap; }
+    .fb-bar-val strong { color: #fff; }
+    @media (max-width: 560px) {
+      .fb-bar-row { grid-template-columns: 110px 1fr 54px; gap: 8px; }
+      .fb-bar-label { font-size: 12px; }
+    }
+
+    /* Responses list */
+    .fb-resp { background: #1a1d24; border: 1px solid #2a2f3a; border-radius: 10px; padding: 16px 18px; margin-bottom: 12px; }
+    .fb-resp-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #23283180; }
+    .fb-resp-name { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 14px; color: #fff; }
+    .fb-resp-name.anon { color: #8a92a0; font-style: italic; font-weight: 600; }
+    .fb-resp-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8a92a0; margin-left: auto; }
+    .fb-resp-ans { display: grid; grid-template-columns: 150px 1fr; gap: 4px 12px; }
+    .fb-ans-q { font-family: 'JetBrains Mono', monospace; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: #8a92a0; }
+    .fb-ans-v { font-size: 13px; color: #e7ebf1; }
+    .fb-resp-comment {
+      margin-top: 12px; padding: 10px 14px; background: #0f1115; border-left: 3px solid #e8a832;
+      border-radius: 4px; font-size: 14px; color: #e7ebf1; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+    }
+    @media (max-width: 560px) { .fb-resp-ans { grid-template-columns: 1fr; gap: 1px 0; } .fb-ans-q { margin-top: 6px; } }
+
+    .fb-empty { text-align: center; color: #8a92a0; padding: 60px 20px; font-size: 15px; }
+    .fb-loading { text-align: center; color: #aab1bd; padding: 60px 20px; }
+  </style>
+</head>
+<body class="fb-admin">
+
+  <header class="header">
+    <h1><a href="./">PROGRESSIVE SHOOTOUT</a> // FEEDBACK ADMIN</h1>
+    <div class="header-right">
+      <a class="btn-pill" href="admin">Tournament admin</a>
+      <a class="btn-pill" href="availability-admin">Availability</a>
+      <a class="btn-pill" href="feedback">Player form</a>
+    </div>
+  </header>
+
+  <main class="fb-main">
+
+    <div id="loadingState" class="fb-loading">
+      <div class="spinner"></div>
+      <div>Loading feedback…</div>
+    </div>
+
+    <div id="content" class="hidden">
+      <div class="fb-toolbar">
+        <div class="fb-stats">
+          <div class="fb-stat">
+            <div class="fb-stat-label">Responses</div>
+            <div class="fb-stat-value accent" id="statTotal">0</div>
+          </div>
+          <div class="fb-stat">
+            <div class="fb-stat-label">With comment</div>
+            <div class="fb-stat-value" id="statComments">0</div>
+          </div>
+        </div>
+        <div class="fb-spacer"></div>
+        <div class="fb-view-toggle">
+          <button class="fb-view-btn active" data-view="charts">Charts</button>
+          <button class="fb-view-btn" data-view="responses">Responses</button>
+        </div>
+        <button class="fb-btn-refresh" id="btnRefresh">Refresh</button>
+      </div>
+
+      <div id="chartsView"></div>
+      <div id="responsesView" class="hidden"></div>
+    </div>
+
+  </main>
+
+  <script src="config.js"></script>
+  <script>
+    // Question definitions mirror feedback.html. The options here fix the bar
+    // order and let zero-count options still show.
+    var QUESTIONS = [
+      { key: 'overall',   label: 'Overall, how has the tournament been for you?',
+        options: ['Loving it', 'Good', "It's fine", 'Not great', 'Rough'] },
+      { key: 'clarity',   label: 'How clear were the rules and stage structure?',
+        options: ['Crystal clear', 'Mostly clear', 'A bit confusing', 'Lost most of the time'] },
+      { key: 'interface', label: 'How was the new poker tournament interface to use?',
+        options: ['Easy', 'Mostly easy', 'A bit clunky', 'Confusing'] },
+      { key: 'seating',   label: 'How well did the seating & availability scheduling work?',
+        options: ['Worked great', 'Mostly fine', 'A few issues', "Didn't work for me"] },
+      { key: 'pace',      label: 'How was the pace and timing of the stages?',
+        options: ['Too slow', 'Just right', 'Too fast'] },
+      { key: 'returning', label: 'Would you join another Progressive Shootout?',
+        options: ['Definitely', 'Probably', 'Maybe', 'No'] },
+      { key: 'channels',  label: 'Which channels do you prefer for updates?', multi: true,
+        options: ['Website', 'Discord', 'Torn forum'] }
+    ];
+
+    var feedback = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('btnRefresh').addEventListener('click', load);
+      document.querySelectorAll('.fb-view-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() { switchView(btn.getAttribute('data-view')); });
+      });
+      load();
+    });
+
+    function load() {
+      document.getElementById('loadingState').classList.remove('hidden');
+      document.getElementById('content').classList.add('hidden');
+      fetch(API_URL + '?action=getFeedback')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          feedback = (data && data.feedback) || [];
+          // Newest first.
+          feedback.sort(function(a, b) { return (a.submittedAt < b.submittedAt) ? 1 : -1; });
+          document.getElementById('loadingState').classList.add('hidden');
+          document.getElementById('content').classList.remove('hidden');
+          renderStats();
+          renderCharts();
+          renderResponses();
+        })
+        .catch(function(err) {
+          document.getElementById('loadingState').innerHTML = 'Failed to load: ' + esc(err.message) + ' — Refresh to retry.';
+        });
+    }
+
+    function switchView(view) {
+      document.querySelectorAll('.fb-view-btn').forEach(function(b) {
+        b.classList.toggle('active', b.getAttribute('data-view') === view);
+      });
+      document.getElementById('chartsView').classList.toggle('hidden', view !== 'charts');
+      document.getElementById('responsesView').classList.toggle('hidden', view !== 'responses');
+    }
+
+    function renderStats() {
+      document.getElementById('statTotal').textContent = feedback.length;
+      var withComment = feedback.filter(function(r) { return (r.comments || '').trim(); }).length;
+      document.getElementById('statComments').textContent = withComment;
+    }
+
+    // Multi-select answers are stored comma-joined; split them back out.
+    function answerValues(row, q) {
+      var raw = (row[q.key] || '').trim();
+      if (!raw) return [];
+      return q.multi ? raw.split(',').map(function(s) { return s.trim(); }).filter(Boolean) : [raw];
+    }
+
+    function renderCharts() {
+      var total = feedback.length;
+      if (total === 0) {
+        document.getElementById('chartsView').innerHTML = '<div class="fb-empty">No feedback submitted yet.</div>';
+        return;
+      }
+      var html = '';
+      QUESTIONS.forEach(function(q, qi) {
+        // Tally counts per option (known options first, plus any unexpected values).
+        var counts = {};
+        q.options.forEach(function(o) { counts[o] = 0; });
+        var answered = 0;
+        feedback.forEach(function(row) {
+          var vals = answerValues(row, q);
+          if (vals.length) answered++;
+          vals.forEach(function(v) { counts[v] = (counts[v] || 0) + 1; });
+        });
+        var labels = q.options.slice();
+        Object.keys(counts).forEach(function(k) { if (labels.indexOf(k) === -1) labels.push(k); });
+
+        var maxCount = 0;
+        labels.forEach(function(l) { if (counts[l] > maxCount) maxCount = counts[l]; });
+
+        html += '<div class="fb-chart-q">';
+        html += '  <div class="fb-chart-title"><span class="fb-chart-num">' + pad2(qi + 1) + '</span><span>' + esc(q.label) + '</span></div>';
+        html += '  <div class="fb-chart-meta">' + answered + ' answered' +
+                (q.multi ? ' · <span class="fb-chart-multi">multi-select</span>' : '') + '</div>';
+        labels.forEach(function(label) {
+          var c = counts[label] || 0;
+          var pct = total ? Math.round((c / total) * 100) : 0;
+          var width = maxCount ? Math.round((c / maxCount) * 100) : 0;
+          html += '<div class="fb-bar-row">';
+          html += '  <div class="fb-bar-label" title="' + esc(label) + '">' + esc(label) + '</div>';
+          html += '  <div class="fb-bar-track"><div class="fb-bar-fill' + (c === 0 ? ' zero' : '') + '" style="width:' + width + '%"></div></div>';
+          html += '  <div class="fb-bar-val"><strong>' + c + '</strong> · ' + pct + '%</div>';
+          html += '</div>';
+        });
+        html += '</div>';
+      });
+      document.getElementById('chartsView').innerHTML = html;
+    }
+
+    function renderResponses() {
+      if (feedback.length === 0) {
+        document.getElementById('responsesView').innerHTML = '<div class="fb-empty">No feedback submitted yet.</div>';
+        return;
+      }
+      var html = '';
+      feedback.forEach(function(row) {
+        var name = (row.name || '').trim();
+        html += '<div class="fb-resp">';
+        html += '  <div class="fb-resp-head">';
+        html += '    <span class="fb-resp-name' + (name ? '' : ' anon') + '">' + (name ? esc(name) : 'Anonymous') + '</span>';
+        html += '    <span class="fb-resp-time">' + esc(formatTime(row.submittedAt)) + '</span>';
+        html += '  </div>';
+        var anyAns = false;
+        var ansHtml = '<div class="fb-resp-ans">';
+        QUESTIONS.forEach(function(q) {
+          var vals = answerValues(row, q);
+          if (!vals.length) return;
+          anyAns = true;
+          ansHtml += '<div class="fb-ans-q">' + esc(shortLabel(q)) + '</div>';
+          ansHtml += '<div class="fb-ans-v">' + esc(vals.join(', ')) + '</div>';
+        });
+        ansHtml += '</div>';
+        if (anyAns) html += ansHtml;
+        if ((row.comments || '').trim()) {
+          html += '<div class="fb-resp-comment">' + esc(row.comments.trim()) + '</div>';
+        }
+        if (!anyAns && !(row.comments || '').trim()) {
+          html += '<div class="fb-ans-v" style="color:#8a92a0">(no answers)</div>';
+        }
+        html += '</div>';
+      });
+      document.getElementById('responsesView').innerHTML = html;
+    }
+
+    // Short tag for the response list so each answer reads as "Overall: …".
+    var SHORT = { overall: 'Overall', clarity: 'Rules clarity', interface: 'Interface',
+                  seating: 'Seating', pace: 'Pace', returning: 'Would return', channels: 'Channels' };
+    function shortLabel(q) { return SHORT[q.key] || q.key; }
+
+    function formatTime(iso) {
+      if (!iso) return '';
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+    function esc(str) {
+      if (str === null || str === undefined) return '';
+      var div = document.createElement('div');
+      div.textContent = String(str);
+      return div.innerHTML;
+    }
+  </script>
+
+</body>
+</html>
