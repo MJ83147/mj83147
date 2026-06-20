@@ -11,51 +11,43 @@
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=20260606">
   <style>
-    /* Feedback page — self-contained styles layered on the shared form classes
-       (body.avail inherits all the form-card / form-input / btn-submit styling). */
-    body.avail .form-section { max-width: 720px; }
+    /* Feedback survey — layered on the shared form classes (body.avail inherits
+       the form-card / form-input / btn-submit styling). */
+    body.avail .form-section { max-width: 760px; }
     body.avail .hero-blurb { max-width: 640px; color: #e2e6ed; }
     body.avail .hero-blurb strong { color: #fff; }
-    body.avail .form-step-num { color: #ffc24d; }
-    body.avail .form-step-title { color: #fff; }
-    body.avail .form-step-help { color: #ccd2dc; }
     body.avail .btn-submit { background: #ffc24d; color: #1a1d24; }
     body.avail .btn-submit:hover:not(:disabled) { background: #ffce6b; }
 
-    .fb-field { margin-bottom: 22px; }
-    .fb-field:last-of-type { margin-bottom: 0; }
+    .fb-q { padding: 20px 0; border-top: 1px solid #353f4f; }
+    .fb-q:first-child { border-top: none; padding-top: 4px; }
+    .fb-q-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 13px; }
+    .fb-q-num {
+      font-family: var(--font-mono, monospace); font-weight: 800; font-size: 13px;
+      color: #ffc24d; flex: 0 0 auto;
+    }
+    .fb-q-label { font-family: var(--font-body); font-weight: 600; font-size: 16px; color: #fff; }
+
+    /* Multiple-choice options */
+    .fb-opts { display: flex; flex-wrap: wrap; gap: 8px; padding-left: 28px; }
+    .fb-opt {
+      font-family: var(--font-mono, monospace); font-size: 13px; font-weight: 600;
+      padding: 9px 15px; border-radius: 999px; cursor: pointer;
+      background: #2c3441; border: 1.5px solid #4a566b; color: #dbe0e8;
+      transition: border-color .15s, background .15s, color .15s, transform .1s;
+    }
+    .fb-opt:hover { border-color: #ffc24d; color: #fff; transform: translateY(-1px); }
+    .fb-opt.selected { border-color: #ffc24d; background: rgba(255, 194, 77, 0.18); color: #ffd373; }
+
+    .fb-extra { padding: 20px 0 4px; border-top: 1px solid #353f4f; }
     .fb-label {
       display: block; font-family: var(--font-mono, monospace); font-weight: 700;
       font-size: 12px; text-transform: uppercase; letter-spacing: .5px;
       color: #cbd1db; margin-bottom: 9px;
     }
     .fb-label .fb-optional { color: #8a92a0; font-weight: 600; text-transform: none; letter-spacing: 0; }
-
-    /* Category chips */
-    .fb-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-    .fb-chip {
-      font-family: var(--font-mono, monospace); font-size: 13px; font-weight: 600;
-      padding: 9px 15px; border-radius: 999px; cursor: pointer;
-      background: #2c3441; border: 1.5px solid #4a566b; color: #dbe0e8;
-      transition: border-color .15s, background .15s, color .15s;
-    }
-    .fb-chip:hover { border-color: #ffc24d; color: #fff; }
-    .fb-chip.selected { border-color: #ffc24d; background: rgba(255, 194, 77, 0.18); color: #ffd373; }
-
-    body.avail textarea.form-input { min-height: 150px; resize: vertical; line-height: 1.5; }
-    .fb-row { display: flex; gap: 14px; }
-    .fb-row > div { flex: 1; }
-    @media (max-width: 520px) { .fb-row { flex-direction: column; gap: 22px; } }
-
-    /* Star rating */
-    .fb-stars { display: flex; gap: 6px; }
-    .fb-star {
-      background: none; border: none; padding: 2px; cursor: pointer; line-height: 1;
-      font-size: 30px; color: #4a566b; transition: color .12s, transform .1s;
-    }
-    .fb-star:hover { transform: scale(1.12); }
-    .fb-star.on { color: #ffc24d; }
-    .fb-stars-hint { font-size: 13px; color: #9aa2b0; margin-top: 7px; min-height: 18px; }
+    body.avail textarea.form-input { min-height: 110px; resize: vertical; line-height: 1.5; }
+    .fb-extra + .fb-extra { padding-top: 18px; }
   </style>
 </head>
 <body class="avail">
@@ -69,47 +61,27 @@
 
   <section class="hero">
     <h1 class="hero-title">Tell us what you think</h1>
-    <p class="hero-blurb"><strong>Found a bug, got an idea, or just want to vent about the seating?</strong> Drop it here. You can leave your name or stay anonymous — every note gets read.</p>
+    <p class="hero-blurb"><strong>A few quick questions — takes about a minute.</strong> Answer what you like, add a comment if you've got one. You can stay anonymous; every response gets read.</p>
   </section>
 
   <section class="form-section">
     <div class="form-card">
 
-      <div class="form-step">
-        <div class="form-step-header">
-          <span class="form-step-num">01</span>
-          <span class="form-step-title">What's this about?</span>
-        </div>
-        <div class="fb-field">
-          <div class="fb-chips" id="categoryChips"></div>
-        </div>
+      <div id="questions"></div>
 
-        <div class="fb-field">
-          <label class="fb-label" for="messageInput">Your message</label>
-          <textarea class="form-input" id="messageInput" rows="6" maxlength="4000"
-            placeholder="What happened, what you'd change, or what's working well…"></textarea>
-        </div>
+      <div class="fb-extra">
+        <label class="fb-label" for="commentsInput">Anything else? <span class="fb-optional">— optional</span></label>
+        <textarea class="form-input" id="commentsInput" maxlength="4000"
+          placeholder="A bug, an idea, or just what's on your mind…"></textarea>
+      </div>
 
-        <div class="fb-field">
-          <label class="fb-label">How's the tournament going for you? <span class="fb-optional">— optional</span></label>
-          <div class="fb-stars" id="starRow"></div>
-          <div class="fb-stars-hint" id="starHint"></div>
-        </div>
-
-        <div class="fb-field fb-row">
-          <div>
-            <label class="fb-label" for="nameInput">Name <span class="fb-optional">— optional</span></label>
-            <input type="text" class="form-input" id="nameInput" placeholder="So we know who to thank" autocomplete="off" maxlength="120">
-          </div>
-          <div>
-            <label class="fb-label" for="tornIdInput">Torn ID <span class="fb-optional">— optional</span></label>
-            <input type="text" class="form-input" id="tornIdInput" placeholder="e.g. 3583736" autocomplete="off" inputmode="numeric" maxlength="20">
-          </div>
-        </div>
+      <div class="fb-extra">
+        <label class="fb-label" for="nameInput">Name <span class="fb-optional">— optional</span></label>
+        <input type="text" class="form-input" id="nameInput" placeholder="So we know who to thank" autocomplete="off" maxlength="120">
       </div>
 
       <div class="submit-row">
-        <div class="submit-summary" id="submitSummary">Write a message to send your feedback.</div>
+        <div class="submit-summary" id="submitSummary"></div>
         <button class="btn-submit" id="btnSubmit" disabled>Send Feedback</button>
       </div>
 
@@ -126,65 +98,76 @@
 
   <script src="config.js"></script>
   <script>
-    var CATEGORIES = ['General', 'Bug', 'Suggestion', 'Seating & availability', 'Other'];
-    var STAR_HINTS = ['', 'Rough', 'Meh', 'Good', 'Great', 'Loving it'];
-    var selected = { category: 'General', rating: 0 };
+    var QUESTIONS = [
+      { key: 'overall',   label: 'Overall, how has the tournament been for you?',
+        options: ['Loving it', 'Good', "It's fine", 'Not great', 'Rough'] },
+      { key: 'clarity',   label: 'How clear were the rules and stage structure?',
+        options: ['Crystal clear', 'Mostly clear', 'A bit confusing', 'Lost most of the time'] },
+      { key: 'seating',   label: 'How well did the seating & availability scheduling work for you?',
+        options: ['Worked great', 'Mostly fine', 'A few issues', "Didn't work for me"] },
+      { key: 'pace',      label: 'How was the pace and timing of the stages?',
+        options: ['Too slow', 'Just right', 'Too fast'] },
+      { key: 'returning', label: 'Would you join another Progressive Shootout?',
+        options: ['Definitely', 'Probably', 'Maybe', 'No'] }
+    ];
+
+    var answers = {};
 
     document.addEventListener('DOMContentLoaded', function() {
-      renderChips();
-      renderStars();
-      document.getElementById('messageInput').addEventListener('input', updateSubmitState);
+      renderQuestions();
+      document.getElementById('commentsInput').addEventListener('input', updateSubmitState);
       document.getElementById('btnSubmit').addEventListener('click', submit);
       updateSubmitState();
     });
 
-    function renderChips() {
-      var wrap = document.getElementById('categoryChips');
+    function renderQuestions() {
+      var wrap = document.getElementById('questions');
       wrap.innerHTML = '';
-      CATEGORIES.forEach(function(cat) {
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'fb-chip' + (cat === selected.category ? ' selected' : '');
-        btn.textContent = cat;
-        btn.addEventListener('click', function() {
-          selected.category = cat;
-          renderChips();
+      QUESTIONS.forEach(function(q, i) {
+        var block = document.createElement('div');
+        block.className = 'fb-q';
+
+        var head = document.createElement('div');
+        head.className = 'fb-q-head';
+        head.innerHTML = '<span class="fb-q-num">' + pad2(i + 1) + '</span>' +
+                         '<span class="fb-q-label">' + esc(q.label) + '</span>';
+        block.appendChild(head);
+
+        var opts = document.createElement('div');
+        opts.className = 'fb-opts';
+        q.options.forEach(function(opt) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'fb-opt' + (answers[q.key] === opt ? ' selected' : '');
+          b.textContent = opt;
+          b.addEventListener('click', function() {
+            // Tap the chosen answer again to clear it.
+            answers[q.key] = (answers[q.key] === opt) ? null : opt;
+            renderQuestions();
+            updateSubmitState();
+          });
+          opts.appendChild(b);
         });
-        wrap.appendChild(btn);
+        block.appendChild(opts);
+        wrap.appendChild(block);
       });
     }
 
-    function renderStars() {
-      var row = document.getElementById('starRow');
-      row.innerHTML = '';
-      for (var i = 1; i <= 5; i++) {
-        (function(n) {
-          var b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'fb-star' + (n <= selected.rating ? ' on' : '');
-          b.textContent = '★';
-          b.setAttribute('aria-label', n + ' star' + (n > 1 ? 's' : ''));
-          b.addEventListener('click', function() {
-            // Click the current rating again to clear it.
-            selected.rating = (selected.rating === n) ? 0 : n;
-            renderStars();
-          });
-          row.appendChild(b);
-        })(i);
-      }
-      document.getElementById('starHint').textContent = STAR_HINTS[selected.rating] || '';
+    function answeredCount() {
+      return QUESTIONS.filter(function(q) { return answers[q.key]; }).length;
     }
 
     function updateSubmitState() {
-      var msg = document.getElementById('messageInput').value.trim();
+      var n = answeredCount();
+      var hasComment = document.getElementById('commentsInput').value.trim().length > 0;
       var btn = document.getElementById('btnSubmit');
       var summary = document.getElementById('submitSummary');
-      if (!msg) {
+      if (n === 0 && !hasComment) {
         btn.disabled = true;
-        summary.textContent = 'Write a message to send your feedback.';
+        summary.textContent = 'Answer a question or add a comment to send.';
       } else {
         btn.disabled = false;
-        summary.textContent = 'Ready to send.';
+        summary.textContent = n + ' of ' + QUESTIONS.length + ' answered' + (hasComment ? ' · comment added' : '');
       }
     }
 
@@ -202,21 +185,18 @@
     }
 
     function submit() {
-      var message = document.getElementById('messageInput').value.trim();
-      if (!message) return;
       var btn = document.getElementById('btnSubmit');
       btn.disabled = true;
       btn.textContent = 'Sending…';
       hideMessage();
 
-      var url = API_URL +
-        '?action=submitFeedback' +
-        '&category=' + encodeURIComponent(selected.category) +
-        '&rating=' + encodeURIComponent(selected.rating || '') +
-        '&message=' + encodeURIComponent(message) +
+      var url = API_URL + '?action=submitFeedback' +
+        '&comments=' + encodeURIComponent(document.getElementById('commentsInput').value.trim()) +
         '&name=' + encodeURIComponent(document.getElementById('nameInput').value.trim()) +
-        '&tornId=' + encodeURIComponent(document.getElementById('tornIdInput').value.trim()) +
         '&browserId=' + encodeURIComponent(getBrowserId());
+      QUESTIONS.forEach(function(q) {
+        url += '&' + q.key + '=' + encodeURIComponent(answers[q.key] || '');
+      });
 
       fetch(url)
         .then(function(res) { return res.json(); })
@@ -239,13 +219,10 @@
     }
 
     function resetForm() {
-      document.getElementById('messageInput').value = '';
+      answers = {};
+      document.getElementById('commentsInput').value = '';
       document.getElementById('nameInput').value = '';
-      document.getElementById('tornIdInput').value = '';
-      selected.category = 'General';
-      selected.rating = 0;
-      renderChips();
-      renderStars();
+      renderQuestions();
       updateSubmitState();
     }
 
@@ -266,6 +243,15 @@
       el.textContent = message;
       container.appendChild(el);
       setTimeout(function() { el.remove(); }, 3000);
+    }
+
+    function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+    function esc(str) {
+      if (str === null || str === undefined) return '';
+      var div = document.createElement('div');
+      div.textContent = String(str);
+      return div.innerHTML;
     }
   </script>
 
