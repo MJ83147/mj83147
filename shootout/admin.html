@@ -367,7 +367,9 @@
       { key: 'rebuy_50', label: '50M Rebuy' },
       { key: '3', label: 'Stage 3' },
       { key: 'rebuy_75', label: '75M Rebuy' },
-      { key: '4', label: 'Stage 4' }
+      { key: '4', label: 'Stage 4' },
+      { key: 'money', label: 'Money Table' },
+      { key: 'final', label: 'Final Table' }
     ];
     var currentTab = '1';
 
@@ -396,6 +398,8 @@
         case '2': return '6-player tables — 1st to Stage 4, 2nd to Stage 3';
         case '3': return '6-player tables — winner advances to Stage 4';
         case '4': return 'Phase 1 — 3 tables. Top 3 each to the final table, 4th-6th to the money table, 7th+ out';
+        case 'money': return 'Money table — 4th-6th from each Stage 4 table. Fills as Phase 1 finishes';
+        case 'final': return 'Final table — top 3 from each Stage 4 table. Fills as Phase 1 finishes';
         case 'rebuy_25': return '3-player tables — winner enters Stage 2';
         case 'rebuy_50': return '3-player tables — winner enters Stage 3';
         case 'rebuy_75': return '3-player tables — winner enters Stage 4';
@@ -499,6 +503,11 @@
             html += '<div class="stage-empty"><p class="stage-pending"><span class="pending-tag">Pending</span> ' + esc(gate4.reason || 'Not available yet') + '</p></div>';
             html += renderQueueFor(stage);
           }
+        } else if (stage === 'money' || stage === 'final') {
+          // These aren't generated — they're created when Stage 4 is committed and
+          // fill automatically from Phase 1 results.
+          html += '<div class="stage-empty"><p class="stage-pending"><span class="pending-tag">Pending</span> ' +
+                  'Created when Stage 4 tables are committed, then fills as each Phase 1 table finishes.</p></div>';
         } else {
           var gate = gateForStage(stage);
           html += '<div class="stage-empty">';
