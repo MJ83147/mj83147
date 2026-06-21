@@ -6,151 +6,56 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>Progressive Shootout // Availability</title>
+  <title>Progressive Shootout // Final Table Poll</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css?v=20260606">
   <style>
-    /* Stage 4 block picker — self-contained styles so the live availability
-       page and shared stylesheet are untouched while this is in preview. */
-    /* Give the three blocks far more room than the default narrow form column. */
-    body.avail .form-section { max-width: 1160px; }
-    /* Wider intro so it isn't squeezed into five lines. */
-    body.avail .hero-blurb, body.avail .hero-note { max-width: 880px; }
-    /* Separate cards for "who are you" and the blocks. */
-    #formCard .form-card + .form-card { margin-top: 16px; }
-    /* Responsive: 3 across on desktop, drop to fewer columns as width shrinks,
-       single column on phones. Cards never squeeze below a readable width. */
-    .block-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 20px; align-items: start; }
-    @media (max-width: 620px) { .block-grid { grid-template-columns: 1fr; } }
-    .block-card {
-      border: 2px solid #4a566b; border-radius: 12px;
-      background: #2c3441; padding: 22px 22px 20px;
-      cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.45);
-      transition: border-color .15s, background .15s, transform .1s, box-shadow .15s;
-    }
-    .block-card:hover {
-      border-color: #ffc24d; background: #353f4f;
-      transform: translateY(-2px); box-shadow: 0 9px 28px rgba(0,0,0,0.6);
-    }
-    .block-card.selected {
-      border-color: #46d27a; background: rgba(70, 210, 122, 0.20);
-      box-shadow: 0 0 0 2px #46d27a, 0 9px 28px rgba(0,0,0,0.6);
-    }
-    .block-card-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
-    .block-game { font-family: var(--font-mono, monospace); font-weight: 800; font-size: 20px; color: #ffffff; }
-    .block-tct { font-family: var(--font-mono, monospace); font-weight: 800; font-size: 17px; color: #ffc24d; }
-    .block-local { font-size: 14px; color: #dbe0e8; margin-top: 6px; }
-    .block-local strong { color: #fff; }
-    .block-pick {
-      margin-left: auto; font-family: var(--font-mono, monospace); font-size: 11px; font-weight: 800;
-      text-transform: uppercase; letter-spacing: .5px;
-      color: #1a1d24; background: #ffc24d; padding: 6px 13px; border-radius: 999px;
-    }
-    .block-card.selected .block-pick { background: #46d27a; color: #0e1411; }
-    .block-card.full .block-pick { background: transparent; color: #ffc24d; border: 1.5px solid #ffc24d; }
-    .block-card.full.selected { border-color: #ffc24d; background: rgba(255, 194, 77, 0.16); box-shadow: 0 0 0 2px #ffc24d, 0 9px 28px rgba(0,0,0,0.6); }
-    .block-seats {
-      margin-top: 12px; font-size: 14px; color: #5ad98a;
-      font-family: var(--font-mono, monospace);
-    }
-    .block-seats strong { font-size: 16px; color: #6fe89c; }
-    .block-seats.full { color: #ffc24d; }
-    .block-seats.full strong { color: #ffd373; }
-    .block-zones-toggle {
-      margin-top: 10px; background: none; border: none; padding: 0; cursor: pointer;
-      font-family: var(--font-mono, monospace); font-size: 11px; color: #d7dbe3;
-      text-decoration: underline; text-underline-offset: 2px;
-    }
-    .block-zones { margin-top: 8px; display: flex; flex-direction: column; gap: 1px; }
-    .block-zones.hidden { display: none; }
-    .block-zone-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 2px 0; }
-    .block-zone-name { color: #d7dbe3; }
-    .block-zone-time { font-family: var(--font-mono, monospace); color: #fff; white-space: nowrap; }
-
-    /* Brighter page text + accents — the theme defaults read too muted. */
-    body.avail .form-step-num { color: #ffc24d; }
-    body.avail .form-step-title { color: #fff; }
-    body.avail .form-step-help { color: #ccd2dc; }
-    body.avail .submit-summary { color: #e2e6ed; }
-    body.avail .hero-blurb { color: #e2e6ed; }
-    body.avail .hero-note { color: #bcc2cd; }
-    body.avail .hero-blurb strong, body.avail .hero-note strong, body.avail .form-step-help strong { color: #fff; }
-    body.avail .existing-notice { color: #e2e6ed; }
+    body.avail .form-section { max-width: 980px; }
+    body.avail .hero-blurb { max-width: 760px; }
+    body.avail .stage-banner-name { color: #ffc24d; }
     body.avail .btn-submit { background: #ffc24d; color: #1a1d24; }
     body.avail .btn-submit:hover { background: #ffce6b; }
-    body.avail .stage-banner-name { color: #ffc24d; }
+    body.avail .form-step-num { color: #ffc24d; }
+    body.avail .hero-blurb, body.avail .submit-summary, body.avail .form-step-help { color: #e2e6ed; }
+    body.avail .hero-blurb strong { color: #ffc24d; }
 
-    /* Bigger type + more room inside, with trimmed page whitespace so the whole
-       thing still fits the viewport without scrolling on desktop. */
-    body.avail .hero { padding: 12px 32px 6px; }
-    body.avail .hero-title { font-size: 21px; margin-bottom: 4px; }
-    body.avail .hero-blurb { font-size: 14px; line-height: 1.5; max-width: 760px; }
-    body.avail .form-section { padding-top: 0; padding-bottom: 24px; }
-    body.avail .form-card { padding: 22px 26px; }
-    #formCard .form-card + .form-card { margin-top: 14px; }
-    body.avail .form-step-help { margin-bottom: 12px; }
-    body.avail .form-step-title { font-size: 17px; }
-    body.avail .form-step-help { font-size: 15px; }
-    body.avail .form-input { font-size: 16px; }
-    body.avail .submit-summary { font-size: 15px; }
-    body.avail .btn-submit { font-size: 16px; }
-
-    .block-grid { gap: 22px; }
-    .block-card { padding: 26px 26px 24px; }
-    .block-game { font-size: 25px; }
-    .block-tct { font-size: 20px; }
-    .block-local { font-size: 16px; margin-top: 9px; }
-    .block-pick { font-size: 12px; padding: 7px 15px; }
-    .block-seats { font-size: 17px; margin-top: 15px; }
-    .block-seats strong { font-size: 20px; }
-    .block-zones-toggle { font-size: 13px; margin-top: 13px; }
-    .block-zone-row { font-size: 13px; }
-
-    /* Head: title + time on the left, claim pill pinned top-right; the local
-       time sits small directly under the main time. */
-    .block-card-head { justify-content: space-between; align-items: flex-start; flex-wrap: nowrap; gap: 12px; }
-    .block-titleline { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-    .block-local { font-size: 13px; color: #aeb4bf; margin-top: 5px; }
-    .block-local strong { color: #fff; }
-    .block-pick { margin-left: 0; flex: 0 0 auto; }
-
-    /* Fit the whole page on one screen — compact the timezone lists into two
-       columns and tighten spacing everywhere. */
-    .block-zones { display: flex; flex-direction: column; gap: 1px; margin-top: 6px; }
-    .block-zone-row { font-size: 11px; padding: 1px 0; }
-    .block-zone-time { font-size: 11px; }
-    .block-card { padding: 16px 18px; }
-    .block-grid { gap: 16px; }
-    .block-game { font-size: 21px; }
-    .block-tct { font-size: 17px; }
-    .block-local { font-size: 12px; margin-top: 3px; }
-    .block-seats { font-size: 15px; margin-top: 9px; }
-    .block-seats strong { font-size: 17px; }
-    .block-zones-toggle { margin-top: 8px; font-size: 12px; }
-    body.avail .hero { padding: 10px 32px 4px; }
-    body.avail .hero-title { font-size: 19px; margin-bottom: 3px; }
-    body.avail .hero-blurb { font-size: 13.5px; }
-    body.avail .form-section { padding-bottom: 16px; }
-    body.avail .form-card { padding: 16px 22px; }
-    #formCard .form-card + .form-card { margin-top: 12px; }
-    body.avail .form-step-help { margin-bottom: 8px; font-size: 13.5px; }
-
-    /* Locked banner shown until submissions open. */
-    .locked-note {
-      max-width: 1160px; margin: 0 auto 14px; padding: 14px 18px;
-      background: rgba(255, 194, 77, 0.12); border: 1.5px solid #ffc24d;
-      border-radius: 8px; color: #ffe0a3; font-size: 15px; text-align: center;
+    .day-block { margin-top: 18px; }
+    .day-block:first-of-type { margin-top: 0; }
+    .day-title {
+      font-family: var(--font-mono, monospace); font-size: 15px; font-weight: 800;
+      color: #fff; margin-bottom: 10px; display: flex; align-items: baseline; gap: 10px;
     }
-    .locked-note strong { color: #ffc24d; }
-    body.avail.locked .block-card { cursor: not-allowed; opacity: 0.92; }
-    body.avail.locked .block-card:hover { transform: none; border-color: #4a566b; background: #2c3441; box-shadow: 0 3px 14px rgba(0,0,0,0.45); }
+    .day-title .day-dow { color: #ffc24d; }
+    .time-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+    .time-cell {
+      border: 1.5px solid #4a566b; border-radius: 8px; background: #2c3441;
+      padding: 10px 12px; cursor: pointer; text-align: left;
+      transition: border-color .12s, background .12s;
+    }
+    .time-cell:hover { border-color: #ffc24d; background: #353f4f; }
+    .time-cell.selected { border-color: #46d27a; background: rgba(70,210,122,0.20); box-shadow: 0 0 0 1.5px #46d27a; }
+    .time-tct { font-family: var(--font-mono, monospace); font-weight: 800; font-size: 15px; color: #ffc24d; display: block; }
+    .time-local { font-size: 12px; color: #aeb4bf; }
+    .time-cell.selected .time-local { color: #cfe9d8; }
+    .anytime-cell {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      border: 1.5px solid #4a566b; border-radius: 10px; background: #2c3441;
+      padding: 14px 18px; cursor: pointer; margin-bottom: 16px;
+      transition: border-color .12s, background .12s;
+    }
+    .anytime-cell:hover { border-color: #ffc24d; background: #353f4f; }
+    .anytime-cell.selected { border-color: #46d27a; background: rgba(70,210,122,0.18); box-shadow: 0 0 0 1.5px #46d27a; }
+    .anytime-label { font-family: var(--font-mono, monospace); font-weight: 800; font-size: 15px; color: #fff; }
+    .anytime-sub { font-size: 12.5px; color: #aeb4bf; }
+    .anytime-tag { font-family: var(--font-mono, monospace); font-size: 11px; font-weight: 800; text-transform: uppercase; color: #46d27a; }
+    .anytime-cell:not(.selected) .anytime-tag { color: #ffc24d; }
   </style>
 </head>
 <body class="avail">
 
   <header class="header">
-    <h1><a href="./">PROGRESSIVE SHOOTOUT</a> // STAGE 4 AVAILABILITY</h1>
+    <h1><a href="./">PROGRESSIVE SHOOTOUT</a> // FINAL TABLE</h1>
     <div class="header-right">
       <a class="btn-pill" href="./">Tournament</a>
     </div>
@@ -158,26 +63,23 @@
 
   <section class="hero">
     <div class="stage-banner">
-      <span class="stage-banner-label">Final stage</span>
-      <span class="stage-banner-name">Stage 4 · Phase 1</span>
-      <span class="stage-banner-date">Saturday 20th June</span>
+      <span class="stage-banner-label">Final table</span>
+      <span class="stage-banner-name">When can you play?</span>
+      <span class="stage-banner-date">23rd or 27th June</span>
     </div>
-    <h1 class="hero-title">Which game can you play?</h1>
-    <p class="hero-blurb"><strong>3 games, 7 seats each. First come, first served.</strong> Claim the game you'll play; your local time is on each card. <span style="opacity:.8">00:00 TCT is the start of the day.</span></p>
+    <h1 class="hero-title">Final Table — when can you play?</h1>
+    <p class="hero-blurb">Pick <strong>every time</strong> you could play across both days. <strong>We'll go with the majority.</strong> All times are TCT — your local time is shown on each.</p>
   </section>
 
   <section class="form-section">
-
-    <div class="locked-note" id="lockedNote">🔒 <strong>Submissions aren't open yet.</strong> Claiming opens <strong>after the Stage 3 rebuys</strong>. You can look around, but you can't claim a game until then.</div>
 
     <div id="loadingState" class="loading-state">
       <div class="spinner"></div>
       <div>Loading…</div>
     </div>
 
-    <div id="formCard" class="hidden">
+    <div id="formCard" class="form-card hidden">
 
-      <div class="form-card">
       <!-- STEP 1: Pick yourself -->
       <div class="form-step" id="step1">
         <div class="form-step-header">
@@ -200,32 +102,29 @@
         </div>
 
         <div class="existing-notice" id="existingNotice">
-          <strong>You've already submitted picks.</strong> Update them below if you want to change them.
+          <strong>You've already voted.</strong> Update your picks below if you want to change them.
         </div>
       </div>
-      </div><!-- /form-card (who are you) -->
 
-      <div class="form-card">
-      <!-- STEP 2: Pick blocks -->
+      <!-- STEP 2: Pick times -->
       <div class="form-step step-disabled" id="step2">
         <div class="form-step-header">
           <span class="form-step-num">02</span>
-          <span class="form-step-title">Claim your game (first come, first served)</span>
+          <span class="form-step-title">Pick every time you could play</span>
         </div>
-        <p class="form-step-help">7 seats per game. Tap the game you'll play. If it's full you can still join the waitlist, but you must also claim a game that has seats left.</p>
+        <p class="form-step-help">Tap as many times as you can do — across both days. The most popular time wins.</p>
 
-        <div class="block-grid" id="blockGrid"></div>
+        <div id="timeArea"></div>
       </div>
 
       <div class="submit-row">
         <div class="submit-summary" id="submitSummary">
-          Pick yourself and your game blocks to submit.
+          Pick yourself and your times to submit.
         </div>
-        <button class="btn-submit" id="btnSubmit" disabled>Submit Availability</button>
+        <button class="btn-submit" id="btnSubmit" disabled>Submit Times</button>
       </div>
 
       <div class="form-message" id="formMessage"></div>
-      </div><!-- /form-card (blocks) -->
 
     </div>
   </section>
@@ -239,42 +138,21 @@
   <script src="config.js"></script>
   <script>
 
-    var state = { players: [], availability: [], queues: [] };
+    var state = { players: [], availability: [] };
     var selection = { player: null, slotIds: {} };
 
-    // First-come-first-served seating: 7 seats per game block, allocated in
-    // submission-time order. Counts are derived live from the availability rows
-    // of the Stage 4 field (players queued for stage_4) — no backend change.
-    var SEAT_CAP = 7;
-    var BLOCK_SLOTS = ['slot_0', 'slot_9', 'slot_20'];
-
-    // Flip to true once the Stage 3 rebuys are done to open claiming.
-    var SUBMISSIONS_OPEN = true;
-
-    // Stage 4 = three fixed daily game blocks. slotId maps onto the existing
-    // availability sheet (slot_0 = 00:00, slot_9 = 09:00, slot_20 = 20:00 TCT).
-    var BLOCKS = [
-      { slotId: 'slot_0', game: 'Game 1', tctHour: 0, zones: [
-        ['US West Coast', '5:00pm (prev day)'], ['US Central', '7:00pm (prev day)'],
-        ['US East / Canada (Toronto)', '8:00pm (prev day)'], ['Brazil (São Paulo)', '9:00pm (prev day)'],
-        ['UK', '1:00am'], ['Central Europe', '2:00am'], ['Japan / Korea', '9:00am'],
-        ['Australia (Sydney/Melbourne)', '10:00am'], ['New Zealand', '12:00pm']
-      ]},
-      { slotId: 'slot_9', game: 'Game 2', tctHour: 9, zones: [
-        ['UK', '10:00am'], ['Central Europe (FR/DE/NL)', '11:00am'], ['Eastern Europe (RO/GR/FI)', '12:00pm'],
-        ['India', '2:30pm'], ['Singapore / China / Philippines', '5:00pm'], ['Japan / Korea', '6:00pm'],
-        ['Australia (Sydney/Melbourne)', '7:00pm'], ['New Zealand', '9:00pm']
-      ]},
-      { slotId: 'slot_20', game: 'Game 3', tctHour: 20, zones: [
-        ['US West Coast', '1:00pm'], ['US Central', '3:00pm'], ['US East / Canada (Toronto)', '4:00pm'],
-        ['Brazil (São Paulo)', '5:00pm'], ['UK', '9:00pm'], ['Central Europe', '10:00pm'],
-        ['Eastern Europe', '11:00pm']
-      ]}
+    // The final-table poll runs across two days, every 2h in TCT. Slot ids are
+    // namespaced (ft_d1_*, ft_d2_*, ft_any) so they don't collide with any other
+    // availability data in the sheet.
+    var ANY_ID = 'ft_any';
+    var DAYS = [
+      { key: 'd1', dow: 'Tuesday', label: '23rd June' },
+      { key: 'd2', dow: 'Saturday', label: '27th June' }
     ];
+    var HOURS = [];
+    for (var h = 0; h < 24; h += 2) HOURS.push(h);
 
     document.addEventListener('DOMContentLoaded', function() {
-      if (!SUBMISSIONS_OPEN) document.body.classList.add('locked');
-      else { var ln = document.getElementById('lockedNote'); if (ln) ln.style.display = 'none'; }
       fetchState();
       bindEvents();
     });
@@ -285,10 +163,9 @@
         .then(function(data) {
           state.players = data.players || [];
           state.availability = data.availability || [];
-          state.queues = data.queues || [];
           document.getElementById('loadingState').classList.add('hidden');
           document.getElementById('formCard').classList.remove('hidden');
-          renderBlocks();
+          renderTimes();
         })
         .catch(function() {
           document.getElementById('loadingState').innerHTML = 'Failed to load. Refresh the page.';
@@ -367,21 +244,21 @@
       document.getElementById('selectedName').textContent = player.name;
       document.getElementById('selectedId').textContent = '#' + player.tornId;
       closeDropdown();
-      // Only treat them as "already submitted" if they actually have block picks.
-      // A wiped sheet leaves empty rows (tornId but no slots) — those don't count.
       var existing = state.availability.filter(function(a) { return a.tornId === player.tornId; })[0];
-      var existingIds = existing
-        ? parseAvailableSlotIds(existing.availableSlotIds).filter(function(id) { return BLOCK_SLOTS.indexOf(id) !== -1; })
-        : [];
-      if (existingIds.length) {
-        existingIds.forEach(function(id) { selection.slotIds[id] = true; });
+      var ids = existing ? parseAvailableSlotIds(existing.availableSlotIds).filter(isFinalTableId) : [];
+      if (ids.length) {
+        ids.forEach(function(id) { selection.slotIds[id] = true; });
         document.getElementById('existingNotice').classList.add('show');
       } else {
         document.getElementById('existingNotice').classList.remove('show');
       }
       document.getElementById('step2').classList.remove('step-disabled');
-      renderBlocks();
+      renderTimes();
       updateSubmitState();
+    }
+
+    function isFinalTableId(id) {
+      return id === ANY_ID || id.indexOf('ft_d') === 0;
     }
 
     function parseAvailableSlotIds(value) {
@@ -401,111 +278,48 @@
       document.getElementById('selectedPlayer').classList.remove('show');
       document.getElementById('existingNotice').classList.remove('show');
       document.getElementById('step2').classList.add('step-disabled');
-      renderBlocks();
+      renderTimes();
       updateSubmitState();
       hideMessage();
     }
 
-    // ===== FCFS SEATS =====
-    // The Stage 4 field = players queued for stage_4 (one row per player).
-    function stage4PoolSet() {
-      var set = {};
-      (state.queues || []).forEach(function(q) { if (q.queuedFor === 'stage_4') set[q.tornId] = true; });
-      return set;
-    }
-
-    // Seats taken per block, allocated first-come-first-served by submission time.
-    // Each pooled player takes ONE seat — their earliest-game pick that still has
-    // room. excludeTornId is left out so the current player doesn't block their own
-    // view of availability.
-    function seatsTaken(excludeTornId) {
-      var pool = stage4PoolSet();
-      var rows = (state.availability || []).filter(function(a) {
-        return pool[a.tornId] && a.tornId !== excludeTornId;
-      }).map(function(a) {
-        var picks = parseAvailableSlotIds(a.availableSlotIds).filter(function(s) { return BLOCK_SLOTS.indexOf(s) !== -1; });
-        return { tornId: a.tornId, picks: picks, t: String(a.submittedAt || '') };
-      }).filter(function(r) { return r.picks.length; });
-      rows.sort(function(x, y) { return x.t < y.t ? -1 : x.t > y.t ? 1 : (x.tornId < y.tornId ? -1 : 1); });
-      var taken = { slot_0: 0, slot_9: 0, slot_20: 0 };
-      rows.forEach(function(r) {
-        for (var i = 0; i < BLOCK_SLOTS.length; i++) {
-          var b = BLOCK_SLOTS[i];
-          if (r.picks.indexOf(b) !== -1 && taken[b] < SEAT_CAP) { taken[b]++; break; }
-        }
-      });
-      return taken;
-    }
-
-    // ===== BLOCKS =====
-    function renderBlocks() {
-      var container = document.getElementById('blockGrid');
-      var taken = seatsTaken(selection.player ? selection.player.tornId : null);
-      // Timezone lists are long, so keep them collapsed by default everywhere;
-      // players expand the one they care about.
-      var zonesCollapsed = true;
+    // ===== TIMES =====
+    function renderTimes() {
+      var container = document.getElementById('timeArea');
       var html = '';
-      BLOCKS.forEach(function(block) {
-        var selected = !!selection.slotIds[block.slotId];
-        var local = formatLocalTime(block.tctHour);
-        var left = Math.max(0, SEAT_CAP - (taken[block.slotId] || 0));
-        var full = left <= 0;
-        var pickLabel = full
-          ? (selected ? '✓ waitlist' : 'join waitlist')
-          : (selected ? '✓ your seat' : 'tap to claim');
-        html += '<div class="block-card' + (selected ? ' selected' : '') + (full ? ' full' : '') + '" data-slot-id="' + block.slotId + '">';
-        html += '  <div class="block-card-head">';
-        html += '    <div class="block-head-left">';
-        html += '      <div class="block-titleline"><span class="block-game">' + esc(block.game) + '</span> <span class="block-tct">' + pad2(block.tctHour) + ':00 TCT</span></div>';
-        html += '      <div class="block-local"><strong>' + esc(local) + '</strong> your time</div>';
-        html += '    </div>';
-        html += '    <span class="block-pick">' + pickLabel + '</span>';
-        html += '  </div>';
-        html += '  <div class="block-seats' + (full ? ' full' : '') + '">' +
-                (full ? '<strong>FULL</strong> · ' + SEAT_CAP + ' of ' + SEAT_CAP + ' seats taken'
-                      : '<strong>' + left + '</strong> of ' + SEAT_CAP + ' seats left') + '</div>';
-        html += '  <button type="button" class="block-zones-toggle" data-toggle="' + block.slotId + '">' + (zonesCollapsed ? 'See all timezones ▾' : 'Hide timezones ▴') + '</button>';
-        html += '  <div class="block-zones' + (zonesCollapsed ? ' hidden' : '') + '" id="zones-' + block.slotId + '">';
-        block.zones.forEach(function(z) {
-          html += '<div class="block-zone-row"><span class="block-zone-name">' + esc(z[0]) + '</span><span class="block-zone-time">' + esc(z[1]) + '</span></div>';
+
+      var anySel = !!selection.slotIds[ANY_ID];
+      html += '<div class="anytime-cell' + (anySel ? ' selected' : '') + '" data-slot-id="' + ANY_ID + '">';
+      html += '  <div><div class="anytime-label">Anytime on either day</div>' +
+              '<div class="anytime-sub">I\'m flexible — any of the times below works.</div></div>';
+      html += '  <span class="anytime-tag">' + (anySel ? '✓ selected' : 'tap to select') + '</span>';
+      html += '</div>';
+
+      DAYS.forEach(function(day) {
+        html += '<div class="day-block">';
+        html += '  <div class="day-title"><span class="day-dow">' + esc(day.dow) + '</span> ' + esc(day.label) + ' <span style="color:#aeb4bf;font-weight:400;font-size:12px;">(TCT)</span></div>';
+        html += '  <div class="time-grid">';
+        HOURS.forEach(function(hr) {
+          var id = 'ft_' + day.key + '_' + hr;
+          var sel = !!selection.slotIds[id];
+          html += '<div class="time-cell' + (sel ? ' selected' : '') + '" data-slot-id="' + id + '">';
+          html += '  <span class="time-tct">' + pad2(hr) + ':00</span>';
+          html += '  <span class="time-local">= ' + formatLocalTime(hr) + ' local</span>';
+          html += '</div>';
         });
         html += '  </div>';
         html += '</div>';
       });
+
       container.innerHTML = html;
 
-      // Toggle timezone list (don't let it change the pick).
-      container.querySelectorAll('.block-zones-toggle').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-          e.stopPropagation();
-          var id = btn.getAttribute('data-toggle');
-          var panel = document.getElementById('zones-' + id);
-          var open = panel.classList.toggle('hidden') === false;
-          btn.textContent = open ? 'Hide timezones ▴' : 'See all timezones ▾';
-        });
-      });
-
-      // Claim/unclaim a game. You only ever get ONE real seat, so claiming a
-      // game that has seats drops any other game you'd claimed. Full games are
-      // waitlist-only and toggle independently (you can sit one + waitlist a full).
-      container.querySelectorAll('.block-card').forEach(function(card) {
-        card.addEventListener('click', function() {
-          if (!SUBMISSIONS_OPEN) return;
+      container.querySelectorAll('[data-slot-id]').forEach(function(cell) {
+        cell.addEventListener('click', function() {
           if (!selection.player) return;
-          var slotId = card.getAttribute('data-slot-id');
-          var t = seatsTaken(selection.player.tornId);
-          var clickedFull = (SEAT_CAP - (t[slotId] || 0)) <= 0;
-          if (selection.slotIds[slotId]) {
-            delete selection.slotIds[slotId];
-          } else {
-            if (!clickedFull) {
-              BLOCK_SLOTS.forEach(function(s) {
-                if (s !== slotId && selection.slotIds[s] && (SEAT_CAP - (t[s] || 0)) > 0) delete selection.slotIds[s];
-              });
-            }
-            selection.slotIds[slotId] = true;
-          }
-          renderBlocks();
+          var id = cell.getAttribute('data-slot-id');
+          if (selection.slotIds[id]) delete selection.slotIds[id];
+          else selection.slotIds[id] = true;
+          renderTimes();
           updateSubmitState();
         });
       });
@@ -514,10 +328,10 @@
     function formatLocalTime(tctHour) {
       var d = new Date();
       d.setUTCHours(tctHour, 0, 0, 0);
-      var h = d.getHours();
+      var hh = d.getHours();
       var m = d.getMinutes();
-      var ampm = h >= 12 ? 'pm' : 'am';
-      var displayHour = h % 12;
+      var ampm = hh >= 12 ? 'pm' : 'am';
+      var displayHour = hh % 12;
       if (displayHour === 0) displayHour = 12;
       var minStr = m === 0 ? '' : ':' + pad2(m);
       return displayHour + minStr + ampm;
@@ -525,56 +339,31 @@
 
     function pad2(n) { return n < 10 ? '0' + n : String(n); }
 
-    function selectedSlotIds() {
+    function selectedIds() {
       return Object.keys(selection.slotIds).filter(function(id) { return selection.slotIds[id]; });
-    }
-
-    function blockLabelFor(slotId) {
-      var b = BLOCKS.filter(function(x) { return x.slotId === slotId; })[0];
-      return b ? b.game : slotId;
     }
 
     // ===== SUBMIT =====
     function updateSubmitState() {
       var btn = document.getElementById('btnSubmit');
       var summary = document.getElementById('submitSummary');
-      if (!SUBMISSIONS_OPEN) {
-        btn.disabled = true;
-        btn.textContent = 'Submissions closed';
-        summary.innerHTML = 'Claiming opens <strong>after the Stage 3 rebuys</strong>.';
-        return;
-      }
       if (!selection.player) {
         btn.disabled = true;
-        summary.textContent = 'Pick yourself and your game blocks to submit.';
+        summary.textContent = 'Pick yourself and your times to submit.';
         return;
       }
-      var ids = selectedSlotIds();
+      var ids = selectedIds();
       if (ids.length === 0) {
         btn.disabled = true;
-        summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong>, tap the game you\'ll play.';
+        summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong>, tap every time you could play.';
         return;
       }
-      var taken = seatsTaken(selection.player.tornId);
-      var roomPicks = BLOCKS.filter(function(b) { return selection.slotIds[b.slotId] && (SEAT_CAP - (taken[b.slotId] || 0)) > 0; });
-      var fullPicks = BLOCKS.filter(function(b) { return selection.slotIds[b.slotId] && (SEAT_CAP - (taken[b.slotId] || 0)) <= 0; });
-
-      // Rule: you can waitlist a full game, but only if you also pick one with a
-      // free seat (so you're guaranteed an actual game).
-      if (roomPicks.length === 0) {
-        btn.disabled = true;
-        summary.innerHTML = '<strong>' + esc(fullPicks.map(function(b) { return b.game; }).join(', ')) +
-          '</strong> ' + (fullPicks.length === 1 ? 'is' : 'are') + ' full. Also pick a game that still has seats to lock in a spot.';
-        return;
-      }
-
       btn.disabled = false;
-      var seat = roomPicks[0]; // earliest game with room = the seat they'll get
-      var msg = '<strong>' + esc(selection.player.name) + '</strong>: seat in <strong>' + esc(seat.game) + '</strong>';
-      if (fullPicks.length) {
-        msg += ', on the waitlist for ' + esc(fullPicks.map(function(b) { return b.game; }).join(', '));
-      }
-      summary.innerHTML = msg + '.';
+      var count = selection.slotIds[ANY_ID] ? (ids.length - 1) : ids.length;
+      var bits = [];
+      if (selection.slotIds[ANY_ID]) bits.push('anytime');
+      if (count > 0) bits.push(count + ' time' + (count === 1 ? '' : 's'));
+      summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong> — ' + bits.join(' + ') + ' selected.';
     }
 
     function getBrowserId() {
@@ -591,9 +380,8 @@
     }
 
     function submit() {
-      if (!SUBMISSIONS_OPEN) return;
       if (!selection.player) return;
-      var ids = selectedSlotIds();
+      var ids = selectedIds();
       if (ids.length === 0) return;
       var btn = document.getElementById('btnSubmit');
       btn.disabled = true;
@@ -607,18 +395,18 @@
       fetch(url)
         .then(function(res) { return res.json(); })
         .then(function(data) {
-          btn.textContent = 'Submit Availability';
+          btn.textContent = 'Submit Times';
           if (data.error) {
             showMessage(data.error, 'error');
             btn.disabled = false;
           } else {
             showMessage((data.message || 'Saved') + '. You can come back and change your picks any time.', 'success');
-            toast('Availability saved', 'success');
+            toast('Times saved', 'success');
             fetchState();
           }
         })
         .catch(function(err) {
-          btn.textContent = 'Submit Availability';
+          btn.textContent = 'Submit Times';
           btn.disabled = false;
           showMessage('Submission failed: ' + err.message, 'error');
         });
