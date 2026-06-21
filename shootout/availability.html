@@ -50,6 +50,8 @@
     .anytime-sub { font-size: 12.5px; color: #aeb4bf; }
     .anytime-tag { font-family: var(--font-mono, monospace); font-size: 11px; font-weight: 800; text-transform: uppercase; color: #46d27a; }
     .anytime-cell:not(.selected) .anytime-tag { color: #ffc24d; }
+    .anytime-cell.day-anytime { padding: 10px 14px; margin-bottom: 8px; }
+    .anytime-cell.day-anytime .anytime-label { font-size: 13px; }
   </style>
 </head>
 <body class="avail">
@@ -149,6 +151,7 @@
       { key: 'd1', dow: 'Tuesday', label: '23rd June' },
       { key: 'd2', dow: 'Saturday', label: '27th June' }
     ];
+    var ANY_IDS = ['ft_any', 'ft_d1_any', 'ft_d2_any'];
     var HOURS = [];
     for (var h = 0; h < 24; h += 2) HOURS.push(h);
 
@@ -298,6 +301,12 @@
       DAYS.forEach(function(day) {
         html += '<div class="day-block">';
         html += '  <div class="day-title"><span class="day-dow">' + esc(day.dow) + '</span> ' + esc(day.label) + ' <span style="color:#aeb4bf;font-weight:400;font-size:12px;">(TCT)</span></div>';
+        var dAnyId = 'ft_' + day.key + '_any';
+        var dAnySel = !!selection.slotIds[dAnyId];
+        html += '  <div class="anytime-cell day-anytime' + (dAnySel ? ' selected' : '') + '" data-slot-id="' + dAnyId + '">';
+        html += '    <div class="anytime-label">Anytime on ' + esc(day.dow) + ' ' + esc(day.label) + '</div>';
+        html += '    <span class="anytime-tag">' + (dAnySel ? '✓ selected' : 'tap to select') + '</span>';
+        html += '  </div>';
         html += '  <div class="time-grid">';
         HOURS.forEach(function(hr) {
           var id = 'ft_' + day.key + '_' + hr;
@@ -359,10 +368,12 @@
         return;
       }
       btn.disabled = false;
-      var count = selection.slotIds[ANY_ID] ? (ids.length - 1) : ids.length;
+      var specific = ids.filter(function(id) { return ANY_IDS.indexOf(id) === -1; }).length;
       var bits = [];
-      if (selection.slotIds[ANY_ID]) bits.push('anytime');
-      if (count > 0) bits.push(count + ' time' + (count === 1 ? '' : 's'));
+      if (selection.slotIds['ft_any']) bits.push('anytime (either day)');
+      if (selection.slotIds['ft_d1_any']) bits.push('anytime Tue 23rd');
+      if (selection.slotIds['ft_d2_any']) bits.push('anytime Sat 27th');
+      if (specific > 0) bits.push(specific + ' time' + (specific === 1 ? '' : 's'));
       summary.innerHTML = '<strong>' + esc(selection.player.name) + '</strong> — ' + bits.join(' + ') + ' selected.';
     }
 
