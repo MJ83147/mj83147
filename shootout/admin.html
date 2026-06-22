@@ -63,6 +63,24 @@
     .s4live-actions .btn-cancel:hover { background: rgba(255,255,255,0.1); }
     .s4live-actions .btn-generate { background: var(--accent, #e0a92e); color: var(--bg, #111); border: none; }
     .s4live-actions button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Final-table poll tally (per table) */
+    .ft-poll-wrap { margin: 12px 0 18px; padding: 14px 16px; border: 1px solid var(--border-light, rgba(255,255,255,0.12)); border-radius: 8px; background: var(--surface-2, rgba(255,255,255,0.03)); }
+    .ft-poll-title { font-family: var(--font-mono, monospace); font-size: 13px; font-weight: 800; color: #ffc24d; margin-bottom: 4px; }
+    .ft-poll-note { font-size: 12px; color: var(--text-muted, #aaa); margin: 0; }
+    .ft-poll-summary { font-size: 12px; color: var(--text-muted, #aaa); margin-bottom: 10px; }
+    .ft-poll-summary strong { color: #fff; }
+    .ft-poll-list { display: flex; flex-direction: column; gap: 4px; }
+    .ft-poll-row { display: grid; grid-template-columns: 20px minmax(150px, 1.4fr) 2fr auto; align-items: center; gap: 10px; font-size: 12.5px; padding: 4px 8px; border-radius: 5px; }
+    .ft-poll-row.winner { background: rgba(70,210,122,0.12); border: 1px solid rgba(70,210,122,0.4); }
+    .ft-poll-rank { font-family: var(--font-mono, monospace); color: var(--text-dim, #777); font-size: 11px; }
+    .ft-poll-time { font-family: var(--font-mono, monospace); color: var(--text, #fff); }
+    .ft-poll-row.winner .ft-poll-time { color: #46d27a; font-weight: 700; }
+    .ft-poll-bar { height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
+    .ft-poll-fill { display: block; height: 100%; background: #ffc24d; }
+    .ft-poll-row.winner .ft-poll-fill { background: #46d27a; }
+    .ft-poll-num { font-family: var(--font-mono, monospace); font-size: 12px; color: var(--text-muted, #aaa); white-space: nowrap; }
+    @media (max-width: 640px) { .ft-poll-row { grid-template-columns: 16px 1fr auto; } .ft-poll-bar { display: none; } }
   </style>
   <script src="admin-auth.js"></script>
 </head>
@@ -486,6 +504,12 @@
       }
       html += '</div>';
 
+      // Final-table poll, tallied ONLY among this table's own players.
+      if (stage === 'final' || stage === 'money') {
+        var ftTbl = tables[0];
+        html += finalTablePollHtml(ftTbl ? (ftTbl.players || []) : [], stageLabel(stage));
+      }
+
       if (/^rebuy_/.test(stage)) {
         html += renderRebuySection(stage);
       }
@@ -529,6 +553,59 @@
       body.innerHTML = html;
       wireStageTab(stage);
       if (stage === '4' && tables.length === 0 && gateForStage('4').ok) startStage4Live();
+    }
+
+    // Final-table poll tally for ONE table's players only (final vs money are
+    // different fields, so each gets its own best-time vote). A specific time's
+    // count includes that table's voters who also picked "anytime" that day or
+    // either day.
+    var FT_POLL_DAYS = [{ key: 'd1', label: 'Tue 23rd June' }, { key: 'd2', label: 'Sat 27th June' }];
+
+    function finalTablePollHtml(playerIds, label) {
+      function parse(v) { return v ? String(v).split(',').map(function(s) { return s.trim(); }).filter(Boolean) : []; }
+      function p2(n) { return n < 10 ? '0' + n : String(n); }
+
+      var total = (playerIds || []).length;
+      if (total === 0) {
+        return '<div class="ft-poll-wrap"><div class="ft-poll-title">' + esc(label) + ' — time poll</div>' +
+               '<p class="ft-poll-note">Splits once this table is seated (Stage 4 Phase 1 results in).</p></div>';
+      }
+      var idSet = {}; playerIds.forEach(function(id) { idSet[String(id)] = true; });
+      var voters = [];
+      (state.availability || []).forEach(function(a) {
+        if (!idSet[String(a.tornId)]) return;
+        var picks = parse(a.availableSlotIds).filter(function(s) { return s === 'ft_any' || s.indexOf('ft_d') === 0; });
+        if (picks.length) voters.push(picks);
+      });
+      var anyEither = voters.filter(function(p) { return p.indexOf('ft_any') !== -1; }).length;
+
+      var slots = [];
+      FT_POLL_DAYS.forEach(function(day) {
+        for (var h = 0; h < 24; h += 2) {
+          var id = 'ft_' + day.key + '_' + h, dayAny = 'ft_' + day.key + '_any', count = 0;
+          voters.forEach(function(picks) {
+            if (picks.indexOf(id) !== -1 || picks.indexOf(dayAny) !== -1 || picks.indexOf('ft_any') !== -1) count++;
+          });
+          slots.push({ label: day.label + ' ' + p2(h) + ':00 TCT', count: count });
+        }
+      });
+      slots.sort(function(a, b) { return b.count - a.count; });
+
+      var html = '<div class="ft-poll-wrap">';
+      html += '<div class="ft-poll-title">' + esc(label) + ' — best times</div>';
+      html += '<div class="ft-poll-summary"><strong>' + voters.length + '</strong> of ' + total + ' voted · <strong>' + anyEither + '</strong> flexible (anytime)</div>';
+      html += '<div class="ft-poll-list">';
+      slots.slice(0, 6).forEach(function(s, i) {
+        var pct = total > 0 ? Math.round((s.count / total) * 100) : 0;
+        html += '<div class="ft-poll-row' + (i === 0 ? ' winner' : '') + '">' +
+                '<span class="ft-poll-rank">' + (i + 1) + '</span>' +
+                '<span class="ft-poll-time">' + esc(s.label) + (i === 0 ? ' ★' : '') + '</span>' +
+                '<span class="ft-poll-bar"><span class="ft-poll-fill" style="width:' + pct + '%"></span></span>' +
+                '<span class="ft-poll-num">' + s.count + ' / ' + total + '</span>' +
+                '</div>';
+      });
+      html += '</div></div>';
+      return html;
     }
 
     // ===== STAGE 4 LIVE (first-come-first-served) =====
