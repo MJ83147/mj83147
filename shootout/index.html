@@ -24,7 +24,7 @@
   </header>
 
   <div class="reg-banner" id="regBanner">
-    Tournament starts <strong id="regBannerDate">Friday 5th June</strong>
+    Final table <strong id="regBannerDate">Saturday 27th June · 14:00 TCT</strong>
   </div>
 
   <div class="prize-strip">
@@ -569,25 +569,10 @@
     }
 
     function renderRegBanner() {
-      var settings = (state && state.settings) || {};
-      var raw = settings.tournament_starts || settings.registration_closes;
+      // Final-table stage: banner is a fixed announcement, not driven by the
+      // stale tournament_starts / registration_closes settings.
       var banner = document.getElementById('regBanner');
-      if (!raw) {
-        banner.classList.add('hidden');
-        return;
-      }
       banner.classList.remove('hidden');
-      try {
-        var d = new Date(raw);
-        if (isNaN(d.getTime())) {
-          document.getElementById('regBannerDate').textContent = String(raw);
-          return;
-        }
-        var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-        document.getElementById('regBannerDate').textContent = months[d.getMonth()] + ' ' + d.getDate();
-      } catch(e) {
-        document.getElementById('regBannerDate').textContent = String(raw);
-      }
     }
 
     function getDonationTotal() {
