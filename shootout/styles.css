@@ -2176,6 +2176,117 @@ body {
       margin: 0 auto;
     }
 
+    /* --- FINAL STAGE FEATURE (Stage 4 Phase 2, surfaced to top) --- */
+    body.leaderboard .final-feature {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 4px 32px 24px;
+    }
+
+    body.leaderboard .final-feature-head {
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    body.leaderboard .final-feature-eyebrow {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--accent);
+      background: var(--accent-glow);
+      border: 1px solid var(--accent-dim);
+      border-radius: 999px;
+      padding: 4px 12px;
+      margin-bottom: 10px;
+    }
+
+    body.leaderboard .final-feature-title {
+      font-family: var(--font-mono);
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.5px;
+      margin: 0 0 6px;
+      line-height: 1.2;
+    }
+
+    body.leaderboard .final-feature-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      max-width: 620px;
+      margin: 0 auto;
+    }
+
+    body.leaderboard .final-feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    body.leaderboard .final-feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 18px 18px;
+    }
+
+    body.leaderboard .final-feature-card.is-final {
+      border-color: var(--accent-dim);
+      box-shadow: 0 0 0 1px var(--accent-dim), 0 10px 34px rgba(232, 168, 50, 0.07);
+    }
+
+    body.leaderboard .final-feature-card.is-money {
+      border-color: var(--green-dim);
+    }
+
+    body.leaderboard .final-feature-card-head {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    body.leaderboard .final-feature-card-title {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text);
+    }
+
+    body.leaderboard .final-feature-card.is-final .final-feature-card-title { color: var(--accent); }
+    body.leaderboard .final-feature-card.is-money .final-feature-card-title { color: var(--green); }
+
+    body.leaderboard .final-feature-card-note {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      color: var(--text-muted);
+    }
+
+    body.leaderboard .stage-subsection-note-line {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 720px) {
+      body.leaderboard .final-feature { padding: 4px 16px 20px; }
+      body.leaderboard .final-feature-grid { grid-template-columns: 1fr; }
+      body.leaderboard .final-feature-title { font-size: 20px; }
+    }
+
     /* --- PLAYERS LIST IN MODAL --- */
     body.leaderboard .player-list-item {
       display: flex;

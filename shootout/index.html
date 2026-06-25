@@ -9,7 +9,7 @@
   <title>Progressive Shootout Tournament</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20260607b">
+  <link rel="stylesheet" href="styles.css?v=20260625a">
 </head>
 <body class="leaderboard">
 
@@ -71,6 +71,33 @@
     <p class="hero-blurb">Track every table, every advancement, and every rebuy as the tournament plays out. Search your name to see where you stand and what's next.</p>
   </section>
 
+  <!-- FINAL STAGE FEATURE — Stage 4 Phase 2 surfaced to the top -->
+  <section class="final-feature" id="finalFeature">
+    <div class="final-feature-head">
+      <span class="final-feature-eyebrow">Stage 4 · Phase 2 — live now</span>
+      <h2 class="final-feature-title">Final Table &amp; Money Table</h2>
+      <p class="final-feature-sub">Saturday 27th June · 14:00 TCT. The final table plays for 1st&ndash;9th and the title; the money table settles 10th&ndash;12th.</p>
+    </div>
+    <div class="final-feature-grid">
+      <div class="final-feature-card is-final">
+        <div class="final-feature-card-head">
+          <span class="final-feature-card-title">♦ Final table</span>
+          <span class="final-feature-card-note">pays 1st&ndash;9th</span>
+          <span class="stage-subsection-count" id="s4-final-count">0</span>
+        </div>
+        <div id="s4-final-body"><div class="stage-placeholder">The final table opens with Stage 4 and fills as Phase 1 tables finish.</div></div>
+      </div>
+      <div class="final-feature-card is-money">
+        <div class="final-feature-card-head">
+          <span class="final-feature-card-title">$ Money table</span>
+          <span class="final-feature-card-note">pays 10th&ndash;12th</span>
+          <span class="stage-subsection-count" id="s4-money-count">0</span>
+        </div>
+        <div id="s4-money-body"><div class="stage-placeholder">The money table opens with Stage 4 and fills as Phase 1 tables finish.</div></div>
+      </div>
+    </div>
+  </section>
+
   <section class="tournament-section" id="tournamentSection">
     <div class="search-bar-wrap">
       <input type="text" class="search-bar" id="searchBar" placeholder="Search your name or Torn ID to see your status">
@@ -124,12 +151,12 @@
         <div class="stage-header-left">
           <span class="stage-chevron">▼</span>
           <span class="stage-title">Stage 4</span>
-          <span class="stage-date">Final table · Sat 27 Jun · 14:00 TCT</span>
+          <span class="stage-date">Phase 1 · Sat 20 Jun</span>
         </div>
         <span class="stage-summary">Phase 1: 3 tables. Top 3 each &rarr; final table, 4th&ndash;6th &rarr; money table</span>
       </div>
       <div class="stage-body">
-        <div class="stage-subsection-group-title">Phase 1 &middot; 3 tables</div>
+        <div class="stage-subsection-group-title">Phase 1 &middot; 3 qualifying tables</div>
         <div class="stage-subsection">
           <div class="stage-subsection-title">Live tables <span class="stage-subsection-count" id="s4-live-count">0</span></div>
           <div id="s4-live-body"><div class="stage-placeholder">No live tables yet.</div></div>
@@ -142,16 +169,7 @@
           <div class="stage-subsection-title">Queue <span class="stage-subsection-count" id="s4-queue-count">0</span></div>
           <div id="s4-queue-body"><div class="stage-placeholder">Players who reach Stage 4 appear here until the 3 Phase 1 tables are drawn.</div></div>
         </div>
-
-        <div class="stage-subsection-group-title">Phase 2 &middot; paid tables</div>
-        <div class="stage-subsection">
-          <div class="stage-subsection-title">Final table <span class="stage-subsection-count" id="s4-final-count">0</span><span class="stage-subsection-note">pays 1st&ndash;9th</span></div>
-          <div id="s4-final-body"><div class="stage-placeholder">The final table opens with Stage 4 and fills as Phase 1 tables finish.</div></div>
-        </div>
-        <div class="stage-subsection">
-          <div class="stage-subsection-title">Money table <span class="stage-subsection-count" id="s4-money-count">0</span><span class="stage-subsection-note">pays 10th&ndash;12th</span></div>
-          <div id="s4-money-body"><div class="stage-placeholder">The money table opens with Stage 4 and fills as Phase 1 tables finish.</div></div>
-        </div>
+        <div class="stage-subsection-note-line">Phase 2 — the final &amp; money tables — is featured at the top of the page.</div>
       </div>
     </div>
 
