@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Torn Poker Ladder</title>
+  <style>
+    :root {
+      --bg: #12160f;
+      --card: #202a1e;
+      --card2: #26331f;
+      --line: #3a4a33;
+      --text: #e8eadf;
+      --dim: #9aa88f;
+      --gold: #e3b341;
+      --green: #7ccb6e;
+      --red: #e06c5c;
+      --chip: #2f4d33;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: radial-gradient(ellipse at 50% -20%, #23331f 0%, var(--bg) 60%);
+      color: var(--text);
+      font: 15px/1.5 "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .wrap {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 22px 32px 24px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Keep the footer pinned to the bottom instead of rising under short pages. */
+    .wrap>footer {
+      margin-top: auto;
+      padding-top: 30px;
+    }
+
+    /* Nav */
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-right: 8px;
+    }
+
+    .brand .suit {
+      color: var(--red);
+    }
+
+    .navlink {
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-size: 14px;
+      color: var(--dim);
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+
+    .navlink.active {
+      background: var(--chip);
+      color: var(--text);
+      border-color: var(--green);
+    }
+
+    .spacer {
+      flex: 1;
+    }
+
+    .btn {
+      background: var(--gold);
+      color: #241d07;
+      border: 0;
+      border-radius: 10px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn.secondary {
+      background: var(--chip);
+      color: var(--text);
+      border: 1px solid var(--line);
+      font-weight: 500;
+    }
+
+    .btn:disabled {
+      opacity: .5;
+      cursor: wait;
+    }
+
+
+
+    .card {
+      background: linear-gradient(180deg, var(--card2), var(--card));
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    /* Ladder page: ladder on the left (scrolls), key stats on the right (sticky). */
+    .ladder-layout {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 40px;
+      align-items: start;
+    }
+
+    .ladder-scroll {
+      max-height: 78vh;
+      overflow-y: auto;
+      padding-right: 10px;
+    }
+
+    .stats-col {
+      position: sticky;
+      top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .statbox {
+      background: linear-gradient(180deg, #1d2815, #161e0d);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 22px;
+    }
+
+    .statbox h3 {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--dim);
+      margin-bottom: 16px;
+    }
+
+    /* Hero figure at the top of a stat box. */
+    .stathero {
+      text-align: center;
+      padding: 6px 0 16px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 12px;
+    }
+
+    .stathero .big {
+      font-size: 40px;
+      font-weight: 800;
+      color: var(--gold);
+      line-height: 1;
+    }
+
+    .stathero .big span {
+      font-size: 20px;
+      color: var(--dim);
+    }
+
+    .stathero .cap {
+      font-size: 13px;
+      color: var(--text);
+      margin-top: 6px;
+    }
+
+    .statrow {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 15px;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(90, 110, 74, .15);
+    }
+
+    .statrow:last-child {
+      border-bottom: 0;
+    }
+
+    .statrow span:first-child {
+      color: var(--dim);
+    }
+
+    .statrow b {
+      color: var(--gold);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .statbox.you {
+      border-color: var(--green);
+    }
+
+    .statbox.you .stathero .big {
+      color: var(--green);
+    }
+
+    @media (max-width: 760px) {
+      .ladder-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .ladder-scroll {
+        max-height: none;
+        overflow: visible;
+      }
+
+      .stats-col {
+        position: static;
+      }
+    }
+
+    h2 {
+      font-size: 25px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .sub {
+      font-size: 12px;
+      color: var(--dim);
+      margin-bottom: 14px;
+    }
+
+    .muted {
+      color: var(--dim);
+    }
+
+    .pos {
+      color: var(--green);
+    }
+
+    .neg {
+      color: var(--red);
+    }
+
+    /* Avatars */
+    .avatar {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      overflow: hidden;
+      color: #10160c;
+      font-weight: 800;
+      flex: none;
+      border: 2px solid rgba(0, 0, 0, .3);
+      cursor: pointer;
+      vertical-align: middle;
+    }
+
+    .avatar img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .avatar.me {
+      box-shadow: 0 0 0 2px var(--gold);
+    }
+
+    .ladder-top {
+      text-align: center;
+      font-size: 34px;
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+
+    .ladder-top .capsub {
+      font-size: 12px;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .ladder-foot {
+      text-align: center;
+      font-size: 12px;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-top: 8px;
+    }
+
+    /* Ladder fills its column; tier numbers sit OUTSIDE the rails on the left. */
+    .ladder {
+      position: relative;
+      padding: 6px 0;
+    }
+
+    .ladder::before,
+    .ladder::after {
+      content: '';
+      position: absolute;
+      top: 6px;
+      bottom: 6px;
+      width: 12px;
+      border-radius: 8px;
+      z-index: 0;
+      background: linear-gradient(90deg, #4a3c1c, #a9852f 42%, #e3b341 50%, #a9852f 58%, #4a3c1c);
+      box-shadow: inset 0 0 6px rgba(0, 0, 0, .45), 0 0 0 1px rgba(0, 0, 0, .3);
+    }
+
+    .ladder::before {
+      left: 42px;
+    }
+
+    .ladder::after {
+      right: 4px;
+    }
+
+    .rung {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 30px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .rnum {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--gold);
+      text-align: right;
+      padding-top: 10px;
+    }
+
+    .rbody {
+      position: relative;
+      padding: 8px 16px 0;
+    }
+
+    .rung+.rung .rbody {
+      border-top: 1px dashed rgba(90, 110, 74, .25);
+    }
+
+    .rlabel {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+
+    .rchip {
+      font-size: 13px;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 7px;
+      background: #17200f;
+      border: 1px solid var(--line);
+    }
+
+    .rung.goal .rchip {
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    .rsub {
+      font-size: 12px;
+      color: var(--dim);
+      font-variant-numeric: tabular-nums;
+      margin-left: auto;
+    }
+
+    .stand {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      justify-content: center;
+      min-height: 20px;
+      padding: 4px 6px 5px;
+    }
+
+    .rbar {
+      height: 10px;
+      border-radius: 5px;
+      background: linear-gradient(180deg, #d8b256, #8a6d29);
+      box-shadow: 0 2px 3px rgba(0, 0, 0, .5);
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th {
+      text-align: left;
+      color: var(--dim);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    td {
+      padding: 9px 8px;
+      border-bottom: 1px solid #2a3524;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    td.num,
+    th.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rowlink {
+      cursor: pointer;
+    }
+
+    .rowlink:hover td {
+      background: #1c2616;
+    }
+
+    .cellname {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .rank-1 td.rk {
+      color: var(--gold);
+      font-weight: 800;
+    }
+
+    .tag {
+      font-size: 12px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--chip);
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    /* Players grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .pcard {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #17200f;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      cursor: pointer;
+    }
+
+    .pcard:hover {
+      border-color: var(--green);
+    }
+
+    .pcard .pn {
+      font-weight: 700;
+    }
+
+    .pcard .pt {
+      font-size: 12px;
+      color: var(--dim);
+    }
+
+    /* Profile */
+    .phead {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .phead .pn {
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .stat {
+      background: #17200f;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat .v {
+      font-size: 19px;
+      font-weight: 800;
+      color: var(--gold);
+    }
+
+    .stat .v.green {
+      color: var(--green);
+    }
+
+    .stat .k {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--dim);
+    }
+
+    .progress-outer {
+      background: #141a11;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      height: 12px;
+      overflow: hidden;
+    }
+
+    .progress-inner {
+      background: linear-gradient(90deg, var(--green), var(--gold));
+      height: 100%;
+      width: 0%;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--dim);
+      margin-top: 6px;
+    }
+
+    .backlink {
+      font-size: 13px;
+      color: var(--dim);
+      margin-bottom: 12px;
+      display: inline-block;
+      cursor: pointer;
+    }
+
+    .backlink:hover {
+      color: var(--text);
+    }
+
+    /* Hover mini-profile */
+    #hoverCard {
+      position: fixed;
+      z-index: 30;
+      pointer-events: none;
+      display: none;
+      width: 220px;
+      background: #1a2213;
+      border: 1px solid var(--green);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 8px 26px rgba(0, 0, 0, .5);
+    }
+
+    #hoverCard .hh {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    #hoverCard .hn {
+      font-weight: 700;
+    }
+
+    #hoverCard .ht {
+      font-size: 12px;
+      color: var(--dim);
+    }
+
+    #hoverCard .hrow {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 2px 0;
+    }
+
+    #hoverCard .hrow span:first-child {
+      color: var(--dim);
+    }
+
+    /* Modal */
+    .modal-back {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 40;
+    }
+
+    .modal-back.open {
+      display: flex;
+    }
+
+    .modal {
+      max-width: 460px;
+      width: 100%;
+      margin: 0;
+    }
+
+    input[type=password] {
+      width: 100%;
+      padding: 11px 13px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #141a11;
+      color: var(--text);
+      font-size: 15px;
+      margin-bottom: 10px;
+    }
+
+    .hint {
+      color: var(--dim);
+      font-size: 13px;
+      margin-top: 10px;
+    }
+
+    .hint a {
+      color: var(--gold);
+    }
+
+    .hint b {
+      color: var(--text);
+    }
+
+    .error {
+      color: var(--red);
+      font-size: 14px;
+      margin-top: 8px;
+      min-height: 20px;
+    }
+
+    .close-x {
+      cursor: pointer;
+      color: var(--dim);
+      font-size: 20px;
+    }
+
+    .head-flex {
+      display: flex;
+      align-items: center;
+    }
+
+    .flink {
+      color: var(--gold);
+      cursor: pointer;
+    }
+
+    .flink:hover {
+      text-decoration: underline;
+    }
+
+    .howlist {
+      padding-left: 20px;
+    }
+
+    .howlist li {
+      margin-bottom: 9px;
+      font-size: 14px;
+    }
+
+    .howlist b {
+      color: var(--gold);
+    }
+
+    .btn.danger {
+      background: #6e2820;
+      color: #ffd9d2;
+    }
+
+    .modal .btn {
+      margin-top: 14px;
+    }
+
+    /* Terms page */
+    .terms p {
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .terms h3 {
+      font-size: 18px;
+      margin: 20px 0 8px;
+      color: var(--text);
+    }
+
+    .tos {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin: 6px 0 4px;
+    }
+
+    .tos th {
+      background: #17200f;
+      color: var(--gold);
+      text-align: left;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .tos td {
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      vertical-align: top;
+      color: var(--text);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="nav">
+      <a class="brand" href="#ladder"><span class="suit">♠</span> Poker Ladder</a>
+      <a class="navlink" data-route="ladder" href="#ladder">Ladder</a>
+      <a class="navlink" data-route="leaderboard" href="#leaderboard">Leaderboard</a>
+      <a class="navlink" data-route="players" href="#players">Players</a>
+      <a class="navlink" onclick="openHowItWorks()">How it works</a>
+      <div class="spacer"></div>
+      <a id="youLink" class="navlink" style="display:none">Your profile</a>
+      <button class="btn secondary" id="syncBtn" style="display:none" onclick="doSync()">Sync</button>
+      <button class="btn" id="joinBtn" onclick="openLogin()">Sign up / Sign in</button>
+      <button class="btn secondary" id="logoutBtn" style="display:none" onclick="logout()">Log out</button>
+    </div>
+
+
+
+    <div id="view"></div>
+
+    <footer style="text-align:center; color:var(--dim); font-size:12px">
+      <div>Start at Newbie Corner, climb to Oligarch, using only money won at the tables.</div>
+      <div style="margin-top:8px">
+        <a class="flink" data-goto-route="terms">Terms &amp; Conditions</a> ·
+        <a class="flink" onclick="openHowItWorks()">How it works</a> ·
+        <span>Data via the official Torn API</span>
+      </div>
+      <div style="margin-top:8px">Made by <b style="color:var(--gold)">Systoned</b></div>
+    </footer>
+  </div>
+
+  <div id="hoverCard"></div>
+
+  <!-- HOW IT WORKS MODAL -->
+  <div class="modal-back" id="howModal">
+    <div class="card modal">
+      <div class="head-flex" style="margin-bottom:10px">
+        <h2 style="margin:0">How it works</h2>
+        <div class="spacer"></div>
+        <span class="close-x" onclick="closeHowItWorks()">✕</span>
+      </div>
+      <ol class="howlist">
+        <li>The goal is to get through <b>all 21 tables</b>, from Newbie Corner to Oligarch. Everyone starts at the
+          bottom table with <b>whatever they buy in with</b> — there is no handed-out stake.</li>
+        <li>Play Torn poker normally. When you sign in, the app reads only your poker <b>join</b> and <b>leave</b> log
+          entries and tracks how far you have climbed.</li>
+        <li>You move up <b>one table at a time</b>. To advance you must have <b>won enough at your table to cover the
+            next table's minimum buy-in</b>, then go sit at it. You can't skip tables, and winning a huge pot at a low
+          table doesn't jump you ahead.</li>
+        <li>You can only buy in with money you've <b>won at the tables</b> — no topping up from outside. A bigger stake
+          just means you can rebuy after a bad hand, as long as you can still cover the buy-in.</li>
+        <li>If you leave a table with less than its minimum, you <b>drop down</b> to the highest table your remaining
+          money can still buy into (all the way to Newbie Corner if you've lost it) and it counts as a bust. First to
+          reach <b>Oligarch</b> tops the ladder.</li>
+      </ol>
+      <p class="hint">Your climb starts the moment you sign up, so old poker history doesn't count. Nothing is stored
+        except your ladder progress, and you can delete it anytime from your profile.</p>
+      <button class="btn" onclick="closeHowItWorks()">Got it</button>
+    </div>
+  </div>
+
+  <!-- LOGIN MODAL -->
+  <div class="modal-back" id="loginModal">
+    <div class="card modal">
+      <div class="head-flex" style="margin-bottom:12px">
+        <h2 style="margin:0">Join the ladder</h2>
+        <div class="spacer"></div>
+        <span class="close-x" onclick="closeLogin()">✕</span>
+      </div>
+      <input id="apiKey" type="password" placeholder="Your Torn API key" autocomplete="off">
+      <button class="btn" id="loginBtn" onclick="doLogin()">Sign in</button>
+      <div class="error" id="loginError"></div>
+      <p class="hint">
+        Create a key scoped to your <b>public profile</b> and your <b>poker logs</b> only:<br>
+        <a href="https://www.torn.com/preferences.php#tab=api?step=addNewKey&title=pokerladder&user=profile,log&logIds=194"
+          target="_blank" rel="noopener">Create a "pokerladder" key on torn.com &rarr;</a>
+      </p>
+      <p class="hint">
+        With <b>logIds=194</b> the key reads your <b>public Torn profile</b> (name,
+        avatar, level and the other public profile fields) and your poker table
+        <b>join/leave</b> log. It can't touch your money, items, mail or settings.
+        Your key is never stored on our server; it stays in this browser and is
+        sent only when you sign in.
+      </p>
+      <p class="hint">
+        Your climb starts the moment you sign up, so old poker history doesn't count.
+        See our <a class="flink" onclick="closeLogin(); location.hash='#terms'">Terms &amp; Conditions</a>.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // ---------------------------------------------------------------------------
+    // CONFIG: after deploying the Apps Script web app (Deploy > New deployment >
+    // Web app > access "Anyone"), paste its URL here.
+    // ---------------------------------------------------------------------------
+    var LADDER_API_URL = 'https://script.google.com/macros/s/AKfycbxIbk1uPkEsj8Viz_xHEOFJwFVMQUhe6U8KIV7qMZacIIU-tpL9D9lzMvs2zEkbCenK/exec';
+    var CONFIGURED = /^https:\/\/script\.google\.com\//.test(LADDER_API_URL);
+
+    // ---------------------------------------------------------------------------
+    // API
+    // ---------------------------------------------------------------------------
+    function notConfigured() { return Promise.reject(new Error('Backend not connected yet. Set LADDER_API_URL in index.html.')); }
+    // POST bodies go as text/plain so the browser skips a CORS preflight that
+    // Apps Script web apps don't answer.
+    function apiSync(key) {
+      if (!CONFIGURED) return notConfigured();
+      return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'sync', key: key }) }).then(parseApi);
+    }
+    function apiDelete(key) {
+      if (!CONFIGURED) return notConfigured();
+      return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'delete', key: key }) }).then(parseApi);
+    }
+    function apiLeaderboard() {
+      if (!CONFIGURED) return notConfigured();
+      return fetch(LADDER_API_URL + '?action=leaderboard').then(parseApi);
+    }
+    function apiPlayer(id) {
+      if (!CONFIGURED) return notConfigured();
+      return fetch(LADDER_API_URL + '?action=player&id=' + encodeURIComponent(id)).then(parseApi);
+    }
+    function parseApi(resp) {
+      return resp.json().then(function (b) { if (!b.ok) throw new Error(b.error || 'Request failed.'); return b; });
+    }
+
+    // ---------------------------------------------------------------------------
+    // State + helpers
+    // ---------------------------------------------------------------------------
+    // Safe localStorage wrappers. On file:// origins (opening the .html directly)
+    // some browsers throw or refuse to persist, so guard every call. Host over
+    // http (even http://localhost) for the saved key to stick between visits.
+    function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+    function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
+    function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { } }
+
+    var state = { key: lsGet('pl_key'), meId: null, players: [], tiers: null, byId: {} };
+
+    function fmtMoney(n) {
+      n = Number(n) || 0; var neg = n < 0; n = Math.abs(n); var s;
+      if (n >= 1e9) s = trim(n / 1e9) + 'b'; else if (n >= 1e6) s = trim(n / 1e6) + 'm';
+      else if (n >= 1e3) s = trim(n / 1e3) + 'k'; else s = String(Math.round(n * 100) / 100);
+      return (neg ? '-$' : '$') + s;
+    }
+    function trim(x) { return (Math.round(x * 100) / 100).toString(); }
+    function fmtWhen(ts) {
+      if (!ts) return ''; var d = new Date(Number(ts) * 1000);
+      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' +
+        d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function el(id) { return document.getElementById(id); }
+    function initials(name) {
+      var p = String(name || '?').trim().split(/[\s_-]+/).filter(Boolean);
+      if (!p.length) return '?';
+      return (p.length === 1 ? p[0].slice(0, 2) : p[0][0] + p[p.length - 1][0]).toUpperCase();
+    }
+    function colorFor(id) { var h = 0, s = String(id); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return 'hsl(' + h + ' 62% 62%)'; }
+
+    // Avatar: initials circle with the profile image layered on top (image hides
+    // itself if it fails or is empty, revealing the initials).
+    function avatar(p, size, extra) {
+      var s = size || 26;
+      var me = p.id === state.meId ? ' me' : '';
+      var img = p.image ? '<img src="' + esc(p.image) + '" onerror="this.remove()" alt="">' : '';
+      return '<span class="avatar' + me + ' ' + (extra || '') + '" data-pid="' + esc(p.id) + '" ' +
+        'style="width:' + s + 'px;height:' + s + 'px;background:' + colorFor(p.id) + ';font-size:' + Math.round(s * 0.38) + 'px">' +
+        esc(initials(p.name)) + img + '</span>';
+    }
+
+    // ---------------------------------------------------------------------------
+    // Data loading (public board loaded once, cached)
+    // ---------------------------------------------------------------------------
+    function ensureBoard() {
+      if (state.tiers) return Promise.resolve();
+      return apiLeaderboard()
+        .then(setBoard)
+        .catch(function () {
+          // Backend unreachable/unconfigured: still show the empty ladder frame.
+          state.players = []; state.tiers = LADDER_TIERS; state.startBankroll = 1000; state.byId = {};
+        });
+    }
+    function setBoard(d) {
+      state.players = d.players || []; state.tiers = d.tiers || LADDER_TIERS;
+      state.startBankroll = d.startBankroll || 1000;
+      state.byId = {}; state.players.forEach(function (p) { state.byId[p.id] = p; });
+      state.loaded = true;
+    }
+
+    // ---------------------------------------------------------------------------
+    // Router
+    // ---------------------------------------------------------------------------
+    function route() {
+      var h = location.hash.replace(/^#/, '') || 'ladder';
+      var parts = h.split('/');
+      var name = parts[0];
+      document.querySelectorAll('.navlink[data-route]').forEach(function (a) {
+        a.classList.toggle('active', a.getAttribute('data-route') === name);
+      });
+      if (name === 'terms') return renderTerms();
+      ensureBoard().then(function () {
+        if (name === 'leaderboard') return renderLeaderboard();
+        if (name === 'players') return renderPlayers();
+        if (name === 'player') return renderProfile(parts[1]);
+        return renderLadder();
+      }).catch(function (e) { el('view').innerHTML = '<div class="card">' + esc(e.message) + '</div>'; });
+    }
+    window.addEventListener('hashchange', route);
+
+    // ---------------------------------------------------------------------------
+    // Views
+    // ---------------------------------------------------------------------------
+    function renderLadder() {
+      var tiers = state.tiers || LADDER_TIERS;
+      var players = state.players || [];
+      var byTier = {};
+      players.forEach(function (p) { (byTier[p.tierIdx] = byTier[p.tierIdx] || []).push(p); });
+      var rows = '';
+      for (var i = tiers.length - 1; i >= 0; i--) {
+        var t = tiers[i];
+        var here = (byTier[i] || []).slice().sort(function (a, b) { return b.bankroll - a.bankroll; });
+        var goal = i === tiers.length - 1;
+        var tokens = here.map(function (p) { return avatar(p, 26); }).join('');
+        var chips = t.tables.map(function (nm) { return '<span class="rchip">' + esc(nm) + (goal ? ' 👑' : '') + '</span>'; }).join('');
+        rows += '<div class="rung' + (goal ? ' goal' : '') + '">' +
+          '<div class="rnum">' + (i + 1) + '</div>' +
+          '<div class="rbody">' +
+          '<div class="rlabel">' + chips +
+          '<span class="rsub">' + fmtMoney(t.sb) + '/' + fmtMoney(t.bb) + ' · buy-in ' + fmtMoney(t.minBuy) + '+</span></div>' +
+          '<div class="stand">' + tokens + '</div>' +
+          '<div class="rbar"></div>' +
+          '</div></div>';
+      }
+      el('view').innerHTML =
+        '<div class="card"><h2>The ladder</h2>' +
+        '<div class="sub">Climb from Newbie Corner up to Oligarch, one table at a time. Each dot is a player on the highest table they have climbed to. Hover for stats, click to open a profile.</div>' +
+        '<div class="ladder-layout">' +
+        '<div class="ladder-scroll">' +
+        '<div class="ladder-top">🏆<div class="capsub">Oligarch, the summit</div></div>' +
+        '<div class="ladder">' + rows + '</div>' +
+        '<div class="ladder-foot">▲ everyone starts here</div>' +
+        '</div>' +
+        '<div class="stats-col">' + ladderStats(players, tiers) + '</div>' +
+        '</div></div>';
+    }
+
+    // Key stats panel shown on the right of the ladder page.
+    function ladderStats(players, tiers) {
+      var count = players.length;
+      var leader = players.slice().sort(function (a, b) { return b.tierIdx - a.tierIdx || b.bankroll - a.bankroll; })[0];
+      var highest = players.reduce(function (m, p) { return Math.max(m, p.tierIdx); }, 0);
+      var busts = players.reduce(function (s, p) { return s + (p.busts || 0); }, 0);
+      var atTables = players.filter(function (p) { return p.atTable; }).length;
+
+      var html = '<div class="statbox">' +
+        hero((highest + 1) + '<span> / 21</span>', 'Highest table reached · ' + esc(tiers[highest].tables[0])) +
+        row('Climbers', count) +
+        row('Playing now', atTables) +
+        row('Total busts', busts) +
+        (leader ? row('Leader', esc(leader.name)) : '') +
+        '</div>';
+
+      var me = state.meId ? players.filter(function (p) { return p.id === state.meId; })[0] : null;
+      if (me) {
+        var next = me.nextTierMin ? 'cover ' + fmtMoney(me.nextTierMin) : 'top of the ladder';
+        html += '<div class="statbox you">' +
+          hero((me.tierIdx + 1) + '<span> / 21</span>', 'You are on ' + esc(me.tierTables[0])) +
+          '<div class="statrow"><span>To move up</span><span class="muted">' + next + '</span></div>' +
+          row('Rank', '#' + (me.rank || '?')) +
+          row('Busts', me.busts) +
+          row('Stake', fmtMoney(me.bankroll)) +
+          '</div>';
+      }
+      return html;
+
+      function row(k, v) { return '<div class="statrow"><span>' + k + '</span><b>' + v + '</b></div>'; }
+      function hero(big, cap) { return '<div class="stathero"><div class="big">' + big + '</div><div class="cap">' + cap + '</div></div>'; }
+    }
+
+    function renderLeaderboard() {
+      var rows = state.players.map(function (p) {
+        return '<tr class="rowlink rank-' + p.rank + '" data-goto="' + esc(p.id) + '">' +
+          '<td class="rk">' + p.rank + '</td>' +
+          '<td><span class="cellname">' + avatar(p, 26) + esc(p.name) + (p.atTable ? ' <span class="tag">playing</span>' : '') + '</span></td>' +
+          '<td class="num"><b>' + (p.tierIdx + 1) + '</b> <span class="muted">/ 21</span></td>' +
+          '<td>' + esc(p.tierTables[0]) + '</td>' +
+          '<td class="num muted">' + fmtMoney(p.bankroll) + '</td>' +
+          '<td class="num">' + p.busts + '</td></tr>';
+      }).join('') || '<tr><td colspan="6" class="muted">Nobody on the ladder yet, be the first.</td></tr>';
+      el('view').innerHTML =
+        '<div class="card"><h2>Leaderboard</h2><div class="sub">The climb is about getting through all 21 tables. Ranked by highest table reached, then stake.</div>' +
+        '<div style="overflow-x:auto"><table><thead><tr><th class="rk">#</th><th>Player</th><th class="num">Table</th><th>Now on</th>' +
+        '<th class="num">Stake</th><th class="num">Busts</th>' +
+        '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+    }
+
+    function renderPlayers() {
+      var cards = state.players.map(function (p) {
+        return '<div class="pcard rowlink" data-goto="' + esc(p.id) + '">' + avatar(p, 44) +
+          '<div><div class="pn">' + esc(p.name) + '</div>' +
+          '<div class="pt">' + esc(p.tierLabel) + ' · ' + esc(p.tierTables[0]) + '</div>' +
+          '<div class="pt">' + fmtMoney(p.bankroll) + ' · ' + p.busts + ' busts</div></div></div>';
+      }).join('') || '<div class="muted">No players yet.</div>';
+      el('view').innerHTML = '<div class="card"><h2>Players</h2><div class="sub">' + state.players.length +
+        ' on the ladder. Click anyone to see their profile.</div><div class="grid">' + cards + '</div></div>';
+    }
+
+    function renderTerms() {
+      el('view').innerHTML =
+        '<span class="backlink" data-goto-route="ladder">← back</span>' +
+        '<div class="card terms">' +
+        '<h2>Terms &amp; Conditions</h2>' +
+        '<p>Torn Poker Ladder is an unofficial, fan-made leaderboard. It is not affiliated with, endorsed by, or operated by Torn. By signing in with your Torn API key you agree to the terms below.</p>' +
+
+        '<h3>How your API key is used (Torn API ToS)</h3>' +
+        '<div style="overflow-x:auto"><table class="tos"><thead><tr>' +
+        '<th>Data storage</th><th>Data sharing</th><th>Purpose of use</th><th>Key storage &amp; sharing</th><th>Key access level</th>' +
+        '</tr></thead><tbody><tr>' +
+        '<td>Persistent, until you delete your data. Your ladder stats (bankroll, tier, wins, losses, busts) and poker session results are stored on our server.</td>' +
+        '<td>General public. Your name, avatar, tier, bankroll, busts and session history are shown publicly on the ladder, leaderboard and profile pages.</td>' +
+        '<td>Public community tool / public amusement, a poker ladder leaderboard.</td>' +
+        '<td>Not stored, not shared. Your API key stays in your browser and is sent only with your own sign-in request. It is used once on the server to read your poker log, then discarded.</td>' +
+        '<td>Custom <b>user</b> selections: <b>profile</b> (public profile, incl. avatar) and <b>log</b> (poker table join/leave only, logIds&nbsp;194).</td>' +
+        '</tr></tbody></table></div>' +
+
+        '<h3>Your control</h3>' +
+        '<p>You can delete your API key in Torn at any time, and delete all your stored ladder data from your profile page here (the "Delete my data" button). Deletion removes your player and all your sessions from the leaderboard.</p>' +
+
+        '<h3>Fair use</h3>' +
+        '<p>Scores are computed on the server from your own Torn log, so results reflect real play. The app requests only your poker join/leave log, nothing else about your account. Torn passwords are never requested and must never be entered.</p>' +
+
+        '<h3>No warranty</h3>' +
+        '<p>The service is provided as-is with no guarantee of accuracy or availability. Torn may change its API at any time. Use at your own discretion.</p>' +
+        '<p class="muted">Reference: Torn API Terms of Service at <a class="flink" href="https://www.torn.com/api.html" target="_blank" rel="noopener">torn.com/api.html</a>.</p>' +
+        '</div>';
+    }
+
+    function renderProfile(id) {
+      el('view').innerHTML = '<div class="card muted">Loading profile…</div>';
+      apiPlayer(id).then(function (d) {
+        var p = d.player, tiers = d.tiers;
+        var tier = tiers[p.tierIdx];
+        var prog = '';
+        if (p.nextTierMin) {
+          // Progress through the 21 tables.
+          var pct = Math.max(0, Math.min(100, (p.tierIdx / (tiers.length - 1)) * 100));
+          prog = '<div class="progress-outer"><div class="progress-inner" style="width:' + pct + '%"></div></div>' +
+            '<div class="progress-label"><span>Table ' + (p.tierIdx + 1) + ' of ' + tiers.length + '</span><span>need ' + fmtMoney(p.nextTierMin) + ' to move up</span></div>';
+        } else {
+          prog = '<div class="progress-outer"><div class="progress-inner" style="width:100%"></div></div>' +
+            '<div class="progress-label"><span>All 21 tables cleared 👑</span><span></span></div>';
+        }
+        var sessions = (d.sessions || []).filter(function (s) { return String(s.counted) === 'yes'; }).map(function (s) {
+          var profit = Number(s.profit) || 0;
+          return '<tr><td>' + fmtWhen(s.leave_ts) + '</td><td>' + esc(s.table || 'unknown') + '</td>' +
+            '<td class="num">' + fmtMoney(s.buy_in) + '</td><td class="num">' + fmtMoney(s.cash_out) + '</td>' +
+            '<td class="num ' + (profit >= 0 ? 'pos' : 'neg') + '">' + fmtMoney(profit) + '</td></tr>';
+        }).join('') || '<tr><td colspan="5" class="muted">No sessions yet.</td></tr>';
+
+        var tornLink = p.profileUrl ? '<a href="' + esc(p.profileUrl) + '" target="_blank" rel="noopener" class="tag">Torn profile ↗</a>' : '';
+        var isMe = p.id === state.meId;
+        var deleteBtn = isMe ? '<div class="spacer"></div><button class="btn danger" onclick="doDeleteData()">Delete my data</button>' : '';
+        el('view').innerHTML =
+          '<span class="backlink" data-goto-route="leaderboard">← back to leaderboard</span>' +
+          '<div class="card"><div class="phead">' + avatar(p, 64) +
+          '<div><div class="pn">' + esc(p.name) + (p.atTable ? ' <span class="tag">playing</span>' : '') + '</div>' +
+          '<div class="muted">Rank #' + (p.rank || '?') + ' · ' + esc(p.tierLabel) + ' · ' + esc(p.tierTables.join(' · ')) + ' ' + tornLink + '</div></div>' + deleteBtn + '</div>' +
+          '<div class="stat-row">' +
+          '<div class="stat"><div class="v green">' + (p.tierIdx + 1) + ' / 21</div><div class="k">Table reached</div></div>' +
+          '<div class="stat"><div class="v" style="font-size:15px">' + esc(p.tierTables[0]) + '</div><div class="k">Now on</div></div>' +
+          '<div class="stat"><div class="v">' + p.busts + '</div><div class="k">Busts</div></div>' +
+          '<div class="stat"><div class="v">' + p.wins + ' / ' + p.losses + '</div><div class="k">Win / Loss</div></div>' +
+          '<div class="stat"><div class="v" style="color:var(--dim)">' + fmtMoney(p.bankroll) + '</div><div class="k">Stake</div></div>' +
+          '</div>' + prog + '</div>' +
+          '<div class="card"><h2>Recent sessions</h2><div style="overflow-x:auto"><table><thead><tr>' +
+          '<th>When</th><th>Table</th><th class="num">Buy-in</th><th class="num">Cash out</th><th class="num">Profit</th>' +
+          '</tr></thead><tbody>' + sessions + '</tbody></table></div></div>';
+      }).catch(function (e) {
+        el('view').innerHTML = '<span class="backlink" data-goto-route="players">← back</span><div class="card">' + esc(e.message) + '</div>';
+      });
+    }
+
+    // ---------------------------------------------------------------------------
+    // Hover mini-profile + click navigation (event delegation)
+    // ---------------------------------------------------------------------------
+    var hoverCard = el('hoverCard');
+    document.addEventListener('mouseover', function (e) {
+      var a = e.target.closest && e.target.closest('[data-pid]');
+      if (!a) return;
+      var p = state.byId[a.getAttribute('data-pid')];
+      if (!p) return;
+      hoverCard.innerHTML =
+        '<div class="hh">' + avatar(p, 40) + '<div><div class="hn">' + esc(p.name) + '</div>' +
+        '<div class="ht">' + esc(p.tierLabel) + ' · ' + esc(p.tierTables[0]) + '</div></div></div>' +
+        '<div class="hrow"><span>Bankroll</span><span>' + fmtMoney(p.bankroll) + '</span></div>' +
+        '<div class="hrow"><span>Peak</span><span>' + fmtMoney(p.peakBankroll) + '</span></div>' +
+        '<div class="hrow"><span>Win / Loss</span><span>' + p.wins + ' / ' + p.losses + '</span></div>' +
+        '<div class="hrow"><span>Busts</span><span>' + p.busts + '</span></div>';
+      hoverCard.style.display = 'block';
+    });
+    document.addEventListener('mousemove', function (e) {
+      if (hoverCard.style.display !== 'block') return;
+      var x = e.clientX + 16, y = e.clientY + 16;
+      if (x + 230 > window.innerWidth) x = e.clientX - 236;
+      if (y + 160 > window.innerHeight) y = e.clientY - 166;
+      hoverCard.style.left = x + 'px'; hoverCard.style.top = y + 'px';
+    });
+    document.addEventListener('mouseout', function (e) {
+      var a = e.target.closest && e.target.closest('[data-pid]');
+      if (a) hoverCard.style.display = 'none';
+    });
+    document.addEventListener('click', function (e) {
+      var pid = e.target.closest && e.target.closest('[data-pid]');
+      if (pid) { location.hash = '#player/' + pid.getAttribute('data-pid'); return; }
+      var goto = e.target.closest && e.target.closest('[data-goto]');
+      if (goto) { location.hash = '#player/' + goto.getAttribute('data-goto'); return; }
+      var gotor = e.target.closest && e.target.closest('[data-goto-route]');
+      if (gotor) { location.hash = '#' + gotor.getAttribute('data-goto-route'); }
+    });
+
+    // ---------------------------------------------------------------------------
+    // Auth
+    // ---------------------------------------------------------------------------
+    function openLogin() { el('loginModal').classList.add('open'); el('apiKey').focus(); }
+    function closeLogin() { el('loginModal').classList.remove('open'); el('loginError').textContent = ''; }
+    function openHowItWorks() { el('howModal').classList.add('open'); }
+    function closeHowItWorks() { el('howModal').classList.remove('open'); }
+    // Close either modal when its dark backdrop is clicked.
+    ['loginModal', 'howModal'].forEach(function (id) {
+      el(id).addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
+    });
+
+    function doDeleteData() {
+      if (!state.key) return;
+      if (!confirm('Delete all your ladder data? This removes your player row and every session from the leaderboard. Your Torn account is untouched.')) return;
+      apiDelete(state.key).then(function () {
+        alert('Your data has been deleted.');
+        logout();
+      }).catch(function (e) { alert(e.message); });
+    }
+
+    function doLogin() {
+      var key = el('apiKey').value.trim();
+      if (!key) { el('loginError').textContent = 'Paste your API key first.'; return; }
+      el('loginBtn').disabled = true; el('loginError').textContent = '';
+      apiSync(key).then(function (d) {
+        state.key = key;
+        lsSet('pl_key', state.key);
+        applyMe(d.me);
+        closeLogin();
+        // Fresh sync may have moved players; reload the board then re-render.
+        state.tiers = null;
+        return ensureBoard();
+      }).then(function () {
+        location.hash = '#player/' + state.meId; route();
+      }).catch(function (e) {
+        el('loginError').textContent = e.message;
+      }).finally(function () { el('loginBtn').disabled = false; });
+    }
+
+    function applyMe(me) {
+      state.meId = me.id;
+      el('joinBtn').style.display = 'none';
+      el('logoutBtn').style.display = '';
+      el('syncBtn').style.display = '';
+      el('youLink').style.display = '';
+      el('youLink').setAttribute('href', '#player/' + me.id);
+      el('youLink').textContent = me.name;
+    }
+
+    // Manual re-sync: re-reads your poker log and refreshes the board.
+    function doSync() {
+      if (!state.key) return;
+      var b = el('syncBtn');
+      b.disabled = true; b.textContent = 'Syncing…';
+      apiSync(state.key).then(function (d) {
+        applyMe(d.me);
+        state.tiers = null;
+        return ensureBoard();
+      }).then(route).catch(function (e) {
+        alert(e.message);
+      }).finally(function () { b.disabled = false; b.textContent = 'Sync'; });
+    }
+
+    function logout() {
+      lsDel('pl_key'); state.key = ''; state.meId = null;
+      el('joinBtn').style.display = ''; el('logoutBtn').style.display = 'none';
+      el('syncBtn').style.display = 'none'; el('youLink').style.display = 'none';
+      state.tiers = null; route();
+    }
+
+    // ---------------------------------------------------------------------------
+    // Boot: public board loads for everyone; a saved key signs in silently.
+    // ---------------------------------------------------------------------------
+    if (!CONFIGURED && el('demoBanner')) el('demoBanner').style.display = '';
+    (state.key
+      ? apiSync(state.key).then(function (d) { applyMe(d.me); }).catch(function () { logout(); })
+      : Promise.resolve()
+    ).then(route);
+
+    // ---------------------------------------------------------------------------
+    // Ladder tiers (mirror of Code.gs TABLES, grouped by buy-in range). Kept here
+    // so the ladder frame always renders, even before the backend responds.
+    // ---------------------------------------------------------------------------
+    var LADDER_TIERS = (function () {
+      var raw = [
+        [['Newbie Corner'], 500, 2000, 5, 10], [['Hobo Holdem'], 1250, 5000, 12.5, 25],
+        [['Broke Jokes'], 2500, 10000, 25, 50], [['8-bit'], 5000, 20000, 50, 100],
+        [['Sprinkles'], 12500, 50000, 125, 250], [['E-asy Street'], 25000, 100000, 250, 500],
+        [['Gatling Gun'], 50000, 200000, 500, 1000], [['Quickdraw'], 125000, 500000, 1250, 2500],
+        [['Tight Knit'], 250000, 1000000, 2500, 5000], [['Six of the Best'], 500000, 2000000, 5000, 10000],
+        [['Ballsy'], 1250000, 5000000, 12500, 25000], [['Boom or Bust'], 2500000, 10000000, 25000, 50000],
+        [['Duel at Dawn', 'Fourplay', "Old 'n Slow", 'Periodic'], 5000000, 20000000, 50000, 100000],
+        [['Pound It'], 12500000, 50000000, 125000, 250000], [['Old Folks Home'], 25000000, 100000000, 250000, 500000],
+        [['Tripod', 'Comatose Cave', 'River Wizard'], 50000000, 200000000, 500000, 1000000],
+        [["Cat's Chance"], 125000000, 500000000, 1250000, 2500000],
+        [['Slow Cooker', 'Juan on Juan'], 250000000, 1000000000, 2500000, 5000000],
+        [['High Rollers'], 500000000, 2000000000, 5000000, 10000000],
+        [['Fire Pit'], 1250000000, 5000000000, 12500000, 25000000],
+        [['Oligarch'], 5000000000, 20000000000, 50000000, 100000000]
+      ];
+      return raw.map(function (r, i) { return { idx: i, label: 'Tier ' + (i + 1), tables: r[0], minBuy: r[1], maxBuy: r[2], sb: r[3], bb: r[4] }; });
+    })();
+  </script>
+</body>
+
+</html>
