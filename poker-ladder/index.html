@@ -968,13 +968,14 @@
           bottom table. </li>
         <li>Play Torn poker normally. When you sign in, the app reads only your poker <b>join</b> and <b>leave</b> log
           entries and tracks how far you have climbed.</li>
-        <li>You move up <b>one table at a time</b>. To advance you must have <b>won enough at your table to cover the
-            next table's minimum buy-in</b>, then go sit at it.</li>
-        <li>You can only buy in with money you've <b>won at the tables</b> Winning a big stake at an earlier table
-          just means you can rebuy after a bad hand, as long as you can still cover the buy-in.</li>
-        <li>If you leave a table with less than its minimum, you <b>drop down</b> to the highest table your remaining
-          money can still buy into (all the way to Newbie Corner if you've lost it) and it counts as a bust. First to
-          reach <b>Oligarch</b> tops the ladder.</li>
+        <li>You move up <b>one table at a time</b>: cash out with enough bankroll to cover the next table's minimum,
+          then <b>take a seat there</b>. The climb registers when you sit down, and winning a huge pot doesn't let you
+          skip tables.</li>
+        <li>Only sessions at <b>your table or the next one up</b> count, and only with money you've <b>won at the
+          tables</b> (no topping up from outside). Anything else is off-ladder fun and is ignored.</li>
+        <li>If you cash out with less than your table's minimum, you <b>drop</b> to the highest table you can still
+          afford and it counts as a bust. Below Newbie Corner's minimum your <b>cycle</b> ends; your next buy-in at the
+          bottom starts a fresh one. First to reach <b>Oligarch</b> tops the ladder.</li>
       </ol>
       <p class="hint">Your climb starts the moment you sign up, so old poker history doesn't count. Nothing is stored
         except your ladder progress, and you can delete it anytime from your profile.</p>
@@ -1099,14 +1100,12 @@
         .then(setBoard)
         .catch(function () {
           // Backend unreachable/unconfigured: still show the empty ladder frame.
-          state.players = []; state.tiers = LADDER_TIERS; state.startBankroll = 1000; state.byId = {};
+          state.players = []; state.tiers = LADDER_TIERS; state.byId = {};
         });
     }
     function setBoard(d) {
       state.players = d.players || []; state.tiers = d.tiers || LADDER_TIERS;
-      state.startBankroll = d.startBankroll || 1000;
       state.byId = {}; state.players.forEach(function (p) { state.byId[p.id] = p; });
-      state.loaded = true;
     }
 
     // ---------------------------------------------------------------------------
@@ -1117,6 +1116,9 @@
 
     function route() {
       closeNav(); // collapse the mobile menu on navigation
+      hideHover(); // never carry the mini-profile card across pages
+      // Keep the address bar clean on the home page (no lingering #ladder).
+      if (location.hash === '#ladder') history.replaceState(null, '', location.pathname + location.search);
       var h = location.hash.replace(/^#/, '') || 'ladder';
       var parts = h.split('/');
       var name = parts[0];
@@ -1159,7 +1161,7 @@
       }
       el('view').innerHTML =
         '<div class="card"><h2>The ladder</h2>' +
-        '<div class="sub">Climb from Newbie Corner up to Oligarch, one table at a time. Each dot is a player on the highest table they have climbed to. Hover for stats, click to open a profile.</div>' +
+        '<div class="sub">Climb from Newbie Corner up to Oligarch, one table at a time. Each dot is a player on the table they are currently on. Hover for stats, click to open a profile.</div>' +
         '<div class="ladder-layout">' +
         '<div class="ladder-scroll">' +
         '<div class="ladder-top">🏆<div class="capsub">Oligarch, the summit</div></div>' +
@@ -1170,35 +1172,37 @@
         '</div></div>';
     }
 
-    // Key stats panel shown on the right of the ladder page.
+    // Key stats panel shown on the right of the ladder page: your climb first
+    // (with the one thing to do next), then the state of the race.
     function ladderStats(players, tiers) {
       var pk = function (p) { return p.peakIdx != null ? p.peakIdx : p.tierIdx; };
-      var count = players.length;
       var leader = players.slice().sort(function (a, b) { return pk(b) - pk(a) || b.bankroll - a.bankroll; })[0];
       var highest = players.reduce(function (m, p) { return Math.max(m, pk(p)); }, 0);
-      var busts = players.reduce(function (s, p) { return s + (p.busts || 0); }, 0);
       var atTables = players.filter(function (p) { return p.atTable; }).length;
-
-      var html = '<div class="statbox">' +
-        hero((highest + 1) + '<span> / 21</span>', 'Highest table reached · ' + esc(tiers[highest].tables[0])) +
-        row('Climbers', count) +
-        row('Playing now', atTables) +
-        row('Total busts', busts) +
-        (leader ? row('Leader', esc(leader.name)) : '') +
-        '</div>';
+      var html = '';
 
       var me = state.meId ? players.filter(function (p) { return p.id === state.meId; })[0] : null;
       if (me) {
-        var next = me.nextTierMin ? 'cover ' + fmtMoney(me.nextTierMin) : 'top of the ladder';
-        html += '<div class="statbox you">' +
+        var next;
+        if (!me.nextTierMin) next = 'Top of the ladder 👑';
+        else if (me.bankroll >= me.nextTierMin) next = 'Take a seat at ' + esc(tiers[me.tierIdx + 1].tables[0]);
+        else next = 'Win ' + fmtMoney(me.nextTierMin - me.bankroll) + ' more at ' + esc(me.tierTables[0]);
+        html += '<div class="statbox you"><h3>Your climb</h3>' +
           hero((me.tierIdx + 1) + '<span> / 21</span>', 'You are on ' + esc(me.tierTables[0])) +
-          '<div class="statrow"><span>Highest reached</span><b>' + (pk(me) + 1) + ' / 21</b></div>' +
-          '<div class="statrow"><span>To move up</span><span class="muted">' + next + '</span></div>' +
+          '<div class="statrow"><span>Next step</span><span class="muted">' + next + '</span></div>' +
+          row('Bankroll', fmtMoney(me.bankroll)) +
           row('Rank', '#' + (me.rank || '?')) +
+          row('Cycle', me.cycles || 1) +
           row('Busts', me.busts) +
-          row('Eligible bankroll', fmtMoney(me.bankroll)) +
           '</div>';
       }
+
+      html += '<div class="statbox"><h3>The race</h3>' +
+        hero((highest + 1) + '<span> / 21</span>', 'Highest table anyone has reached') +
+        row('Climbers', players.length) +
+        row('At the tables now', atTables) +
+        (leader ? row('Leading', esc(leader.name)) : '') +
+        '</div>';
       return html;
 
       function row(k, v) { return '<div class="statrow"><span>' + k + '</span><b>' + v + '</b></div>'; }
@@ -1267,7 +1271,6 @@
       el('view').innerHTML = '<div class="card muted">Loading profile…</div>';
       apiPlayer(id).then(function (d) {
         var p = d.player, tiers = d.tiers;
-        var tier = tiers[p.tierIdx];
         var prog = '';
         if (p.nextTierMin) {
           // Progress through the 21 tables.
@@ -1278,13 +1281,42 @@
           prog = '<div class="progress-outer"><div class="progress-inner" style="width:100%"></div></div>' +
             '<div class="progress-label"><span>All 21 tables cleared 👑</span><span></span></div>';
         }
-        var sessions = (d.sessions || []).filter(function (s) { return String(s.counted) === 'yes'; }).map(function (s) {
-          var lost = Number(s.cash_out) < Number(s.buy_in);
-          return '<tr><td>' + fmtWhen(s.leave_ts) + '</td><td>' + esc(s.table || 'unknown') + '</td>' +
-            '<td class="num">' + fmtMoney(s.buy_in) + '</td>' +
-            '<td class="num ' + (lost ? 'neg' : 'pos') + '">' + fmtMoney(s.cash_out) + '</td>' +
-            '<td class="num">' + (s.remaining === '' || s.remaining == null ? '' : fmtMoney(s.remaining)) + '</td></tr>';
-        }).join('') || '<tr><td colspan="5" class="muted">No sessions yet.</td></tr>';
+        // Counted sessions grouped by cycle, newest cycle first. The API sends
+        // newest-first, so each cycle's rows get flipped back into play order.
+        var byCycle = {};
+        (d.sessions || []).filter(function (s) { return String(s.counted) === 'yes'; })
+          .forEach(function (s) { var c = Number(s.cycle) || 0; (byCycle[c] = byCycle[c] || []).push(s); });
+        var cycleNums = Object.keys(byCycle).map(Number).sort(function (a, b) { return b - a; });
+
+        var nextLine;
+        if (!p.nextTierMin) nextLine = 'All 21 tables cleared 👑';
+        else if (p.bankroll >= p.nextTierMin) nextLine = 'Next: take a seat at ' + esc(tiers[p.tierIdx + 1].tables.join(' / '));
+        else nextLine = 'Next: play ' + esc(p.tierTables[0]) + ' until you can cover ' + fmtMoney(p.nextTierMin);
+
+        var newest = cycleNums.length ? byCycle[cycleNums[0]][0] : null;
+        var newestBusted = !!newest && String(newest.reason || '') === 'out at the bottom';
+
+        var cycleCards = cycleNums.map(function (c) {
+          var rows = byCycle[c].slice().reverse().map(function (s) {
+            var lost = Number(s.cash_out) < Number(s.buy_in);
+            return '<tr><td>' + fmtWhen(s.leave_ts) + '</td><td>' + esc(s.table || 'unknown') + '</td>' +
+              '<td class="num">' + fmtMoney(s.buy_in) + '</td>' +
+              '<td class="num ' + (lost ? 'neg' : 'pos') + '">' + fmtMoney(s.cash_out) + '</td>' +
+              '<td class="num sm-hide">' + (s.remaining === '' || s.remaining == null ? '' : fmtMoney(s.remaining)) + '</td>' +
+              '<td class="muted">' + esc(s.reason || '') + '</td></tr>';
+          }).join('');
+          var current = c === cycleNums[0] && !newestBusted;
+          return '<div class="card"><h2>Cycle ' + c + (current ? ' <span class="tag">current</span>' : '') + '</h2>' +
+            (current ? '<div class="sub">' + nextLine + '</div>' : '') +
+            '<div style="overflow-x:auto"><table><thead><tr>' +
+            '<th>When</th><th>Table</th><th class="num">Bought in</th><th class="num">Cashed out</th><th class="num sm-hide">Bankroll</th><th>Result</th>' +
+            '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+        }).join('');
+        if (newestBusted) {
+          cycleCards = '<div class="card"><h2>Cycle ' + (cycleNums[0] + 1) + ' <span class="tag">current</span></h2>' +
+            '<div class="sub">Busted. Buy into Newbie Corner to start this cycle.</div></div>' + cycleCards;
+        }
+        if (!cycleCards) cycleCards = '<div class="card"><h2>Cycle 1</h2><div class="sub">' + nextLine + '</div><div class="muted">No sessions yet.</div></div>';
 
         var peakIdx = (p.peakIdx != null ? p.peakIdx : p.tierIdx);
         var peakName = (p.peakTables ? p.peakTables[0] : p.tierTables[0]);
@@ -1297,17 +1329,13 @@
           '<div><div class="pn">' + esc(p.name) + (p.atTable ? ' <span class="tag">playing</span>' : '') + '</div>' +
           '<div class="muted">Rank #' + (p.rank || '?') + ' · on ' + esc(p.tierTables.join(' · ')) + ' ' + tornLink + '</div></div>' + deleteBtn + '</div>' +
           '<div class="stat-row">' +
-          '<div class="stat"><div class="v green">' + (peakIdx + 1) + ' / 21</div><div class="k">Highest table reached</div></div>' +
-          '<div class="stat"><div class="v" style="font-size:15px">' + esc(peakName) + '</div><div class="k">Highest table</div></div>' +
-          '<div class="stat"><div class="v">' + (p.tierIdx + 1) + ' / 21</div><div class="k">Current table</div></div>' +
-          '<div class="stat"><div class="v" style="font-size:15px">' + esc(p.tierTables[0]) + '</div><div class="k">Now on</div></div>' +
+          '<div class="stat"><div class="v green">' + (peakIdx + 1) + ' / 21</div><div class="k">Highest table reached · ' + esc(peakName) + '</div></div>' +
+          '<div class="stat"><div class="v">' + (p.tierIdx + 1) + ' / 21</div><div class="k">Current table · ' + esc(p.tierTables[0]) + '</div></div>' +
           '<div class="stat"><div class="v">' + p.busts + '</div><div class="k">Busts</div></div>' +
-          '<div class="stat"><div class="v">' + p.wins + ' / ' + p.losses + '</div><div class="k">Win / Loss</div></div>' +
+          '<div class="stat"><div class="v">' + (p.cycles != null ? p.cycles : '—') + '</div><div class="k">Ladder cycles</div></div>' +
           '<div class="stat"><div class="v" style="color:var(--gold)">' + fmtMoney(p.bankroll) + '</div><div class="k">Eligible bankroll</div></div>' +
           '</div>' + prog + '</div>' +
-          '<div class="card"><h2>Recent sessions</h2><div style="overflow-x:auto"><table><thead><tr>' +
-          '<th>When</th><th>Table</th><th class="num">Bought in</th><th class="num">Cashed out</th><th class="num">Remaining</th>' +
-          '</tr></thead><tbody>' + sessions + '</tbody></table></div></div>';
+          cycleCards;
       }).catch(function (e) {
         el('view').innerHTML = '<span class="backlink" data-goto-route="players">← back</span><div class="card">' + esc(e.message) + '</div>';
       });
@@ -1317,7 +1345,12 @@
     // Hover mini-profile + click navigation (event delegation)
     // ---------------------------------------------------------------------------
     var hoverCard = el('hoverCard');
+    // Only show the hover card on devices with a real pointer (not touch), so it
+    // can't get stuck on phones where there's no mouse-out.
+    var canHover = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    function hideHover() { hoverCard.style.display = 'none'; }
     document.addEventListener('mouseover', function (e) {
+      if (!canHover) return;
       var a = e.target.closest && e.target.closest('[data-pid]');
       if (!a) return;
       var p = state.byId[a.getAttribute('data-pid')];
@@ -1325,9 +1358,9 @@
       hoverCard.innerHTML =
         '<div class="hh">' + avatar(p, 40) + '<div><div class="hn">' + esc(p.name) + '</div>' +
         '<div class="ht">' + esc(p.tierLabel) + ' · ' + esc(p.tierTables[0]) + '</div></div></div>' +
-        '<div class="hrow"><span>Bankroll</span><span>' + fmtMoney(p.bankroll) + '</span></div>' +
-        '<div class="hrow"><span>Peak</span><span>' + fmtMoney(p.peakBankroll) + '</span></div>' +
-        '<div class="hrow"><span>Win / Loss</span><span>' + p.wins + ' / ' + p.losses + '</span></div>' +
+        '<div class="hrow"><span>Eligible</span><span>' + fmtMoney(p.bankroll) + '</span></div>' +
+        '<div class="hrow"><span>Highest</span><span>' + ((p.peakIdx != null ? p.peakIdx : p.tierIdx) + 1) + ' / 21</span></div>' +
+        '<div class="hrow"><span>Cycles</span><span>' + (p.cycles != null ? p.cycles : '—') + '</span></div>' +
         '<div class="hrow"><span>Busts</span><span>' + p.busts + '</span></div>';
       hoverCard.style.display = 'block';
     });
@@ -1340,9 +1373,16 @@
     });
     document.addEventListener('mouseout', function (e) {
       var a = e.target.closest && e.target.closest('[data-pid]');
-      if (a) hoverCard.style.display = 'none';
+      if (a) hideHover();
     });
+    window.addEventListener('scroll', hideHover, true);
+    // A tap or a page change must always dismiss the card: on touch there is no
+    // mouse-out, and a re-render can put a player element under a still cursor,
+    // re-showing the card with nothing to mouse out of.
+    document.addEventListener('touchstart', hideHover, { passive: true });
+    window.addEventListener('hashchange', hideHover);
     document.addEventListener('click', function (e) {
+      hideHover(); // never leave the card lingering after a tap/click
       var pid = e.target.closest && e.target.closest('[data-pid]');
       if (pid) { location.hash = '#player/' + pid.getAttribute('data-pid'); return; }
       var goto = e.target.closest && e.target.closest('[data-goto]');
@@ -1354,7 +1394,7 @@
     // ---------------------------------------------------------------------------
     // Auth
     // ---------------------------------------------------------------------------
-    function openLogin() { closeNav(); el('loginModal').classList.add('open'); el('apiKey').focus(); }
+    function openLogin() { closeNav(); el('loginModal').classList.add('open'); el('apiKey').value = state.key || lsGet('pl_key'); el('apiKey').focus(); }
     function closeLogin() { el('loginModal').classList.remove('open'); el('loginError').textContent = ''; }
     function openHowItWorks() { closeNav(); el('howModal').classList.add('open'); }
     function closeHowItWorks() { el('howModal').classList.remove('open'); }
@@ -1425,9 +1465,20 @@
     // ---------------------------------------------------------------------------
     // Boot: public board loads for everyone; a saved key signs in silently.
     // ---------------------------------------------------------------------------
-    if (!CONFIGURED && el('demoBanner')) el('demoBanner').style.display = '';
     (state.key
-      ? apiSync(state.key).then(function (d) { applyMe(d.me); }).catch(function () { logout(); })
+      ? apiSync(state.key).then(function (d) { applyMe(d.me); }).catch(function (e) {
+        // Keep the saved key on a transient failure so you're not forced to
+        // sign in again; only forget it if the key itself is invalid.
+        if (/not valid|Incorrect Key|access is not high/i.test(e.message || '')) {
+          logout();
+        } else if (state.key) {
+          // Key still saved; show a signed-in nav using the last known id so you
+          // stay logged in and the next sync can retry.
+          el('joinBtn').style.display = 'none';
+          el('logoutBtn').style.display = '';
+          el('syncBtn').style.display = '';
+        }
+      })
       : Promise.resolve()
     ).then(route);
 
