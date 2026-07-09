@@ -1234,7 +1234,7 @@
       el('view').innerHTML =
         '<div class="card"><h2>Leaderboard</h2><div class="sub">The climb is about getting through all 21 tables. Ranked by highest table reached, then stake.</div>' +
         '<div style="overflow-x:auto"><table><thead><tr><th class="rk">#</th><th>Player</th><th class="num">Table</th><th class="sm-hide">Now on</th>' +
-        '<th class="num sm-hide">Eligible</th><th class="num">Busts</th>' +
+        '<th class="num sm-hide">Bankroll</th><th class="num">Busts</th>' +
         '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
     }
 
@@ -1283,12 +1283,21 @@
       el('view').innerHTML = '<div class="card muted">Loading profile…</div>';
       apiPlayer(id).then(function (d) {
         var p = d.player, tiers = d.tiers;
+
+        // The one line that says what this player does next. Used by both the
+        // progress bar and the current cycle card.
+        var nextLine;
+        if (p.paused) nextLine = 'Ladder paused. Games played now do not count.';
+        else if (!p.nextTierMin) nextLine = 'All 21 tables cleared 👑';
+        else if (p.bankroll >= p.nextTierMin) nextLine = 'Next: take a seat at ' + esc(tiers[p.tierIdx + 1].tables.join(' / '));
+        else nextLine = 'Next: win ' + fmtMoney(p.nextTierMin - p.bankroll) + ' more to unlock ' + esc(tiers[p.tierIdx + 1].tables[0]);
+
         var prog = '';
         if (p.nextTierMin) {
           // Progress through the 21 tables.
           var pct = Math.max(0, Math.min(100, (p.tierIdx / (tiers.length - 1)) * 100));
           prog = '<div class="progress-outer"><div class="progress-inner" style="width:' + pct + '%"></div></div>' +
-            '<div class="progress-label"><span>Table ' + (p.tierIdx + 1) + ' of ' + tiers.length + '</span><span>need ' + fmtMoney(p.nextTierMin) + ' to move up</span></div>';
+            '<div class="progress-label"><span>Table ' + (p.tierIdx + 1) + ' of ' + tiers.length + '</span><span>' + nextLine + '</span></div>';
         } else {
           prog = '<div class="progress-outer"><div class="progress-inner" style="width:100%"></div></div>' +
             '<div class="progress-label"><span>All 21 tables cleared 👑</span><span></span></div>';
@@ -1299,12 +1308,6 @@
         (d.sessions || []).filter(function (s) { return String(s.counted) === 'yes'; })
           .forEach(function (s) { var c = Number(s.cycle) || 0; (byCycle[c] = byCycle[c] || []).push(s); });
         var cycleNums = Object.keys(byCycle).map(Number).sort(function (a, b) { return b - a; });
-
-        var nextLine;
-        if (p.paused) nextLine = 'Ladder paused. Games played now do not count.';
-        else if (!p.nextTierMin) nextLine = 'All 21 tables cleared 👑';
-        else if (p.bankroll >= p.nextTierMin) nextLine = 'Next: take a seat at ' + esc(tiers[p.tierIdx + 1].tables.join(' / '));
-        else nextLine = 'Next: play ' + esc(p.tierTables[0]) + ' until you can cover ' + fmtMoney(p.nextTierMin);
 
         var newest = cycleNums.length ? byCycle[cycleNums[0]][0] : null;
         var newestBusted = !!newest && String(newest.reason || '') === 'out at the bottom';
@@ -1371,7 +1374,7 @@
           '<div class="stat"><div class="v">' + (p.tierIdx + 1) + ' / 21</div><div class="k">Current table · ' + esc(p.tierTables[0]) + '</div></div>' +
           '<div class="stat"><div class="v">' + p.busts + '</div><div class="k">Busts</div></div>' +
           '<div class="stat"><div class="v">' + (p.cycles != null ? p.cycles : '—') + '</div><div class="k">Ladder cycles</div></div>' +
-          '<div class="stat"><div class="v" style="color:var(--gold)">' + fmtMoney(p.bankroll) + '</div><div class="k">Eligible bankroll</div></div>' +
+          '<div class="stat"><div class="v" style="color:var(--gold)">' + fmtMoney(p.bankroll) + '</div><div class="k">Bankroll</div></div>' +
           '</div>' + prog + '</div>' +
           cycleCards;
       }).catch(function (e) {
@@ -1396,7 +1399,7 @@
       hoverCard.innerHTML =
         '<div class="hh">' + avatar(p, 40) + '<div><div class="hn">' + esc(p.name) + '</div>' +
         '<div class="ht">' + esc(p.tierLabel) + ' · ' + esc(p.tierTables[0]) + '</div></div></div>' +
-        '<div class="hrow"><span>Eligible</span><span>' + fmtMoney(p.bankroll) + '</span></div>' +
+        '<div class="hrow"><span>Bankroll</span><span>' + fmtMoney(p.bankroll) + '</span></div>' +
         '<div class="hrow"><span>Highest</span><span>' + ((p.peakIdx != null ? p.peakIdx : p.tierIdx) + 1) + ' / 21</span></div>' +
         '<div class="hrow"><span>Cycles</span><span>' + (p.cycles != null ? p.cycles : '—') + '</span></div>' +
         '<div class="hrow"><span>Busts</span><span>' + p.busts + '</span></div>';
@@ -1443,25 +1446,35 @@
       el(id).addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
     });
 
-    // After a sync: congratulate a climb since the last sync and spell out the
-    // move-up choice, so nobody has to work out from the numbers whether they
-    // are ready for the next table.
+    // After a sync: congratulate a climb and spell out the move-up choice.
+    // What has already been announced is remembered in localStorage, so a page
+    // refresh never re-shows the same news. Nothing is announced mid-session:
+    // the bankroll is on the table and settles at the cash-out.
     function maybeCongrats(me, tiers) {
-      var prev = state.meTierIdx;
-      state.meTierIdx = me.tierIdx;
       if (me.paused) return;
+      var seen;
+      try { seen = JSON.parse(lsGet('pl_climb') || '{}'); } catch (e) { seen = {}; }
+      var ready = !me.atTable && me.nextTierMin && me.bankroll >= me.nextTierMin;
+      var climbed = seen.t != null && me.tierIdx > seen.t;
+      var readyNews = ready && seen.r !== me.tierIdx + 1;
+
       var html = '';
-      if (prev != null && me.tierIdx > prev) {
+      if (climbed) {
         html += '<p>🎉 Congrats, you climbed to <b>' + esc(me.tierTables[0]) + '</b>, table ' +
           (me.tierIdx + 1) + ' of 21.</p>';
         if (!me.nextTierMin) html += '<p>👑 That is the top of the ladder.</p>';
       }
-      if (me.nextTierMin && me.bankroll >= me.nextTierMin) {
+      if (readyNews) {
         html += '<p>With a bankroll of <b>' + fmtMoney(me.bankroll) + '</b> you are ready to move up. ' +
           'Take a seat at <b>' + esc(tiers[me.tierIdx + 1].tables[0]) + '</b> (minimum buy-in ' +
           fmtMoney(tiers[me.tierIdx + 1].minBuy) + ') and the climb counts, or stay at <b>' +
           esc(me.tierTables[0]) + '</b> and grow your bankroll first.</p>';
       }
+
+      seen.t = me.tierIdx;
+      if (ready) seen.r = me.tierIdx + 1;
+      else if (!me.atTable) seen.r = -1; // eligibility gone; announce it again when it returns
+      lsSet('pl_climb', JSON.stringify(seen));
       if (html) openClimb(html);
     }
 
@@ -1514,6 +1527,9 @@
 
     function applyMe(me) {
       state.meId = me.id;
+      // Cache the identity so the next page load opens signed in immediately,
+      // instead of depending on the boot sync succeeding first.
+      lsSet('pl_me', JSON.stringify({ id: me.id, name: me.name }));
       el('joinBtn').style.display = 'none';
       el('logoutBtn').style.display = '';
       el('syncBtn').style.display = '';
@@ -1538,23 +1554,27 @@
     }
 
     function logout() {
-      lsDel('pl_key'); state.key = ''; state.meId = null; state.meTierIdx = null;
+      lsDel('pl_key'); lsDel('pl_me'); lsDel('pl_climb');
+      state.key = ''; state.meId = null;
       el('joinBtn').style.display = ''; el('logoutBtn').style.display = 'none';
       el('syncBtn').style.display = 'none'; el('youLink').style.display = 'none';
       state.tiers = null; route();
     }
 
     // ---------------------------------------------------------------------------
-    // Boot: public board loads for everyone; a saved key signs in silently.
+    // Boot: public board loads for everyone; a saved key signs in instantly
+    // using the cached identity, then a background sync refreshes it. Only a
+    // confirmed invalid key logs you out; transient failures never do.
     // ---------------------------------------------------------------------------
+    var cachedMe = null;
+    try { cachedMe = JSON.parse(lsGet('pl_me') || 'null'); } catch (e) { }
+    if (state.key && cachedMe) applyMe(cachedMe);
     (state.key
       ? apiSync(state.key).then(function (d) { applyMe(d.me); maybeCongrats(d.me, d.tiers); }).catch(function (e) {
-        // Keep the saved key on a transient failure so you're not forced to
-        // sign in again; only forget it if the key itself is invalid.
         if (/not valid|Incorrect Key|access is not high/i.test(e.message || '')) {
           logout();
-        } else if (state.key) {
-          // Key still saved; show a signed-in nav using the last known id so you
+        } else if (state.key && !cachedMe) {
+          // Key saved but no cached identity yet: show a signed-in nav so you
           // stay logged in and the next sync can retry.
           el('joinBtn').style.display = 'none';
           el('logoutBtn').style.display = '';
