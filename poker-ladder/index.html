@@ -708,6 +708,15 @@
       margin-top: 10px;
     }
 
+    #climbBody p {
+      font-size: 15px;
+      margin-bottom: 10px;
+    }
+
+    #climbBody b {
+      color: var(--gold);
+    }
+
     .hint a {
       color: var(--gold);
     }
@@ -983,6 +992,19 @@
     </div>
   </div>
 
+  <!-- CLIMB POPUP (shown after a sync when there is news about your climb) -->
+  <div class="modal-back" id="climbModal">
+    <div class="card modal">
+      <div class="head-flex" style="margin-bottom:10px">
+        <h2 style="margin:0"><span style="color:var(--red)">♠</span> Your climb</h2>
+        <div class="spacer"></div>
+        <span class="close-x" onclick="closeClimb()">✕</span>
+      </div>
+      <div id="climbBody"></div>
+      <button class="btn" onclick="closeClimb()">Got it</button>
+    </div>
+  </div>
+
   <!-- LOGIN MODAL -->
   <div class="modal-back" id="loginModal">
     <div class="card modal">
@@ -1034,6 +1056,14 @@
     function apiDelete(key) {
       if (!CONFIGURED) return notConfigured();
       return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'delete', key: key }) }).then(parseApi);
+    }
+    function apiPause(key) {
+      if (!CONFIGURED) return notConfigured();
+      return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'pause', key: key }) }).then(parseApi);
+    }
+    function apiResume(key) {
+      if (!CONFIGURED) return notConfigured();
+      return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'resume', key: key }) }).then(parseApi);
     }
     function apiLeaderboard() {
       if (!CONFIGURED) return notConfigured();
@@ -1195,7 +1225,7 @@
       var rows = state.players.map(function (p) {
         return '<tr class="rowlink rank-' + p.rank + '" data-goto="' + esc(p.id) + '">' +
           '<td class="rk">' + p.rank + '</td>' +
-          '<td><span class="cellname">' + avatar(p, 26) + '<span class="lbname">' + esc(p.name) + '</span>' + (p.atTable ? ' <span class="tag">playing</span>' : '') + '</span></td>' +
+          '<td><span class="cellname">' + avatar(p, 26) + '<span class="lbname">' + esc(p.name) + '</span>' + (p.paused ? ' <span class="tag">paused</span>' : (p.atTable ? ' <span class="tag">playing</span>' : '')) + '</span></td>' +
           '<td class="num"><b>' + (p.tierIdx + 1) + '</b> <span class="muted">/ 21</span></td>' +
           '<td class="sm-hide">' + esc(p.tierTables[0]) + '</td>' +
           '<td class="num muted sm-hide">' + fmtMoney(p.bankroll) + '</td>' +
@@ -1271,7 +1301,8 @@
         var cycleNums = Object.keys(byCycle).map(Number).sort(function (a, b) { return b - a; });
 
         var nextLine;
-        if (!p.nextTierMin) nextLine = 'All 21 tables cleared 👑';
+        if (p.paused) nextLine = 'Ladder paused. Games played now do not count.';
+        else if (!p.nextTierMin) nextLine = 'All 21 tables cleared 👑';
         else if (p.bankroll >= p.nextTierMin) nextLine = 'Next: take a seat at ' + esc(tiers[p.tierIdx + 1].tables.join(' / '));
         else nextLine = 'Next: play ' + esc(p.tierTables[0]) + ' until you can cover ' + fmtMoney(p.nextTierMin);
 
@@ -1325,11 +1356,15 @@
         var peakName = (p.peakTables ? p.peakTables[0] : p.tierTables[0]);
         var tornLink = p.profileUrl ? '<a href="' + esc(p.profileUrl) + '" target="_blank" rel="noopener" class="tag">Torn profile ↗</a>' : '';
         var isMe = p.id === state.meId;
-        var deleteBtn = isMe ? '<div class="spacer"></div><button class="btn danger" onclick="doDeleteData()">Delete my data</button>' : '';
+        var deleteBtn = isMe ? '<div class="spacer"></div>' +
+          (p.paused
+            ? '<button class="btn" onclick="doResume()" style="margin-right:8px">Resume ladder</button>'
+            : '<button class="btn secondary" onclick="doPause()" style="margin-right:8px">Pause ladder</button>') +
+          '<button class="btn danger" onclick="doDeleteData()">Delete my data</button>' : '';
         el('view').innerHTML =
           '<span class="backlink" data-goto-route="leaderboard">← back to leaderboard</span>' +
           '<div class="card"><div class="phead">' + avatar(p, 64) +
-          '<div><div class="pn">' + esc(p.name) + (p.atTable ? ' <span class="tag">playing</span>' : '') + '</div>' +
+          '<div><div class="pn">' + esc(p.name) + (p.paused ? ' <span class="tag">paused</span>' : (p.atTable ? ' <span class="tag">playing</span>' : '')) + '</div>' +
           '<div class="muted">Rank #' + (p.rank || '?') + ' · on ' + esc(p.tierTables.join(' · ')) + ' ' + tornLink + '</div></div>' + deleteBtn + '</div>' +
           '<div class="stat-row">' +
           '<div class="stat"><div class="v green">' + (peakIdx + 1) + ' / 21</div><div class="k">Highest table reached · ' + esc(peakName) + '</div></div>' +
@@ -1401,10 +1436,52 @@
     function closeLogin() { el('loginModal').classList.remove('open'); el('loginError').textContent = ''; }
     function openHowItWorks() { closeNav(); el('howModal').classList.add('open'); }
     function closeHowItWorks() { el('howModal').classList.remove('open'); }
-    // Close either modal when its dark backdrop is clicked.
-    ['loginModal', 'howModal'].forEach(function (id) {
+    function openClimb(html) { el('climbBody').innerHTML = html; el('climbModal').classList.add('open'); }
+    function closeClimb() { el('climbModal').classList.remove('open'); }
+    // Close any modal when its dark backdrop is clicked.
+    ['loginModal', 'howModal', 'climbModal'].forEach(function (id) {
       el(id).addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
     });
+
+    // After a sync: congratulate a climb since the last sync and spell out the
+    // move-up choice, so nobody has to work out from the numbers whether they
+    // are ready for the next table.
+    function maybeCongrats(me, tiers) {
+      var prev = state.meTierIdx;
+      state.meTierIdx = me.tierIdx;
+      if (me.paused) return;
+      var html = '';
+      if (prev != null && me.tierIdx > prev) {
+        html += '<p>🎉 Congrats, you climbed to <b>' + esc(me.tierTables[0]) + '</b>, table ' +
+          (me.tierIdx + 1) + ' of 21.</p>';
+        if (!me.nextTierMin) html += '<p>👑 That is the top of the ladder.</p>';
+      }
+      if (me.nextTierMin && me.bankroll >= me.nextTierMin) {
+        html += '<p>With a bankroll of <b>' + fmtMoney(me.bankroll) + '</b> you are ready to move up. ' +
+          'Take a seat at <b>' + esc(tiers[me.tierIdx + 1].tables[0]) + '</b> (minimum buy-in ' +
+          fmtMoney(tiers[me.tierIdx + 1].minBuy) + ') and the climb counts, or stay at <b>' +
+          esc(me.tierTables[0]) + '</b> and grow your bankroll first.</p>';
+      }
+      if (html) openClimb(html);
+    }
+
+    function doPause() {
+      if (!state.key) return;
+      apiPause(state.key).then(function (d) {
+        applyMe(d.me);
+        state.tiers = null;
+        return ensureBoard();
+      }).then(route).catch(function (e) { alert(e.message); });
+    }
+
+    function doResume() {
+      if (!state.key) return;
+      apiResume(state.key).then(function (d) {
+        applyMe(d.me);
+        state.tiers = null;
+        return ensureBoard();
+      }).then(route).catch(function (e) { alert(e.message); });
+    }
 
     function doDeleteData() {
       if (!state.key) return;
@@ -1424,6 +1501,7 @@
         lsSet('pl_key', state.key);
         applyMe(d.me);
         closeLogin();
+        maybeCongrats(d.me, d.tiers);
         // Fresh sync may have moved players; reload the board then re-render.
         state.tiers = null;
         return ensureBoard();
@@ -1451,6 +1529,7 @@
       b.disabled = true; b.textContent = 'Syncing…';
       apiSync(state.key).then(function (d) {
         applyMe(d.me);
+        maybeCongrats(d.me, d.tiers);
         state.tiers = null;
         return ensureBoard();
       }).then(route).catch(function (e) {
@@ -1459,7 +1538,7 @@
     }
 
     function logout() {
-      lsDel('pl_key'); state.key = ''; state.meId = null;
+      lsDel('pl_key'); state.key = ''; state.meId = null; state.meTierIdx = null;
       el('joinBtn').style.display = ''; el('logoutBtn').style.display = 'none';
       el('syncBtn').style.display = 'none'; el('youLink').style.display = 'none';
       state.tiers = null; route();
@@ -1469,7 +1548,7 @@
     // Boot: public board loads for everyone; a saved key signs in silently.
     // ---------------------------------------------------------------------------
     (state.key
-      ? apiSync(state.key).then(function (d) { applyMe(d.me); }).catch(function (e) {
+      ? apiSync(state.key).then(function (d) { applyMe(d.me); maybeCongrats(d.me, d.tiers); }).catch(function (e) {
         // Keep the saved key on a transient failure so you're not forced to
         // sign in again; only forget it if the key itself is invalid.
         if (/not valid|Incorrect Key|access is not high/i.test(e.message || '')) {
