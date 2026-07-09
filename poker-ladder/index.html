@@ -1172,38 +1172,20 @@
         '</div></div>';
     }
 
-    // Key stats panel shown on the right of the ladder page: your climb first
-    // (with the one thing to do next), then the state of the race.
+    // Key stats panel shown on the right of the ladder page. Public only:
+    // personal stats live on the profile page.
     function ladderStats(players, tiers) {
       var pk = function (p) { return p.peakIdx != null ? p.peakIdx : p.tierIdx; };
       var leader = players.slice().sort(function (a, b) { return pk(b) - pk(a) || b.bankroll - a.bankroll; })[0];
       var highest = players.reduce(function (m, p) { return Math.max(m, pk(p)); }, 0);
       var atTables = players.filter(function (p) { return p.atTable; }).length;
-      var html = '';
 
-      var me = state.meId ? players.filter(function (p) { return p.id === state.meId; })[0] : null;
-      if (me) {
-        var next;
-        if (!me.nextTierMin) next = 'Top of the ladder 👑';
-        else if (me.bankroll >= me.nextTierMin) next = 'Take a seat at ' + esc(tiers[me.tierIdx + 1].tables[0]);
-        else next = 'Win ' + fmtMoney(me.nextTierMin - me.bankroll) + ' more at ' + esc(me.tierTables[0]);
-        html += '<div class="statbox you"><h3>Your climb</h3>' +
-          hero((me.tierIdx + 1) + '<span> / 21</span>', 'You are on ' + esc(me.tierTables[0])) +
-          '<div class="statrow"><span>Next step</span><span class="muted">' + next + '</span></div>' +
-          row('Bankroll', fmtMoney(me.bankroll)) +
-          row('Rank', '#' + (me.rank || '?')) +
-          row('Cycle', me.cycles || 1) +
-          row('Busts', me.busts) +
-          '</div>';
-      }
-
-      html += '<div class="statbox"><h3>The race</h3>' +
+      return '<div class="statbox"><h3>The race</h3>' +
         hero((highest + 1) + '<span> / 21</span>', 'Highest table anyone has reached') +
         row('Climbers', players.length) +
         row('At the tables now', atTables) +
         (leader ? row('Leading', esc(leader.name)) : '') +
         '</div>';
-      return html;
 
       function row(k, v) { return '<div class="statrow"><span>' + k + '</span><b>' + v + '</b></div>'; }
       function hero(big, cap) { return '<div class="stathero"><div class="big">' + big + '</div><div class="cap">' + cap + '</div></div>'; }
@@ -1296,7 +1278,14 @@
         var newest = cycleNums.length ? byCycle[cycleNums[0]][0] : null;
         var newestBusted = !!newest && String(newest.reason || '') === 'out at the bottom';
 
-        var cycleCards = cycleNums.map(function (c) {
+        // A washout is a cycle that busted without ever leaving Newbie Corner.
+        // Runs of them collapse into one line so the profile isn't a wall of
+        // $0 cash-outs.
+        var isWashout = function (c) {
+          return String(byCycle[c][0].reason || '') === 'out at the bottom' &&
+            byCycle[c].every(function (s) { return Number(s.tier_idx) === 0; });
+        };
+        var cycleCard = function (c) {
           var rows = byCycle[c].slice().reverse().map(function (s) {
             var lost = Number(s.cash_out) < Number(s.buy_in);
             return '<tr><td>' + fmtWhen(s.leave_ts) + '</td><td>' + esc(s.table || 'unknown') + '</td>' +
@@ -1311,7 +1300,21 @@
             '<div style="overflow-x:auto"><table><thead><tr>' +
             '<th>When</th><th>Table</th><th class="num">Bought in</th><th class="num">Cashed out</th><th class="num sm-hide">Bankroll</th><th>Result</th>' +
             '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
-        }).join('');
+        };
+        var cards = [];
+        for (var ci = 0; ci < cycleNums.length;) {
+          var cj = ci;
+          while (cj < cycleNums.length && isWashout(cycleNums[cj])) cj++;
+          if (cj - ci >= 2) {
+            cards.push('<div class="card"><h2>Cycles ' + cycleNums[cj - 1] + '-' + cycleNums[ci] + '</h2>' +
+              '<div class="sub">' + (cj - ci) + ' cycles busted without leaving Newbie Corner.</div></div>');
+            ci = cj;
+          } else {
+            cards.push(cycleCard(cycleNums[ci]));
+            ci++;
+          }
+        }
+        var cycleCards = cards.join('');
         if (newestBusted) {
           cycleCards = '<div class="card"><h2>Cycle ' + (cycleNums[0] + 1) + ' <span class="tag">current</span></h2>' +
             '<div class="sub">Busted. Buy into Newbie Corner to start this cycle.</div></div>' + cycleCards;
