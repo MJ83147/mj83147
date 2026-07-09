@@ -56,9 +56,28 @@
     .nav {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       margin-bottom: 18px;
-      flex-wrap: wrap;
+    }
+
+    .navmenu {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .navtoggle {
+      display: none;
+      background: var(--chip);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-size: 20px;
+      line-height: 1;
+      padding: 6px 12px;
+      cursor: pointer;
+      margin-left: auto;
     }
 
     .brand {
@@ -68,12 +87,14 @@
       color: var(--gold);
       text-transform: uppercase;
       margin-right: 8px;
+      white-space: nowrap;
     }
 
     .brand .suit {
       color: var(--red);
     }
 
+    /* Mobile: collapse the nav into a dropdown behind the ☰ button. */
     .navlink {
       padding: 7px 14px;
       border-radius: 999px;
@@ -753,6 +774,123 @@
       vertical-align: top;
       color: var(--text);
     }
+
+    /* ---- Mobile (kept last so it overrides the base rules above) ---- */
+    @media (max-width: 760px) {
+      .nav {
+        flex-wrap: wrap;
+      }
+
+      .navtoggle {
+        display: block;
+      }
+
+      .navmenu {
+        display: none;
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        gap: 4px;
+        margin-top: 8px;
+      }
+
+      .navmenu.open {
+        display: flex;
+      }
+
+      .navmenu .spacer {
+        display: none;
+      }
+
+      .navmenu .navlink {
+        padding: 12px 14px;
+        font-size: 16px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+      }
+
+      .navmenu .btn {
+        text-align: center;
+        padding: 12px 14px;
+        font-size: 16px;
+      }
+
+      .wrap {
+        padding: 16px 14px 20px;
+      }
+
+      .card {
+        padding: 16px;
+      }
+
+      h2 {
+        font-size: 20px;
+      }
+
+      .ladder {
+        padding: 4px 0;
+      }
+
+      .rung {
+        grid-template-columns: 24px 1fr;
+        gap: 8px;
+      }
+
+      .rnum {
+        font-size: 15px;
+        padding-top: 8px;
+      }
+
+      .rbody {
+        padding: 6px 10px 0;
+      }
+
+      .ladder::before {
+        left: 32px;
+      }
+
+      .rsub {
+        margin-left: 0;
+        width: 100%;
+        font-size: 11px;
+      }
+
+      /* Drop secondary table columns so the leaderboard fits without scrolling. */
+      .sm-hide {
+        display: none;
+      }
+
+      table {
+        font-size: 13px;
+      }
+
+      th,
+      td {
+        padding: 8px 4px;
+      }
+
+      th {
+        font-size: 10px;
+      }
+
+      .cellname {
+        gap: 6px;
+      }
+
+      .tag {
+        font-size: 9px;
+        padding: 1px 5px;
+      }
+
+      .lbname {
+        display: inline-block;
+        max-width: 30vw;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: middle;
+      }
+    }
   </style>
 </head>
 
@@ -760,15 +898,18 @@
   <div class="wrap">
     <div class="nav">
       <a class="brand" href="#ladder"><span class="suit">♠</span> Poker Ladder</a>
-      <a class="navlink" data-route="ladder" href="#ladder">Ladder</a>
-      <a class="navlink" data-route="leaderboard" href="#leaderboard">Leaderboard</a>
-      <a class="navlink" data-route="players" href="#players">Players</a>
-      <a class="navlink" onclick="openHowItWorks()">How it works</a>
-      <div class="spacer"></div>
-      <a id="youLink" class="navlink" style="display:none">Your profile</a>
-      <button class="btn secondary" id="syncBtn" style="display:none" onclick="doSync()">Sync</button>
-      <button class="btn" id="joinBtn" onclick="openLogin()">Sign up / Sign in</button>
-      <button class="btn secondary" id="logoutBtn" style="display:none" onclick="logout()">Log out</button>
+      <button class="navtoggle" id="navtoggle" onclick="toggleNav()" aria-label="Menu">☰</button>
+      <div class="navmenu" id="navmenu">
+        <a class="navlink" data-route="ladder" href="#ladder">Ladder</a>
+        <a class="navlink" data-route="leaderboard" href="#leaderboard">Leaderboard</a>
+        <a class="navlink" data-route="players" href="#players">Players</a>
+        <a class="navlink" onclick="openHowItWorks()">How it works</a>
+        <div class="spacer"></div>
+        <a id="youLink" class="navlink" style="display:none">Your profile</a>
+        <button class="btn secondary" id="syncBtn" style="display:none" onclick="doSync()">Sync</button>
+        <button class="btn" id="joinBtn" onclick="openLogin()">Sign up / Sign in</button>
+        <button class="btn secondary" id="logoutBtn" style="display:none" onclick="logout()">Log out</button>
+      </div>
     </div>
 
 
@@ -776,8 +917,7 @@
     <div id="view"></div>
 
     <footer style="text-align:center; color:var(--dim); font-size:12px">
-      <div>Start at Newbie Corner, climb to Oligarch, using only money won at the tables.</div>
-      <div style="margin-top:8px">
+      <div>Start at Newbie Corner, climb to Oligarch, using only money won at the tables.
         <a class="flink" data-goto-route="terms">Terms &amp; Conditions</a> ·
         <a class="flink" onclick="openHowItWorks()">How it works</a> ·
         <span>Data via the official Torn API</span>
@@ -946,7 +1086,11 @@
     // ---------------------------------------------------------------------------
     // Router
     // ---------------------------------------------------------------------------
+    function toggleNav() { el('navmenu').classList.toggle('open'); }
+    function closeNav() { el('navmenu').classList.remove('open'); }
+
     function route() {
+      closeNav(); // collapse the mobile menu on navigation
       var h = location.hash.replace(/^#/, '') || 'ladder';
       var parts = h.split('/');
       var name = parts[0];
@@ -1037,16 +1181,16 @@
       var rows = state.players.map(function (p) {
         return '<tr class="rowlink rank-' + p.rank + '" data-goto="' + esc(p.id) + '">' +
           '<td class="rk">' + p.rank + '</td>' +
-          '<td><span class="cellname">' + avatar(p, 26) + esc(p.name) + (p.atTable ? ' <span class="tag">playing</span>' : '') + '</span></td>' +
+          '<td><span class="cellname">' + avatar(p, 26) + '<span class="lbname">' + esc(p.name) + '</span>' + (p.atTable ? ' <span class="tag">playing</span>' : '') + '</span></td>' +
           '<td class="num"><b>' + (p.tierIdx + 1) + '</b> <span class="muted">/ 21</span></td>' +
-          '<td>' + esc(p.tierTables[0]) + '</td>' +
-          '<td class="num muted">' + fmtMoney(p.bankroll) + '</td>' +
+          '<td class="sm-hide">' + esc(p.tierTables[0]) + '</td>' +
+          '<td class="num muted sm-hide">' + fmtMoney(p.bankroll) + '</td>' +
           '<td class="num">' + p.busts + '</td></tr>';
       }).join('') || '<tr><td colspan="6" class="muted">Nobody on the ladder yet, be the first.</td></tr>';
       el('view').innerHTML =
         '<div class="card"><h2>Leaderboard</h2><div class="sub">The climb is about getting through all 21 tables. Ranked by highest table reached, then stake.</div>' +
-        '<div style="overflow-x:auto"><table><thead><tr><th class="rk">#</th><th>Player</th><th class="num">Table</th><th>Now on</th>' +
-        '<th class="num">Stake</th><th class="num">Busts</th>' +
+        '<div style="overflow-x:auto"><table><thead><tr><th class="rk">#</th><th>Player</th><th class="num">Table</th><th class="sm-hide">Now on</th>' +
+        '<th class="num sm-hide">Stake</th><th class="num">Busts</th>' +
         '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
     }
 
@@ -1177,9 +1321,9 @@
     // ---------------------------------------------------------------------------
     // Auth
     // ---------------------------------------------------------------------------
-    function openLogin() { el('loginModal').classList.add('open'); el('apiKey').focus(); }
+    function openLogin() { closeNav(); el('loginModal').classList.add('open'); el('apiKey').focus(); }
     function closeLogin() { el('loginModal').classList.remove('open'); el('loginError').textContent = ''; }
-    function openHowItWorks() { el('howModal').classList.add('open'); }
+    function openHowItWorks() { closeNav(); el('howModal').classList.add('open'); }
     function closeHowItWorks() { el('howModal').classList.remove('open'); }
     // Close either modal when its dark backdrop is clicked.
     ['loginModal', 'howModal'].forEach(function (id) {
