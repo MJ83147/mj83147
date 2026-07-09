@@ -37,6 +37,33 @@
       text-decoration: none;
     }
 
+    /* Themed scrollbars to replace the ugly native ones. */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #3a4a33 transparent;
+    }
+
+    ::-webkit-scrollbar {
+      width: 9px;
+      height: 9px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #3a4a33;
+      border-radius: 999px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #55694a;
+      background-clip: content-box;
+    }
+
     .wrap {
       max-width: 1440px;
       margin: 0 auto;
@@ -938,13 +965,12 @@
       </div>
       <ol class="howlist">
         <li>The goal is to get through <b>all 21 tables</b>, from Newbie Corner to Oligarch. Everyone starts at the
-          bottom table with <b>whatever they buy in with</b> — there is no handed-out stake.</li>
+          bottom table. </li>
         <li>Play Torn poker normally. When you sign in, the app reads only your poker <b>join</b> and <b>leave</b> log
           entries and tracks how far you have climbed.</li>
         <li>You move up <b>one table at a time</b>. To advance you must have <b>won enough at your table to cover the
-            next table's minimum buy-in</b>, then go sit at it. You can't skip tables, and winning a huge pot at a low
-          table doesn't jump you ahead.</li>
-        <li>You can only buy in with money you've <b>won at the tables</b> — no topping up from outside. A bigger stake
+            next table's minimum buy-in</b>, then go sit at it.</li>
+        <li>You can only buy in with money you've <b>won at the tables</b> Winning a big stake at an earlier table
           just means you can rebuy after a bad hand, as long as you can still cover the buy-in.</li>
         <li>If you leave a table with less than its minimum, you <b>drop down</b> to the highest table your remaining
           money can still buy into (all the way to Newbie Corner if you've lost it) and it counts as a bust. First to
@@ -974,8 +1000,8 @@
       </p>
       <p class="hint">
         With <b>logIds=194</b> the key reads your <b>public Torn profile</b> (name,
-        avatar) and your poker table
-        <b>join/leave</b> log. 
+        avatar, level and the other public profile fields) and your poker table
+        <b>join/leave</b> log. It can't touch your money, items, mail or settings.
         Your key is never stored on our server; it stays in this browser and is
         sent only when you sign in.
       </p>
@@ -1146,9 +1172,10 @@
 
     // Key stats panel shown on the right of the ladder page.
     function ladderStats(players, tiers) {
+      var pk = function (p) { return p.peakIdx != null ? p.peakIdx : p.tierIdx; };
       var count = players.length;
-      var leader = players.slice().sort(function (a, b) { return b.tierIdx - a.tierIdx || b.bankroll - a.bankroll; })[0];
-      var highest = players.reduce(function (m, p) { return Math.max(m, p.tierIdx); }, 0);
+      var leader = players.slice().sort(function (a, b) { return pk(b) - pk(a) || b.bankroll - a.bankroll; })[0];
+      var highest = players.reduce(function (m, p) { return Math.max(m, pk(p)); }, 0);
       var busts = players.reduce(function (s, p) { return s + (p.busts || 0); }, 0);
       var atTables = players.filter(function (p) { return p.atTable; }).length;
 
@@ -1165,10 +1192,11 @@
         var next = me.nextTierMin ? 'cover ' + fmtMoney(me.nextTierMin) : 'top of the ladder';
         html += '<div class="statbox you">' +
           hero((me.tierIdx + 1) + '<span> / 21</span>', 'You are on ' + esc(me.tierTables[0])) +
+          '<div class="statrow"><span>Highest reached</span><b>' + (pk(me) + 1) + ' / 21</b></div>' +
           '<div class="statrow"><span>To move up</span><span class="muted">' + next + '</span></div>' +
           row('Rank', '#' + (me.rank || '?')) +
           row('Busts', me.busts) +
-          row('Stake', fmtMoney(me.bankroll)) +
+          row('Eligible bankroll', fmtMoney(me.bankroll)) +
           '</div>';
       }
       return html;
@@ -1190,7 +1218,7 @@
       el('view').innerHTML =
         '<div class="card"><h2>Leaderboard</h2><div class="sub">The climb is about getting through all 21 tables. Ranked by highest table reached, then stake.</div>' +
         '<div style="overflow-x:auto"><table><thead><tr><th class="rk">#</th><th>Player</th><th class="num">Table</th><th class="sm-hide">Now on</th>' +
-        '<th class="num sm-hide">Stake</th><th class="num">Busts</th>' +
+        '<th class="num sm-hide">Eligible</th><th class="num">Busts</th>' +
         '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
     }
 
@@ -1251,12 +1279,15 @@
             '<div class="progress-label"><span>All 21 tables cleared 👑</span><span></span></div>';
         }
         var sessions = (d.sessions || []).filter(function (s) { return String(s.counted) === 'yes'; }).map(function (s) {
-          var profit = Number(s.profit) || 0;
+          var lost = Number(s.cash_out) < Number(s.buy_in);
           return '<tr><td>' + fmtWhen(s.leave_ts) + '</td><td>' + esc(s.table || 'unknown') + '</td>' +
-            '<td class="num">' + fmtMoney(s.buy_in) + '</td><td class="num">' + fmtMoney(s.cash_out) + '</td>' +
-            '<td class="num ' + (profit >= 0 ? 'pos' : 'neg') + '">' + fmtMoney(profit) + '</td></tr>';
+            '<td class="num">' + fmtMoney(s.buy_in) + '</td>' +
+            '<td class="num ' + (lost ? 'neg' : 'pos') + '">' + fmtMoney(s.cash_out) + '</td>' +
+            '<td class="num">' + (s.remaining === '' || s.remaining == null ? '' : fmtMoney(s.remaining)) + '</td></tr>';
         }).join('') || '<tr><td colspan="5" class="muted">No sessions yet.</td></tr>';
 
+        var peakIdx = (p.peakIdx != null ? p.peakIdx : p.tierIdx);
+        var peakName = (p.peakTables ? p.peakTables[0] : p.tierTables[0]);
         var tornLink = p.profileUrl ? '<a href="' + esc(p.profileUrl) + '" target="_blank" rel="noopener" class="tag">Torn profile ↗</a>' : '';
         var isMe = p.id === state.meId;
         var deleteBtn = isMe ? '<div class="spacer"></div><button class="btn danger" onclick="doDeleteData()">Delete my data</button>' : '';
@@ -1264,16 +1295,18 @@
           '<span class="backlink" data-goto-route="leaderboard">← back to leaderboard</span>' +
           '<div class="card"><div class="phead">' + avatar(p, 64) +
           '<div><div class="pn">' + esc(p.name) + (p.atTable ? ' <span class="tag">playing</span>' : '') + '</div>' +
-          '<div class="muted">Rank #' + (p.rank || '?') + ' · ' + esc(p.tierLabel) + ' · ' + esc(p.tierTables.join(' · ')) + ' ' + tornLink + '</div></div>' + deleteBtn + '</div>' +
+          '<div class="muted">Rank #' + (p.rank || '?') + ' · on ' + esc(p.tierTables.join(' · ')) + ' ' + tornLink + '</div></div>' + deleteBtn + '</div>' +
           '<div class="stat-row">' +
-          '<div class="stat"><div class="v green">' + (p.tierIdx + 1) + ' / 21</div><div class="k">Table reached</div></div>' +
+          '<div class="stat"><div class="v green">' + (peakIdx + 1) + ' / 21</div><div class="k">Highest table reached</div></div>' +
+          '<div class="stat"><div class="v" style="font-size:15px">' + esc(peakName) + '</div><div class="k">Highest table</div></div>' +
+          '<div class="stat"><div class="v">' + (p.tierIdx + 1) + ' / 21</div><div class="k">Current table</div></div>' +
           '<div class="stat"><div class="v" style="font-size:15px">' + esc(p.tierTables[0]) + '</div><div class="k">Now on</div></div>' +
           '<div class="stat"><div class="v">' + p.busts + '</div><div class="k">Busts</div></div>' +
           '<div class="stat"><div class="v">' + p.wins + ' / ' + p.losses + '</div><div class="k">Win / Loss</div></div>' +
-          '<div class="stat"><div class="v" style="color:var(--dim)">' + fmtMoney(p.bankroll) + '</div><div class="k">Stake</div></div>' +
+          '<div class="stat"><div class="v" style="color:var(--gold)">' + fmtMoney(p.bankroll) + '</div><div class="k">Eligible bankroll</div></div>' +
           '</div>' + prog + '</div>' +
           '<div class="card"><h2>Recent sessions</h2><div style="overflow-x:auto"><table><thead><tr>' +
-          '<th>When</th><th>Table</th><th class="num">Buy-in</th><th class="num">Cash out</th><th class="num">Profit</th>' +
+          '<th>When</th><th>Table</th><th class="num">Bought in</th><th class="num">Cashed out</th><th class="num">Remaining</th>' +
           '</tr></thead><tbody>' + sessions + '</tbody></table></div></div>';
       }).catch(function (e) {
         el('view').innerHTML = '<span class="backlink" data-goto-route="players">← back</span><div class="card">' + esc(e.message) + '</div>';
