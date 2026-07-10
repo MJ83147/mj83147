@@ -260,6 +260,45 @@
       font-variant-numeric: tabular-nums;
     }
 
+    /* Mini bar chart (top tables by players) */
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+      font-size: 13px;
+    }
+
+    .bar-label {
+      width: 40%;
+      color: var(--dim);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 10px;
+      background: #141a11;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, var(--green), var(--gold));
+    }
+
+    .bar-n {
+      color: var(--gold);
+      font-variant-numeric: tabular-nums;
+      min-width: 16px;
+      text-align: right;
+    }
+
     .statbox.you {
       border-color: var(--green);
     }
@@ -689,6 +728,39 @@
       max-width: 460px;
       width: 100%;
       margin: 0;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    details.faq {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      background: #17200f;
+    }
+
+    details.faq summary {
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    details.faq[open] summary {
+      color: var(--gold);
+      margin-bottom: 6px;
+    }
+
+    details.faq .btn {
+      margin-top: 8px;
+    }
+
+    .modal h3 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--gold);
+      margin: 14px 0 8px;
     }
 
     input[type=password] {
@@ -940,6 +1012,7 @@
         <a class="navlink" data-route="leaderboard" href="#leaderboard">Leaderboard</a>
         <a class="navlink" data-route="players" href="#players">Players</a>
         <a class="navlink" onclick="openHowItWorks()">How it works</a>
+        <a class="navlink" onclick="openHelp()">Help</a>
         <div class="spacer"></div>
         <a id="youLink" class="navlink" style="display:none">Your profile</a>
         <button class="btn secondary" id="syncBtn" style="display:none" onclick="doSync()">Sync</button>
@@ -956,6 +1029,7 @@
       <div>Start at Newbie Corner, climb to Oligarch, using only money won at the tables.
         <a class="flink" data-goto-route="terms">Terms &amp; Conditions</a> ·
         <a class="flink" onclick="openHowItWorks()">How it works</a> ·
+        <a class="flink" onclick="openHelp()">Help</a> ·
         <span>Data via the official Torn API</span>
       </div>
       <div style="margin-top:8px">Made by <b style="color:var(--gold)">Systoned</b></div>
@@ -972,22 +1046,36 @@
         <div class="spacer"></div>
         <span class="close-x" onclick="closeHowItWorks()">✕</span>
       </div>
+      <p style="font-size:14px; margin-bottom:6px"><b style="color:var(--gold)">End goal:</b> climb all <b>21
+          tables</b>, from Newbie Corner to Oligarch, using only money won at the tables. Everyone starts at the
+        bottom. First to the top wins.</p>
+      <h3>Rules</h3>
+      <ul class="howlist">
+        <li>You play the tables <b>in order</b>, one at a time.</li>
+        <li><b>No skipping.</b> Games at higher tables don't count, even if you have enough to buy in.</li>
+        <li>You can only buy in with what's in your <b>ladder bankroll</b>. This is tracked automatically; a buy-in
+          bigger than your bankroll simply won't be counted.</li>
+        <li>Within a table, buy in with anything from its minimum to its maximum.</li>
+        <li>You can keep playing your usual poker games alongside the ladder. The system works out which games are
+          part of the climb and ignores the rest.</li>
+        <li>Taking an extended break? Hit <b>Pause ladder</b> on your profile and nothing is tracked until you
+          resume.</li>
+      </ul>
+      <h3>How it works</h3>
       <ol class="howlist">
-        <li>The goal is to get through <b>all 21 tables</b>, from Newbie Corner to Oligarch. Everyone starts at the
-          bottom table. </li>
-        <li>Play Torn poker normally. When you sign in, the app reads only your poker <b>join</b> and <b>leave</b> log
-          entries and tracks how far you have climbed.</li>
-        <li>You move up <b>one table at a time</b>: cash out with enough bankroll to cover the next table's minimum,
-          then <b>take a seat there</b>. The climb registers when you sit down, and winning a huge pot doesn't let you
-          skip tables.</li>
-        <li>Only sessions at <b>your table or the next one up</b> count, and only with money you've <b>won at the
-          tables</b> (no topping up from outside). Anything else is off-ladder fun and is ignored.</li>
-        <li>If you cash out with less than your table's minimum, you <b>drop</b> to the highest table you can still
-          afford and it counts as a bust. Below Newbie Corner's minimum your <b>cycle</b> ends; your next buy-in at the
-          bottom starts a fresh one. First to reach <b>Oligarch</b> tops the ladder.</li>
+        <li>Start at <b>Newbie Corner</b>: play poker as you normally would, bank as much as you can, cash out.</li>
+        <li>With enough for the next table's minimum, <b>take a seat there</b>. The climb registers when you sit
+          down. Continue in this fashion.</li>
+        <li>Left a table with $0? If your bankroll still covers a buy-in there, sit back down; the buy-in comes out
+          of your tracked bankroll.</li>
+        <li>If you can no longer afford your table, you <b>drop</b> to the highest table your bankroll covers.</li>
+        <li>Cash out with less than <b>$500</b> in your bankroll (the lowest table's minimum) and that's a
+          <b>bust</b>: this cycle of the ladder is over and you start again from the bottom.</li>
+        <li>Do as many <b>cycles</b> as you wish. Sign in and press Sync to update your climb.</li>
       </ol>
-      <p class="hint">Your climb starts the moment you sign up, so old poker history doesn't count. Nothing is stored
-        except your ladder progress, and you can delete it anytime from your profile.</p>
+      <p class="hint">Your climb starts the moment you sign up, so old poker history doesn't count. The app reads
+        only your poker join/leave log entries. Nothing is stored except your ladder progress, and you can delete it
+        anytime from your profile.</p>
       <button class="btn" onclick="closeHowItWorks()">Got it</button>
     </div>
   </div>
@@ -1002,6 +1090,36 @@
       </div>
       <div id="climbBody"></div>
       <button class="btn" onclick="closeClimb()">Got it</button>
+    </div>
+  </div>
+
+  <!-- HELP MODAL -->
+  <div class="modal-back" id="helpModal">
+    <div class="card modal">
+      <div class="head-flex" style="margin-bottom:10px">
+        <h2 style="margin:0">Help</h2>
+        <div class="spacer"></div>
+        <span class="close-x" onclick="closeHelp()">✕</span>
+      </div>
+      <details class="faq">
+        <summary>My game isn't syncing but I just played</summary>
+        <p class="hint">The two usual reasons a game doesn't count:</p>
+        <ul class="howlist">
+          <li>You <b>skipped ahead</b>: only your current table and the next one up are part of the ladder.</li>
+          <li>You <b>bought in with more than your ladder bankroll</b>: buy-ins must fit what you've won at the
+            tables.</li>
+        </ul>
+        <button class="btn secondary" onclick="helpCheck()">Check my recent games</button>
+        <div id="helpCheckOut" class="hint"></div>
+      </details>
+      <details class="faq">
+        <summary>Nothing is updating at all</summary>
+        <p class="hint">It might be an API issue on Torn's side. Wait a minute and press <b>Sync</b> again. While
+          Torn's API is down, the ladder can't read anything.</p>
+      </details>
+      <p class="hint">If the issue persists, send a message to
+        <a href="https://www.torn.com/profiles.php?XID=3583736" target="_blank" rel="noopener"
+          style="color:var(--gold)">Systoned</a>.</p>
     </div>
   </div>
 
@@ -1207,14 +1325,35 @@
     function ladderStats(players, tiers) {
       var pk = function (p) { return p.peakIdx != null ? p.peakIdx : p.tierIdx; };
       var leader = players.slice().sort(function (a, b) { return pk(b) - pk(a) || b.bankroll - a.bankroll; })[0];
-      var highest = players.reduce(function (m, p) { return Math.max(m, pk(p)); }, 0);
-      var atTables = players.filter(function (p) { return p.atTable; }).length;
+      var curHigh = players.reduce(function (m, p) { return Math.max(m, p.tierIdx); }, 0);
+      var everHigh = players.reduce(function (m, p) { return Math.max(m, pk(p)); }, 0);
+      var games = players.reduce(function (s, p) { return s + (p.sessionsPlayed || 0); }, 0);
+      var busts = players.reduce(function (s, p) { return s + (p.busts || 0); }, 0);
+
+      // Top five tables by how many players are on them right now.
+      var byTable = {};
+      players.forEach(function (p) { byTable[p.tierIdx] = (byTable[p.tierIdx] || 0) + 1; });
+      var top = Object.keys(byTable).map(Number)
+        .map(function (t) { return { t: t, n: byTable[t] }; })
+        .sort(function (a, b) { return b.n - a.n || b.t - a.t; })
+        .slice(0, 5);
+      var maxN = top.length ? top[0].n : 1;
+      var chart = top.map(function (e) {
+        return '<div class="bar-row"><span class="bar-label">' + esc(tiers[e.t].tables[0]) + '</span>' +
+          '<span class="bar-track"><span class="bar-fill" style="width:' + Math.round(100 * e.n / maxN) + '%"></span></span>' +
+          '<b class="bar-n">' + e.n + '</b></div>';
+      }).join('');
 
       return '<div class="statbox"><h3>The race</h3>' +
-        hero((highest + 1) + '<span> / 21</span>', 'Highest table anyone has reached') +
+        hero((curHigh + 1) + '<span> / 21</span>', 'Current highest table · ' + esc(tiers[curHigh].tables[0])) +
+        row('Highest ever reached', (everHigh + 1) + ' / 21') +
         row('Climbers', players.length) +
-        row('At the tables now', atTables) +
+        row('Games played', games) +
+        row('Total busts', busts) +
         (leader ? row('Leading', esc(leader.name)) : '') +
+        '</div>' +
+        '<div class="statbox"><h3>Top tables by players</h3>' +
+        (chart || '<div class="muted" style="font-size:13px">No players yet.</div>') +
         '</div>';
 
       function row(k, v) { return '<div class="statrow"><span>' + k + '</span><b>' + v + '</b></div>'; }
@@ -1441,10 +1580,36 @@
     function closeHowItWorks() { el('howModal').classList.remove('open'); }
     function openClimb(html) { el('climbBody').innerHTML = html; el('climbModal').classList.add('open'); }
     function closeClimb() { el('climbModal').classList.remove('open'); }
+    function openHelp() { closeNav(); el('helpModal').classList.add('open'); }
+    function closeHelp() { el('helpModal').classList.remove('open'); }
     // Close any modal when its dark backdrop is clicked.
-    ['loginModal', 'howModal', 'climbModal'].forEach(function (id) {
+    ['loginModal', 'howModal', 'climbModal', 'helpModal'].forEach(function (id) {
       el(id).addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
     });
+
+    // Help modal: run a sync and explain any recent games that didn't count.
+    function helpCheck() {
+      var out = el('helpCheckOut');
+      if (!state.key) { out.textContent = 'Sign in first, then try again.'; return; }
+      out.textContent = 'Checking…';
+      apiSync(state.key).then(function (d) {
+        applyMe(d.me);
+        if (d.me.paused) {
+          out.textContent = 'Your ladder is paused, so games are not tracked. Resume it from your profile.';
+        } else {
+          var skipped = (d.sessions || []).filter(function (s) { return String(s.counted) !== 'yes'; }).slice(0, 5);
+          if (skipped.length) {
+            out.innerHTML = 'Recent games that did not count:<br>' + skipped.map(function (s) {
+              return '· <b>' + esc(s.table) + '</b> (' + fmtWhen(s.leave_ts) + '): ' + esc(s.reason || 'not counted');
+            }).join('<br>');
+          } else {
+            out.textContent = 'All your recent games counted. If one is missing entirely, Torn\'s log can lag a little; wait a minute and press Sync again.';
+          }
+        }
+        state.tiers = null;
+        return ensureBoard();
+      }).catch(function (e) { out.textContent = e.message; });
+    }
 
     // After a sync: congratulate a climb and spell out the move-up choice.
     // What has already been announced is remembered in localStorage, so a page
