@@ -1248,11 +1248,12 @@
         .then(setBoard)
         .catch(function () {
           // Backend unreachable/unconfigured: still show the empty ladder frame.
-          state.players = []; state.tiers = LADDER_TIERS; state.byId = {};
+          state.players = []; state.tiers = LADDER_TIERS; state.byId = {}; state.tableGames = {};
         });
     }
     function setBoard(d) {
       state.players = d.players || []; state.tiers = d.tiers || LADDER_TIERS;
+      state.tableGames = d.tableGames || {};
       state.byId = {}; state.players.forEach(function (p) { state.byId[p.id] = p; });
     }
 
@@ -1330,9 +1331,8 @@
       var games = players.reduce(function (s, p) { return s + (p.sessionsPlayed || 0); }, 0);
       var busts = players.reduce(function (s, p) { return s + (p.busts || 0); }, 0);
 
-      // Top five tables by how many players are on them right now.
-      var byTable = {};
-      players.forEach(function (p) { byTable[p.tierIdx] = (byTable[p.tierIdx] || 0) + 1; });
+      // Top five tables by counted games played there (from the backend tally).
+      var byTable = state.tableGames || {};
       var top = Object.keys(byTable).map(Number)
         .map(function (t) { return { t: t, n: byTable[t] }; })
         .sort(function (a, b) { return b.n - a.n || b.t - a.t; })
@@ -1352,8 +1352,8 @@
         row('Total busts', busts) +
         (leader ? row('Leading', esc(leader.name)) : '') +
         '</div>' +
-        '<div class="statbox"><h3>Top tables by players</h3>' +
-        (chart || '<div class="muted" style="font-size:13px">No players yet.</div>') +
+        '<div class="statbox"><h3>Top tables by games played</h3>' +
+        (chart || '<div class="muted" style="font-size:13px">No games yet.</div>') +
         '</div>';
 
       function row(k, v) { return '<div class="statrow"><span>' + k + '</span><b>' + v + '</b></div>'; }
