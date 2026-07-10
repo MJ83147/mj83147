@@ -1,1613 +1,809 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Torn Poker Ladder</title>
-  <style>
-    :root {
-      --bg: #12160f;
-      --card: #202a1e;
-      --card2: #26331f;
-      --line: #3a4a33;
-      --text: #e8eadf;
-      --dim: #9aa88f;
-      --gold: #e3b341;
-      --green: #7ccb6e;
-      --red: #e06c5c;
-      --chip: #2f4d33;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      background: radial-gradient(ellipse at 50% -20%, #23331f 0%, var(--bg) 60%);
-      color: var(--text);
-      font: 15px/1.5 "Avenir Next", "Segoe UI", system-ui, sans-serif;
-      min-height: 100vh;
-    }
-
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    /* Themed scrollbars to replace the ugly native ones. */
-    * {
-      scrollbar-width: thin;
-      scrollbar-color: #3a4a33 transparent;
-    }
-
-    ::-webkit-scrollbar {
-      width: 9px;
-      height: 9px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: #3a4a33;
-      border-radius: 999px;
-      border: 2px solid transparent;
-      background-clip: content-box;
-    }
-
-    ::-webkit-scrollbar-thumb:hover {
-      background: #55694a;
-      background-clip: content-box;
-    }
-
-    .wrap {
-      max-width: 1440px;
-      margin: 0 auto;
-      padding: 22px 32px 24px;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* Keep the footer pinned to the bottom instead of rising under short pages. */
-    .wrap>footer {
-      margin-top: auto;
-      padding-top: 30px;
-    }
-
-    /* Nav */
-    .nav {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 18px;
-    }
-
-    .navmenu {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex: 1;
-    }
-
-    .navtoggle {
-      display: none;
-      background: var(--chip);
-      color: var(--text);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      font-size: 20px;
-      line-height: 1;
-      padding: 6px 12px;
-      cursor: pointer;
-      margin-left: auto;
-    }
-
-    .brand {
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: 1px;
-      color: var(--gold);
-      text-transform: uppercase;
-      margin-right: 8px;
-      white-space: nowrap;
-    }
-
-    .brand .suit {
-      color: var(--red);
-    }
-
-    /* Mobile: collapse the nav into a dropdown behind the ☰ button. */
-    .navlink {
-      padding: 7px 14px;
-      border-radius: 999px;
-      font-size: 14px;
-      color: var(--dim);
-      border: 1px solid transparent;
-      cursor: pointer;
-    }
-
-    .navlink.active {
-      background: var(--chip);
-      color: var(--text);
-      border-color: var(--green);
-    }
-
-    .spacer {
-      flex: 1;
-    }
-
-    .btn {
-      background: var(--gold);
-      color: #241d07;
-      border: 0;
-      border-radius: 10px;
-      padding: 8px 16px;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .btn.secondary {
-      background: var(--chip);
-      color: var(--text);
-      border: 1px solid var(--line);
-      font-weight: 500;
-    }
-
-    .btn:disabled {
-      opacity: .5;
-      cursor: wait;
-    }
-
-
-
-    .card {
-      background: linear-gradient(180deg, var(--card2), var(--card));
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 24px;
-      margin-bottom: 16px;
-    }
-
-    /* Ladder page: ladder on the left (scrolls), key stats on the right (sticky). */
-    .ladder-layout {
-      display: grid;
-      grid-template-columns: 1fr 360px;
-      gap: 40px;
-      align-items: start;
-    }
-
-    .ladder-scroll {
-      max-height: 78vh;
-      overflow-y: auto;
-      padding-right: 10px;
-    }
-
-    .stats-col {
-      position: sticky;
-      top: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .statbox {
-      background: linear-gradient(180deg, #1d2815, #161e0d);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 22px;
-    }
-
-    .statbox h3 {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--dim);
-      margin-bottom: 16px;
-    }
-
-    /* Hero figure at the top of a stat box. */
-    .stathero {
-      text-align: center;
-      padding: 6px 0 16px;
-      border-bottom: 1px solid var(--line);
-      margin-bottom: 12px;
-    }
-
-    .stathero .big {
-      font-size: 40px;
-      font-weight: 800;
-      color: var(--gold);
-      line-height: 1;
-    }
-
-    .stathero .big span {
-      font-size: 20px;
-      color: var(--dim);
-    }
-
-    .stathero .cap {
-      font-size: 13px;
-      color: var(--text);
-      margin-top: 6px;
-    }
-
-    .statrow {
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      font-size: 15px;
-      padding: 7px 0;
-      border-bottom: 1px solid rgba(90, 110, 74, .15);
-    }
-
-    .statrow:last-child {
-      border-bottom: 0;
-    }
-
-    .statrow span:first-child {
-      color: var(--dim);
-    }
-
-    .statrow b {
-      color: var(--gold);
-      font-variant-numeric: tabular-nums;
-    }
-
-    .statbox.you {
-      border-color: var(--green);
-    }
-
-    .statbox.you .stathero .big {
-      color: var(--green);
-    }
-
-    @media (max-width: 760px) {
-      .ladder-layout {
-        grid-template-columns: 1fr;
-      }
-
-      .ladder-scroll {
-        max-height: none;
-        overflow: visible;
-      }
-
-      .stats-col {
-        position: static;
-      }
-    }
-
-    h2 {
-      font-size: 25px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text);
-      margin-bottom: 8px;
-    }
-
-    .sub {
-      font-size: 12px;
-      color: var(--dim);
-      margin-bottom: 14px;
-    }
-
-    .muted {
-      color: var(--dim);
-    }
-
-    .pos {
-      color: var(--green);
-    }
-
-    .neg {
-      color: var(--red);
-    }
-
-    /* Avatars */
-    .avatar {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 50%;
-      overflow: hidden;
-      color: #10160c;
-      font-weight: 800;
-      flex: none;
-      border: 2px solid rgba(0, 0, 0, .3);
-      cursor: pointer;
-      vertical-align: middle;
-    }
-
-    .avatar img {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .avatar.me {
-      box-shadow: 0 0 0 2px var(--gold);
-    }
-
-    .ladder-top {
-      text-align: center;
-      font-size: 34px;
-      line-height: 1;
-      margin-bottom: 2px;
-    }
-
-    .ladder-top .capsub {
-      font-size: 12px;
-      color: var(--gold);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .ladder-foot {
-      text-align: center;
-      font-size: 12px;
-      color: var(--dim);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-top: 8px;
-    }
-
-    /* Ladder fills its column; tier numbers sit OUTSIDE the rails on the left. */
-    .ladder {
-      position: relative;
-      padding: 6px 0;
-    }
-
-    .ladder::before,
-    .ladder::after {
-      content: '';
-      position: absolute;
-      top: 6px;
-      bottom: 6px;
-      width: 12px;
-      border-radius: 8px;
-      z-index: 0;
-      background: linear-gradient(90deg, #4a3c1c, #a9852f 42%, #e3b341 50%, #a9852f 58%, #4a3c1c);
-      box-shadow: inset 0 0 6px rgba(0, 0, 0, .45), 0 0 0 1px rgba(0, 0, 0, .3);
-    }
-
-    .ladder::before {
-      left: 42px;
-    }
-
-    .ladder::after {
-      right: 4px;
-    }
-
-    .rung {
-      position: relative;
-      z-index: 1;
-      display: grid;
-      grid-template-columns: 30px 1fr;
-      gap: 12px;
-      align-items: start;
-    }
-
-    .rnum {
-      font-size: 18px;
-      font-weight: 800;
-      color: var(--gold);
-      text-align: right;
-      padding-top: 10px;
-    }
-
-    .rbody {
-      position: relative;
-      padding: 8px 16px 0;
-    }
-
-    .rung+.rung .rbody {
-      border-top: 1px dashed rgba(90, 110, 74, .25);
-    }
-
-    .rlabel {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 4px;
-    }
-
-    .rchip {
-      font-size: 13px;
-      font-weight: 700;
-      padding: 2px 9px;
-      border-radius: 7px;
-      background: #17200f;
-      border: 1px solid var(--line);
-    }
-
-    .rung.goal .rchip {
-      border-color: var(--gold);
-      color: var(--gold);
-    }
-
-    .rsub {
-      font-size: 12px;
-      color: var(--dim);
-      font-variant-numeric: tabular-nums;
-      margin-left: auto;
-    }
-
-    .stand {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      justify-content: center;
-      min-height: 20px;
-      padding: 4px 6px 5px;
-    }
-
-    .rbar {
-      height: 10px;
-      border-radius: 5px;
-      background: linear-gradient(180deg, #d8b256, #8a6d29);
-      box-shadow: 0 2px 3px rgba(0, 0, 0, .5);
-    }
-
-    /* Tables */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-
-    th {
-      text-align: left;
-      color: var(--dim);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      padding: 8px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    td {
-      padding: 9px 8px;
-      border-bottom: 1px solid #2a3524;
-    }
-
-    tr:last-child td {
-      border-bottom: 0;
-    }
-
-    td.num,
-    th.num {
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .rowlink {
-      cursor: pointer;
-    }
-
-    .rowlink:hover td {
-      background: #1c2616;
-    }
-
-    .cellname {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-    }
-
-    .rank-1 td.rk {
-      color: var(--gold);
-      font-weight: 800;
-    }
-
-    .tag {
-      font-size: 12px;
-      padding: 2px 7px;
-      border-radius: 999px;
-      background: var(--chip);
-      color: var(--text);
-      white-space: nowrap;
-    }
-
-    /* Players grid */
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 12px;
-    }
-
-    .pcard {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      background: #17200f;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 12px;
-      cursor: pointer;
-    }
-
-    .pcard:hover {
-      border-color: var(--green);
-    }
-
-    .pcard .pn {
-      font-weight: 700;
-    }
-
-    .pcard .pt {
-      font-size: 12px;
-      color: var(--dim);
-    }
-
-    /* Profile */
-    .phead {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-
-    .phead .pn {
-      font-size: 22px;
-      font-weight: 800;
-    }
-
-    .stat-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-
-    .stat {
-      background: #17200f;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 12px;
-      text-align: center;
-    }
-
-    .stat .v {
-      font-size: 19px;
-      font-weight: 800;
-      color: var(--gold);
-    }
-
-    .stat .v.green {
-      color: var(--green);
-    }
-
-    .stat .k {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--dim);
-    }
-
-    .progress-outer {
-      background: #141a11;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      height: 12px;
-      overflow: hidden;
-    }
-
-    .progress-inner {
-      background: linear-gradient(90deg, var(--green), var(--gold));
-      height: 100%;
-      width: 0%;
-    }
-
-    .progress-label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: var(--dim);
-      margin-top: 6px;
-    }
-
-    .backlink {
-      font-size: 13px;
-      color: var(--dim);
-      margin-bottom: 12px;
-      display: inline-block;
-      cursor: pointer;
-    }
-
-    .backlink:hover {
-      color: var(--text);
-    }
-
-    /* Hover mini-profile */
-    #hoverCard {
-      position: fixed;
-      z-index: 30;
-      pointer-events: none;
-      display: none;
-      width: 220px;
-      background: #1a2213;
-      border: 1px solid var(--green);
-      border-radius: 12px;
-      padding: 12px;
-      box-shadow: 0 8px 26px rgba(0, 0, 0, .5);
-    }
-
-    #hoverCard .hh {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-
-    #hoverCard .hn {
-      font-weight: 700;
-    }
-
-    #hoverCard .ht {
-      font-size: 12px;
-      color: var(--dim);
-    }
-
-    #hoverCard .hrow {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      padding: 2px 0;
-    }
-
-    #hoverCard .hrow span:first-child {
-      color: var(--dim);
-    }
-
-    /* Modal */
-    .modal-back {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, .6);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      z-index: 40;
-    }
-
-    .modal-back.open {
-      display: flex;
-    }
-
-    .modal {
-      max-width: 460px;
-      width: 100%;
-      margin: 0;
-    }
-
-    input[type=password] {
-      width: 100%;
-      padding: 11px 13px;
-      border-radius: 10px;
-      border: 1px solid var(--line);
-      background: #141a11;
-      color: var(--text);
-      font-size: 15px;
-      margin-bottom: 10px;
-    }
-
-    .hint {
-      color: var(--dim);
-      font-size: 13px;
-      margin-top: 10px;
-    }
-
-    #climbBody p {
-      font-size: 15px;
-      margin-bottom: 10px;
-    }
-
-    #climbBody b {
-      color: var(--gold);
-    }
-
-    .hint a {
-      color: var(--gold);
-    }
-
-    .hint b {
-      color: var(--text);
-    }
-
-    .error {
-      color: var(--red);
-      font-size: 14px;
-      margin-top: 8px;
-      min-height: 20px;
-    }
-
-    .close-x {
-      cursor: pointer;
-      color: var(--dim);
-      font-size: 20px;
-    }
-
-    .head-flex {
-      display: flex;
-      align-items: center;
-    }
-
-    .flink {
-      color: var(--gold);
-      cursor: pointer;
-    }
-
-    .flink:hover {
-      text-decoration: underline;
-    }
-
-    .howlist {
-      padding-left: 20px;
-    }
-
-    .howlist li {
-      margin-bottom: 9px;
-      font-size: 14px;
-    }
-
-    .howlist b {
-      color: var(--gold);
-    }
-
-    .btn.danger {
-      background: #6e2820;
-      color: #ffd9d2;
-    }
-
-    .modal .btn {
-      margin-top: 14px;
-    }
-
-    /* Terms page */
-    .terms p {
-      font-size: 14px;
-      margin-bottom: 12px;
-    }
-
-    .terms h3 {
-      font-size: 18px;
-      margin: 20px 0 8px;
-      color: var(--text);
-    }
-
-    .tos {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-      margin: 6px 0 4px;
-    }
-
-    .tos th {
-      background: #17200f;
-      color: var(--gold);
-      text-align: left;
-      padding: 8px 10px;
-      border: 1px solid var(--line);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: .5px;
-    }
-
-    .tos td {
-      padding: 8px 10px;
-      border: 1px solid var(--line);
-      vertical-align: top;
-      color: var(--text);
-    }
-
-    /* ---- Mobile (kept last so it overrides the base rules above) ---- */
-    @media (max-width: 760px) {
-      .nav {
-        flex-wrap: wrap;
-      }
-
-      .navtoggle {
-        display: block;
-      }
-
-      .navmenu {
-        display: none;
-        flex-direction: column;
-        align-items: stretch;
-        width: 100%;
-        gap: 4px;
-        margin-top: 8px;
-      }
-
-      .navmenu.open {
-        display: flex;
-      }
-
-      .navmenu .spacer {
-        display: none;
-      }
-
-      .navmenu .navlink {
-        padding: 12px 14px;
-        font-size: 16px;
-        border: 1px solid var(--line);
-        border-radius: 10px;
-      }
-
-      .navmenu .btn {
-        text-align: center;
-        padding: 12px 14px;
-        font-size: 16px;
-      }
-
-      .wrap {
-        padding: 16px 14px 20px;
-      }
-
-      .card {
-        padding: 16px;
-      }
-
-      h2 {
-        font-size: 20px;
-      }
-
-      .ladder {
-        padding: 4px 0;
-      }
-
-      .rung {
-        grid-template-columns: 24px 1fr;
-        gap: 8px;
-      }
-
-      .rnum {
-        font-size: 15px;
-        padding-top: 8px;
-      }
-
-      .rbody {
-        padding: 6px 10px 0;
-      }
-
-      .ladder::before {
-        left: 32px;
-      }
-
-      .rsub {
-        margin-left: 0;
-        width: 100%;
-        font-size: 11px;
-      }
-
-      /* Drop secondary table columns so the leaderboard fits without scrolling. */
-      .sm-hide {
-        display: none;
-      }
-
-      table {
-        font-size: 13px;
-      }
-
-      th,
-      td {
-        padding: 8px 4px;
-      }
-
-      th {
-        font-size: 10px;
-      }
-
-      .cellname {
-        gap: 6px;
-      }
-
-      .tag {
-        font-size: 9px;
-        padding: 1px 5px;
-      }
-
-      .lbname {
-        display: inline-block;
-        max-width: 30vw;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        vertical-align: middle;
-      }
-    }
-  </style>
-</head>
-
-<body>
-  <div class="wrap">
-    <div class="nav">
-      <a class="brand" href="#ladder"><span class="suit">♠</span> Poker Ladder</a>
-      <button class="navtoggle" id="navtoggle" onclick="toggleNav()" aria-label="Menu">☰</button>
-      <div class="navmenu" id="navmenu">
-        <a class="navlink" data-route="ladder" href="#ladder">Ladder</a>
-        <a class="navlink" data-route="leaderboard" href="#leaderboard">Leaderboard</a>
-        <a class="navlink" data-route="players" href="#players">Players</a>
-        <a class="navlink" onclick="openHowItWorks()">How it works</a>
-        <div class="spacer"></div>
-        <a id="youLink" class="navlink" style="display:none">Your profile</a>
-        <button class="btn secondary" id="syncBtn" style="display:none" onclick="doSync()">Sync</button>
-        <button class="btn" id="joinBtn" onclick="openLogin()">Sign up / Sign in</button>
-        <button class="btn secondary" id="logoutBtn" style="display:none" onclick="logout()">Log out</button>
-      </div>
-    </div>
-
-
-
-    <div id="view"></div>
-
-    <footer style="text-align:center; color:var(--dim); font-size:12px">
-      <div>Start at Newbie Corner, climb to Oligarch, using only money won at the tables.
-        <a class="flink" data-goto-route="terms">Terms &amp; Conditions</a> ·
-        <a class="flink" onclick="openHowItWorks()">How it works</a> ·
-        <span>Data via the official Torn API</span>
-      </div>
-      <div style="margin-top:8px">Made by <b style="color:var(--gold)">Systoned</b></div>
-    </footer>
-  </div>
-
-  <div id="hoverCard"></div>
-
-  <!-- HOW IT WORKS MODAL -->
-  <div class="modal-back" id="howModal">
-    <div class="card modal">
-      <div class="head-flex" style="margin-bottom:10px">
-        <h2 style="margin:0">How it works</h2>
-        <div class="spacer"></div>
-        <span class="close-x" onclick="closeHowItWorks()">✕</span>
-      </div>
-      <ol class="howlist">
-        <li>The goal is to get through <b>all 21 tables</b>, from Newbie Corner to Oligarch. Everyone starts at the
-          bottom table. </li>
-        <li>Play Torn poker normally. When you sign in, the app reads only your poker <b>join</b> and <b>leave</b> log
-          entries and tracks how far you have climbed.</li>
-        <li>You move up <b>one table at a time</b>: cash out with enough bankroll to cover the next table's minimum,
-          then <b>take a seat there</b>. The climb registers when you sit down, and winning a huge pot doesn't let you
-          skip tables.</li>
-        <li>Only sessions at <b>your table or the next one up</b> count, and only with money you've <b>won at the
-          tables</b> (no topping up from outside). Anything else is off-ladder fun and is ignored.</li>
-        <li>If you cash out with less than your table's minimum, you <b>drop</b> to the highest table you can still
-          afford and it counts as a bust. Below Newbie Corner's minimum your <b>cycle</b> ends; your next buy-in at the
-          bottom starts a fresh one. First to reach <b>Oligarch</b> tops the ladder.</li>
-      </ol>
-      <p class="hint">Your climb starts the moment you sign up, so old poker history doesn't count. Nothing is stored
-        except your ladder progress, and you can delete it anytime from your profile.</p>
-      <button class="btn" onclick="closeHowItWorks()">Got it</button>
-    </div>
-  </div>
-
-  <!-- CLIMB POPUP (shown after a sync when there is news about your climb) -->
-  <div class="modal-back" id="climbModal">
-    <div class="card modal">
-      <div class="head-flex" style="margin-bottom:10px">
-        <h2 style="margin:0"><span style="color:var(--red)">♠</span> Your climb</h2>
-        <div class="spacer"></div>
-        <span class="close-x" onclick="closeClimb()">✕</span>
-      </div>
-      <div id="climbBody"></div>
-      <button class="btn" onclick="closeClimb()">Got it</button>
-    </div>
-  </div>
-
-  <!-- LOGIN MODAL -->
-  <div class="modal-back" id="loginModal">
-    <div class="card modal">
-      <div class="head-flex" style="margin-bottom:12px">
-        <h2 style="margin:0">Join the ladder</h2>
-        <div class="spacer"></div>
-        <span class="close-x" onclick="closeLogin()">✕</span>
-      </div>
-      <input id="apiKey" type="password" placeholder="Your Torn API key" autocomplete="off">
-      <button class="btn" id="loginBtn" onclick="doLogin()">Sign in</button>
-      <div class="error" id="loginError"></div>
-      <p class="hint">
-        Create a key scoped to your <b>public profile</b> and your <b>poker logs</b> only:<br>
-        <a href="https://www.torn.com/preferences.php#tab=api?step=addNewKey&title=pokerladder&user=profile,log&logIds=194"
-          target="_blank" rel="noopener">Create a "pokerladder" key on torn.com &rarr;</a>
-      </p>
-      <p class="hint">
-        With <b>logIds=194</b> the key reads your <b>public Torn profile</b> (name,
-        avatar, level and the other public profile fields) and your poker table
-        <b>join/leave</b> log. It can't touch your money, items, mail or settings.
-        Your key is never stored on our server; it stays in this browser and is
-        sent only when you sign in.
-      </p>
-      <p class="hint">
-        Your climb starts the moment you sign up, so old poker history doesn't count.
-        See our <a class="flink" onclick="closeLogin(); location.hash='#terms'">Terms &amp; Conditions</a>.
-      </p>
-    </div>
-  </div>
-
-  <script>
-    // ---------------------------------------------------------------------------
-    // CONFIG: after deploying the Apps Script web app (Deploy > New deployment >
-    // Web app > access "Anyone"), paste its URL here.
-    // ---------------------------------------------------------------------------
-    var LADDER_API_URL = 'https://script.google.com/macros/s/AKfycbxIbk1uPkEsj8Viz_xHEOFJwFVMQUhe6U8KIV7qMZacIIU-tpL9D9lzMvs2zEkbCenK/exec';
-    var CONFIGURED = /^https:\/\/script\.google\.com\//.test(LADDER_API_URL);
-
-    // ---------------------------------------------------------------------------
-    // API
-    // ---------------------------------------------------------------------------
-    function notConfigured() { return Promise.reject(new Error('Backend not connected yet. Set LADDER_API_URL in index.html.')); }
-    // POST bodies go as text/plain so the browser skips a CORS preflight that
-    // Apps Script web apps don't answer.
-    function apiSync(key) {
-      if (!CONFIGURED) return notConfigured();
-      return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'sync', key: key }) }).then(parseApi);
-    }
-    function apiDelete(key) {
-      if (!CONFIGURED) return notConfigured();
-      return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'delete', key: key }) }).then(parseApi);
-    }
-    function apiPause(key) {
-      if (!CONFIGURED) return notConfigured();
-      return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'pause', key: key }) }).then(parseApi);
-    }
-    function apiResume(key) {
-      if (!CONFIGURED) return notConfigured();
-      return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'resume', key: key }) }).then(parseApi);
-    }
-    function apiLeaderboard() {
-      if (!CONFIGURED) return notConfigured();
-      return fetch(LADDER_API_URL + '?action=leaderboard').then(parseApi);
-    }
-    function apiPlayer(id) {
-      if (!CONFIGURED) return notConfigured();
-      return fetch(LADDER_API_URL + '?action=player&id=' + encodeURIComponent(id)).then(parseApi);
-    }
-    function parseApi(resp) {
-      return resp.json().then(function (b) { if (!b.ok) throw new Error(b.error || 'Request failed.'); return b; });
-    }
-
-    // ---------------------------------------------------------------------------
-    // State + helpers
-    // ---------------------------------------------------------------------------
-    // Safe localStorage wrappers. On file:// origins (opening the .html directly)
-    // some browsers throw or refuse to persist, so guard every call. Host over
-    // http (even http://localhost) for the saved key to stick between visits.
-    function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
-    function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
-    function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { } }
-
-    var state = { key: lsGet('pl_key'), meId: null, players: [], tiers: null, byId: {} };
-
-    function fmtMoney(n) {
-      n = Number(n) || 0; var neg = n < 0; n = Math.abs(n); var s;
-      if (n >= 1e9) s = trim(n / 1e9) + 'b'; else if (n >= 1e6) s = trim(n / 1e6) + 'm';
-      else if (n >= 1e3) s = trim(n / 1e3) + 'k'; else s = String(Math.round(n * 100) / 100);
-      return (neg ? '-$' : '$') + s;
-    }
-    function trim(x) { return (Math.round(x * 100) / 100).toString(); }
-    function fmtWhen(ts) {
-      if (!ts) return ''; var d = new Date(Number(ts) * 1000);
-      return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' +
-        d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-    }
-    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-    function el(id) { return document.getElementById(id); }
-    function initials(name) {
-      var p = String(name || '?').trim().split(/[\s_-]+/).filter(Boolean);
-      if (!p.length) return '?';
-      return (p.length === 1 ? p[0].slice(0, 2) : p[0][0] + p[p.length - 1][0]).toUpperCase();
-    }
-    function colorFor(id) { var h = 0, s = String(id); for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360; return 'hsl(' + h + ' 62% 62%)'; }
-
-    // Avatar: initials circle with the profile image layered on top (image hides
-    // itself if it fails or is empty, revealing the initials).
-    function avatar(p, size, extra) {
-      var s = size || 26;
-      var me = p.id === state.meId ? ' me' : '';
-      var img = p.image ? '<img src="' + esc(p.image) + '" onerror="this.remove()" alt="">' : '';
-      return '<span class="avatar' + me + ' ' + (extra || '') + '" data-pid="' + esc(p.id) + '" ' +
-        'style="width:' + s + 'px;height:' + s + 'px;background:' + colorFor(p.id) + ';font-size:' + Math.round(s * 0.38) + 'px">' +
-        esc(initials(p.name)) + img + '</span>';
-    }
-
-    // ---------------------------------------------------------------------------
-    // Data loading (public board loaded once, cached)
-    // ---------------------------------------------------------------------------
-    function ensureBoard() {
-      if (state.tiers) return Promise.resolve();
-      return apiLeaderboard()
-        .then(setBoard)
-        .catch(function () {
-          // Backend unreachable/unconfigured: still show the empty ladder frame.
-          state.players = []; state.tiers = LADDER_TIERS; state.byId = {};
-        });
-    }
-    function setBoard(d) {
-      state.players = d.players || []; state.tiers = d.tiers || LADDER_TIERS;
-      state.byId = {}; state.players.forEach(function (p) { state.byId[p.id] = p; });
-    }
-
-    // ---------------------------------------------------------------------------
-    // Router
-    // ---------------------------------------------------------------------------
-    function toggleNav() { el('navmenu').classList.toggle('open'); }
-    function closeNav() { el('navmenu').classList.remove('open'); }
-
-    function route() {
-      closeNav(); // collapse the mobile menu on navigation
-      hideHover(); // never carry the mini-profile card across pages
-      // Keep the address bar clean on the home page (no lingering #ladder).
-      if (location.hash === '#ladder') history.replaceState(null, '', location.pathname + location.search);
-      var h = location.hash.replace(/^#/, '') || 'ladder';
-      var parts = h.split('/');
-      var name = parts[0];
-      document.querySelectorAll('.navlink[data-route]').forEach(function (a) {
-        a.classList.toggle('active', a.getAttribute('data-route') === name);
-      });
-      if (name === 'terms') return renderTerms();
-      ensureBoard().then(function () {
-        if (name === 'leaderboard') return renderLeaderboard();
-        if (name === 'players') return renderPlayers();
-        if (name === 'player') return renderProfile(parts[1]);
-        return renderLadder();
-      }).catch(function (e) { el('view').innerHTML = '<div class="card">' + esc(e.message) + '</div>'; });
-    }
-    window.addEventListener('hashchange', route);
-
-    // ---------------------------------------------------------------------------
-    // Views
-    // ---------------------------------------------------------------------------
-    function renderLadder() {
-      var tiers = state.tiers || LADDER_TIERS;
-      var players = state.players || [];
-      var byTier = {};
-      players.forEach(function (p) { (byTier[p.tierIdx] = byTier[p.tierIdx] || []).push(p); });
-      var rows = '';
-      for (var i = tiers.length - 1; i >= 0; i--) {
-        var t = tiers[i];
-        var here = (byTier[i] || []).slice().sort(function (a, b) { return b.bankroll - a.bankroll; });
-        var goal = i === tiers.length - 1;
-        var tokens = here.map(function (p) { return avatar(p, 26); }).join('');
-        var chips = t.tables.map(function (nm) { return '<span class="rchip">' + esc(nm) + (goal ? ' 👑' : '') + '</span>'; }).join('');
-        rows += '<div class="rung' + (goal ? ' goal' : '') + '">' +
-          '<div class="rnum">' + (i + 1) + '</div>' +
-          '<div class="rbody">' +
-          '<div class="rlabel">' + chips +
-          '<span class="rsub">' + fmtMoney(t.sb) + '/' + fmtMoney(t.bb) + ' · buy-in ' + fmtMoney(t.minBuy) + '+</span></div>' +
-          '<div class="stand">' + tokens + '</div>' +
-          '<div class="rbar"></div>' +
-          '</div></div>';
-      }
-      el('view').innerHTML =
-        '<div class="card"><h2>The ladder</h2>' +
-        '<div class="sub">Climb from Newbie Corner up to Oligarch, one table at a time. Each dot is a player on the table they are currently on. Hover for stats, click to open a profile.</div>' +
-        '<div class="ladder-layout">' +
-        '<div class="ladder-scroll">' +
-        '<div class="ladder-top">🏆<div class="capsub">Oligarch, the summit</div></div>' +
-        '<div class="ladder">' + rows + '</div>' +
-        '<div class="ladder-foot">▲ everyone starts here</div>' +
-        '</div>' +
-        '<div class="stats-col">' + ladderStats(players, tiers) + '</div>' +
-        '</div></div>';
-    }
-
-    // Key stats panel shown on the right of the ladder page. Public only:
-    // personal stats live on the profile page.
-    function ladderStats(players, tiers) {
-      var pk = function (p) { return p.peakIdx != null ? p.peakIdx : p.tierIdx; };
-      var leader = players.slice().sort(function (a, b) { return pk(b) - pk(a) || b.bankroll - a.bankroll; })[0];
-      var highest = players.reduce(function (m, p) { return Math.max(m, pk(p)); }, 0);
-      var atTables = players.filter(function (p) { return p.atTable; }).length;
-
-      return '<div class="statbox"><h3>The race</h3>' +
-        hero((highest + 1) + '<span> / 21</span>', 'Highest table anyone has reached') +
-        row('Climbers', players.length) +
-        row('At the tables now', atTables) +
-        (leader ? row('Leading', esc(leader.name)) : '') +
-        '</div>';
-
-      function row(k, v) { return '<div class="statrow"><span>' + k + '</span><b>' + v + '</b></div>'; }
-      function hero(big, cap) { return '<div class="stathero"><div class="big">' + big + '</div><div class="cap">' + cap + '</div></div>'; }
-    }
-
-    function renderLeaderboard() {
-      var rows = state.players.map(function (p) {
-        return '<tr class="rowlink rank-' + p.rank + '" data-goto="' + esc(p.id) + '">' +
-          '<td class="rk">' + p.rank + '</td>' +
-          '<td><span class="cellname">' + avatar(p, 26) + '<span class="lbname">' + esc(p.name) + '</span>' + (p.paused ? ' <span class="tag">paused</span>' : (p.atTable ? ' <span class="tag">playing</span>' : '')) + '</span></td>' +
-          '<td class="num"><b>' + (p.tierIdx + 1) + '</b> <span class="muted">/ 21</span></td>' +
-          '<td class="sm-hide">' + esc(p.tierTables[0]) + '</td>' +
-          '<td class="num muted sm-hide">' + fmtMoney(p.bankroll) + '</td>' +
-          '<td class="num">' + p.busts + '</td></tr>';
-      }).join('') || '<tr><td colspan="6" class="muted">Nobody on the ladder yet, be the first.</td></tr>';
-      el('view').innerHTML =
-        '<div class="card"><h2>Leaderboard</h2><div class="sub">The climb is about getting through all 21 tables. Ranked by highest table reached, then stake.</div>' +
-        '<div style="overflow-x:auto"><table><thead><tr><th class="rk">#</th><th>Player</th><th class="num">Table</th><th class="sm-hide">Now on</th>' +
-        '<th class="num sm-hide">Bankroll</th><th class="num">Busts</th>' +
-        '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
-    }
-
-    function renderPlayers() {
-      var cards = state.players.map(function (p) {
-        return '<div class="pcard rowlink" data-goto="' + esc(p.id) + '">' + avatar(p, 44) +
-          '<div><div class="pn">' + esc(p.name) + '</div>' +
-          '<div class="pt">' + esc(p.tierLabel) + ' · ' + esc(p.tierTables[0]) + '</div>' +
-          '<div class="pt">' + fmtMoney(p.bankroll) + ' · ' + p.busts + ' busts</div></div></div>';
-      }).join('') || '<div class="muted">No players yet.</div>';
-      el('view').innerHTML = '<div class="card"><h2>Players</h2><div class="sub">' + state.players.length +
-        ' on the ladder. Click anyone to see their profile.</div><div class="grid">' + cards + '</div></div>';
-    }
-
-    function renderTerms() {
-      el('view').innerHTML =
-        '<span class="backlink" data-goto-route="ladder">← back</span>' +
-        '<div class="card terms">' +
-        '<h2>Terms &amp; Conditions</h2>' +
-        '<p>Torn Poker Ladder is an unofficial, fan-made leaderboard. It is not affiliated with, endorsed by, or operated by Torn. By signing in with your Torn API key you agree to the terms below.</p>' +
-
-        '<h3>How your API key is used (Torn API ToS)</h3>' +
-        '<div style="overflow-x:auto"><table class="tos"><thead><tr>' +
-        '<th>Data storage</th><th>Data sharing</th><th>Purpose of use</th><th>Key storage &amp; sharing</th><th>Key access level</th>' +
-        '</tr></thead><tbody><tr>' +
-        '<td>Persistent, until you delete your data. Your ladder stats (bankroll, tier, wins, losses, busts) and poker session results are stored on our server.</td>' +
-        '<td>General public. Your name, avatar, tier, bankroll, busts and session history are shown publicly on the ladder, leaderboard and profile pages.</td>' +
-        '<td>Public community tool / public amusement, a poker ladder leaderboard.</td>' +
-        '<td>Not stored, not shared. Your API key stays in your browser and is sent only with your own sign-in request. It is used once on the server to read your poker log, then discarded.</td>' +
-        '<td>Custom <b>user</b> selections: <b>profile</b> (public profile, incl. avatar) and <b>log</b> (poker table join/leave only, logIds&nbsp;194).</td>' +
-        '</tr></tbody></table></div>' +
-
-        '<h3>Your control</h3>' +
-        '<p>You can delete your API key in Torn at any time, and delete all your stored ladder data from your profile page here (the "Delete my data" button). Deletion removes your player and all your sessions from the leaderboard.</p>' +
-
-        '<h3>Fair use</h3>' +
-        '<p>Scores are computed on the server from your own Torn log, so results reflect real play. The app requests only your poker join/leave log, nothing else about your account. Torn passwords are never requested and must never be entered.</p>' +
-
-        '<h3>No warranty</h3>' +
-        '<p>The service is provided as-is with no guarantee of accuracy or availability. Torn may change its API at any time. Use at your own discretion.</p>' +
-        '<p class="muted">Reference: Torn API Terms of Service at <a class="flink" href="https://www.torn.com/api.html" target="_blank" rel="noopener">torn.com/api.html</a>.</p>' +
-        '</div>';
-    }
-
-    function renderProfile(id) {
-      el('view').innerHTML = '<div class="card muted">Loading profile…</div>';
-      apiPlayer(id).then(function (d) {
-        var p = d.player, tiers = d.tiers;
-
-        // The one line that says what this player does next. Used by both the
-        // progress bar and the current cycle card.
-        var nextLine;
-        if (p.paused) nextLine = 'Ladder paused. Games played now do not count.';
-        else if (!p.nextTierMin) nextLine = 'All 21 tables cleared 👑';
-        else if (p.bankroll >= p.nextTierMin) nextLine = 'Next: take a seat at ' + esc(tiers[p.tierIdx + 1].tables.join(' / '));
-        else nextLine = 'Next: win ' + fmtMoney(p.nextTierMin - p.bankroll) + ' more to unlock ' + esc(tiers[p.tierIdx + 1].tables[0]);
-
-        var prog = '';
-        if (p.nextTierMin) {
-          // Progress through the 21 tables.
-          var pct = Math.max(0, Math.min(100, (p.tierIdx / (tiers.length - 1)) * 100));
-          prog = '<div class="progress-outer"><div class="progress-inner" style="width:' + pct + '%"></div></div>' +
-            '<div class="progress-label"><span>Table ' + (p.tierIdx + 1) + ' of ' + tiers.length + '</span><span>' + nextLine + '</span></div>';
+/**
+ * TORN POKER LADDER — Google Apps Script backend (bound to a Google Sheet)
+ *
+ * A tiny JSON API. No HTML is served from here; the front end is the static
+ * index.html in this repo, hosted anywhere.
+ *
+ * - No API keys are ever stored. A player's key arrives with each sync
+ *   request, is used once in memory to read their poker log from Torn, and is
+ *   discarded. Only ladder results are written to the sheet.
+ * - No time triggers. The Torn API is only called when a player syncs
+ *   (i.e. logs in or has the page open).
+ * - Results can't be faked: the script fetches the log from Torn itself and
+ *   scores sessions server-side. Clients never submit results.
+ *
+ * SETUP (once, by the sheet owner):
+ *   1. Run setup() from the Apps Script editor and authorize it.
+ *   2. Deploy > New deployment > Web app > Execute as: Me, Access: Anyone.
+ *   3. Paste the web app URL into index.html (LADDER_API_URL).
+ *
+ * API:
+ *   GET  ?action=leaderboard            -> public leaderboard JSON
+ *   POST {"action":"sync","key":"..."}  -> registers on first call, fetches
+ *                                          new log entries, returns the
+ *                                          player's ladder state
+ */
+
+// ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
+
+var TORN_API = 'https://api.torn.com';
+var LOG_POKER_JOIN = 8410;   // "You joined the X Poker table buying in with $N"
+var LOG_POKER_LEAVE = 8411;  // "You left the X Poker table cashing out $N"
+
+// Cash game tables, from wiki.torn.com/wiki/Poker#Cash_Games (Nov 2024).
+// Amounts are plain dollars.
+var TABLES = [
+  { name: 'Newbie Corner',   minBuy: 500,        maxBuy: 2000,        sb: 5,        bb: 10,        seats: 9 },
+  { name: 'Hobo Holdem',     minBuy: 1250,       maxBuy: 5000,        sb: 12.5,     bb: 25,        seats: 9 },
+  { name: 'Broke Jokes',     minBuy: 2500,       maxBuy: 10000,       sb: 25,       bb: 50,        seats: 9 },
+  { name: '8-bit',           minBuy: 5000,       maxBuy: 20000,       sb: 50,       bb: 100,       seats: 5 },
+  { name: 'Sprinkles',       minBuy: 12500,      maxBuy: 50000,       sb: 125,      bb: 250,       seats: 9 },
+  { name: 'E-asy Street',    minBuy: 25000,      maxBuy: 100000,      sb: 250,      bb: 500,       seats: 9 },
+  { name: 'Gatling Gun',     minBuy: 50000,      maxBuy: 200000,      sb: 500,      bb: 1000,      seats: 9 },
+  { name: 'Quickdraw',       minBuy: 125000,     maxBuy: 500000,      sb: 1250,     bb: 2500,      seats: 9 },
+  { name: 'Tight Knit',      minBuy: 250000,     maxBuy: 1000000,     sb: 2500,     bb: 5000,      seats: 6 },
+  { name: 'Six of the Best', minBuy: 500000,     maxBuy: 2000000,     sb: 5000,     bb: 10000,     seats: 6 },
+  { name: 'Ballsy',          minBuy: 1250000,    maxBuy: 5000000,    sb: 12500,    bb: 25000,     seats: 9 },
+  { name: 'Boom or Bust',    minBuy: 2500000,    maxBuy: 10000000,    sb: 25000,    bb: 50000,     seats: 9 },
+  { name: 'Duel at Dawn',    minBuy: 5000000,    maxBuy: 20000000,    sb: 50000,    bb: 100000,    seats: 2 },
+  { name: 'Fourplay',        minBuy: 5000000,    maxBuy: 20000000,    sb: 50000,    bb: 100000,    seats: 4 },
+  { name: "Old 'n Slow",     minBuy: 5000000,    maxBuy: 20000000,    sb: 50000,    bb: 100000,    seats: 6 },
+  { name: 'Periodic',        minBuy: 5000000,    maxBuy: 20000000,    sb: 50000,    bb: 100000,    seats: 9 },
+  { name: 'Pound It',        minBuy: 12500000,   maxBuy: 50000000,    sb: 125000,   bb: 250000,    seats: 9 },
+  { name: 'Old Folks Home',  minBuy: 25000000,   maxBuy: 100000000,   sb: 250000,   bb: 500000,    seats: 6 },
+  { name: 'Tripod',          minBuy: 50000000,   maxBuy: 200000000,   sb: 500000,   bb: 1000000,   seats: 3 },
+  { name: 'Comatose Cove',   minBuy: 50000000,   maxBuy: 200000000,   sb: 500000,   bb: 1000000,   seats: 6 },
+  { name: 'River Wizard',    minBuy: 50000000,   maxBuy: 200000000,   sb: 500000,   bb: 1000000,   seats: 9 },
+  { name: "Cat's Chance",    minBuy: 125000000,  maxBuy: 500000000,   sb: 1250000,  bb: 2500000,   seats: 9 },
+  { name: 'Slow Cooker',     minBuy: 250000000,  maxBuy: 1000000000,  sb: 2500000,  bb: 5000000,   seats: 9 },
+  { name: 'Juan on Juan',    minBuy: 250000000,  maxBuy: 1000000000,  sb: 2500000,  bb: 5000000,   seats: 2 },
+  { name: 'High Rollers',    minBuy: 500000000,  maxBuy: 2000000000,  sb: 5000000,  bb: 10000000,  seats: 9 },
+  { name: 'Fire Pit',        minBuy: 1250000000, maxBuy: 5000000000,  sb: 12500000, bb: 25000000,  seats: 9 },
+  { name: 'Oligarch',        minBuy: 5000000000, maxBuy: 20000000000, sb: 50000000, bb: 100000000, seats: 5 }
+];
+
+// A tier = every table sharing the same buy-in range. Sorted ascending.
+function getTiers_() {
+  var byKey = {};
+  TABLES.forEach(function (t) {
+    var key = t.minBuy + ':' + t.maxBuy;
+    if (!byKey[key]) byKey[key] = { minBuy: t.minBuy, maxBuy: t.maxBuy, sb: t.sb, bb: t.bb, tables: [] };
+    byKey[key].tables.push(t.name);
+  });
+  var tiers = Object.keys(byKey).map(function (k) { return byKey[k]; });
+  tiers.sort(function (a, b) { return a.minBuy - b.minBuy; });
+  tiers.forEach(function (t, i) { t.idx = i; t.label = 'Tier ' + (i + 1); });
+  return tiers;
+}
+var TIERS = getTiers_();
+
+// Torn poker-table id -> rung (0-based), from the torn/pokertables blind levels.
+// Every table (including the II/III/IV overflow copies and same-stake variants)
+// maps to its rung by its blinds, so the log's numeric table id tells us exactly
+// which rung a session is on — no guessing from the buy-in amount.
+var ID_TO_RUNG = {
+  2: 0, 47: 0, 48: 0, 49: 0, 32: 0, 33: 0, 34: 0, 35: 0, 36: 0, 37: 0, 38: 0, 39: 0, 40: 0, 41: 0, // Newbie Corner (bb10)
+  3: 1, 50: 1, 51: 1, 52: 1,                                                                       // Hobo Holdem (bb25)
+  26: 2, 119: 2, 120: 2, 121: 2,                                                                   // Broke Jokes (bb50)
+  4: 3, 53: 3, 54: 3, 55: 3, 43: 3, 44: 3, 45: 3, 46: 3,                                            // 8-bit (bb100)
+  5: 4, 56: 4, 57: 4, 58: 4,                                                                        // Sprinkles (bb250)
+  24: 5, 113: 5, 114: 5, 115: 5,                                                                    // E-asy Street (bb500)
+  6: 6, 59: 6, 60: 6, 61: 6,                                                                        // Gatling Gun (bb1000)
+  7: 7, 62: 7, 63: 7, 64: 7,                                                                        // Quickdraw (bb2500)
+  8: 8, 65: 8, 66: 8, 67: 8,                                                                        // Tight Knit (bb5000)
+  27: 9, 122: 9, 123: 9, 124: 9,                                                                    // Six of the Best (bb10000)
+  9: 10, 68: 10, 69: 10, 70: 10,                                                                    // Ballsy (bb25000)
+  20: 11, 101: 11, 102: 11, 103: 11,                                                                // Boom or Bust (bb50000)
+  11: 12, 17: 12, 18: 12, 23: 12, 74: 12, 75: 12, 76: 12, 92: 12, 93: 12, 94: 12,                   // Old 'n Slow / Fourplay / Duel at Dawn / Periodic (bb100000)
+  95: 12, 96: 12, 97: 12, 110: 12, 111: 12, 112: 12,
+  10: 13, 71: 13, 72: 13, 73: 13,                                                                   // Pound It (bb250000)
+  21: 14, 104: 14, 105: 14, 106: 14,                                                                // Old Folks Home (bb500000)
+  12: 15, 22: 15, 28: 15, 77: 15, 78: 15, 79: 15, 107: 15, 108: 15, 109: 15, 125: 15, 126: 15, 127: 15, // Tripod / Comatose Cove / River Wizard (bb1000000)
+  25: 16, 116: 16, 117: 16, 118: 16,                                                                // Cat's Chance (bb2500000)
+  13: 17, 19: 17, 80: 17, 81: 17, 82: 17, 98: 17, 99: 17, 100: 17,                                  // Slow Cooker / Juan on Juan (bb5000000)
+  15: 18, 86: 18, 87: 18, 88: 18,                                                                   // High Rollers (bb10000000)
+  14: 19, 83: 19, 84: 19, 85: 19,                                                                   // Fire Pit (bb25000000)
+  16: 20, 89: 20, 90: 20, 91: 20                                                                    // Oligarch (bb100000000)
+};
+
+// Rung for a poker session. Uses the table id when known; if Torn adds a table
+// id we don't have yet, falls back to the buy-in amount (min buy-in = 50x big
+// blind, so the amount still identifies the rung well enough).
+function rungForTable_(tableId, buyIn) {
+  if (tableId != null && ID_TO_RUNG[tableId] != null) return ID_TO_RUNG[tableId];
+  var r = 0;
+  for (var i = 0; i < TIERS.length; i++) if (TIERS[i].minBuy <= buyIn) r = i;
+  return r;
+}
+
+// One representative table id per rung, for replaying stored sessions.
+var RUNG_TO_ID = (function () {
+  var m = {};
+  Object.keys(ID_TO_RUNG).forEach(function (id) { var r = ID_TO_RUNG[id]; if (m[r] == null) m[r] = Number(id); });
+  return m;
+})();
+
+// ---------------------------------------------------------------------------
+// Sheet storage
+// ---------------------------------------------------------------------------
+
+var USER_HEADERS = [
+  'id', 'name', 'image', 'bankroll', 'busts', 'peak_bankroll',
+  'sessions_played', 'wins', 'losses', 'last_log_ts',
+  'open_session_json', 'seen_ids_json', 'joined_at', 'last_sync',
+  'rung',      // current table (0-based); appended so existing rows stay aligned
+  'peak_rung', // highest table ever reached (0-based)
+  'cycles',    // number of full attempts (times started over from the bottom)
+  'last_leave_json', // last cash-out per rung {rung: {amount, ts}}, for spotting rathole rebuys
+  'paused_at'  // unix seconds when the player paused the ladder; 0 = not paused
+];
+var SESSION_HEADERS = [
+  'player_id', 'player_name', 'join_ts', 'leave_ts', 'table', 'tier_idx',
+  'tier_label', 'buy_in', 'cash_out', 'counted', 'reason', 'remaining', 'cycle'
+];
+
+function ss_() { return SpreadsheetApp.getActiveSpreadsheet(); }
+
+function ensureSheet_(name, headers) {
+  var sheet = ss_().getSheetByName(name);
+  if (!sheet) {
+    sheet = ss_().insertSheet(name);
+    sheet.appendRow(headers);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function usersSheet_() { return ensureSheet_('Users', USER_HEADERS); }
+function sessionsSheet_() { return ensureSheet_('Sessions', SESSION_HEADERS); }
+
+function rowToUser_(row) {
+  var u = {};
+  USER_HEADERS.forEach(function (h, i) { u[h] = row[i]; });
+  u.id = String(u.id);
+  u.bankroll = Number(u.bankroll) || 0;
+  u.busts = Number(u.busts) || 0;
+  u.peak_bankroll = Number(u.peak_bankroll) || 0;
+  u.sessions_played = Number(u.sessions_played) || 0;
+  u.wins = Number(u.wins) || 0;
+  u.losses = Number(u.losses) || 0;
+  u.last_log_ts = Number(u.last_log_ts) || 0;
+  u.openSession = u.open_session_json ? JSON.parse(u.open_session_json) : null;
+  u.seenIds = u.seen_ids_json ? JSON.parse(u.seen_ids_json) : [];
+  u.rung = Number(u.rung) || 0;
+  u.peak_rung = Number(u.peak_rung) || 0;
+  u.cycles = Number(u.cycles) || 0;
+  u.lastLeave = u.last_leave_json ? JSON.parse(u.last_leave_json) : {};
+  u.paused_at = Number(u.paused_at) || 0;
+  return u;
+}
+
+function userToRow_(u) {
+  return [
+    u.id, u.name, u.image || '', u.bankroll, u.busts, u.peak_bankroll,
+    u.sessions_played, u.wins, u.losses, u.last_log_ts,
+    u.openSession ? JSON.stringify(u.openSession) : '',
+    JSON.stringify((u.seenIds || []).slice(-400)),
+    u.joined_at || '', u.last_sync || '', u.rung || 0, u.peak_rung || 0, u.cycles || 0,
+    (u.lastLeave && Object.keys(u.lastLeave).length) ? JSON.stringify(u.lastLeave) : '',
+    u.paused_at || 0
+  ];
+}
+
+function loadUsers_() {
+  var sheet = usersSheet_();
+  var last = sheet.getLastRow();
+  if (last < 2) return [];
+  return sheet.getRange(2, 1, last - 1, USER_HEADERS.length).getValues().map(rowToUser_);
+}
+
+function findUser_(id) {
+  var users = loadUsers_();
+  for (var i = 0; i < users.length; i++) if (users[i].id === String(id)) return users[i];
+  return null;
+}
+
+function saveUser_(u) {
+  var sheet = usersSheet_();
+  var last = sheet.getLastRow();
+  var ids = last >= 2 ? sheet.getRange(2, 1, last - 1, 1).getValues() : [];
+  for (var i = 0; i < ids.length; i++) {
+    if (String(ids[i][0]) === String(u.id)) {
+      sheet.getRange(i + 2, 1, 1, USER_HEADERS.length).setValues([userToRow_(u)]);
+      return;
+    }
+  }
+  sheet.appendRow(userToRow_(u));
+}
+
+function appendSessions_(rows) {
+  if (!rows.length) return;
+  var sheet = sessionsSheet_();
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, SESSION_HEADERS.length).setValues(rows);
+}
+
+// Delete every row in a sheet whose first column matches id (bottom-up so row
+// indices don't shift as we go).
+function deleteRowsById_(sheet, id) {
+  var last = sheet.getLastRow();
+  if (last < 2) return 0;
+  var ids = sheet.getRange(2, 1, last - 1, 1).getValues();
+  var removed = 0;
+  for (var i = ids.length - 1; i >= 0; i--) {
+    if (String(ids[i][0]) === String(id)) { sheet.deleteRow(i + 2); removed++; }
+  }
+  return removed;
+}
+
+function loadSessionsFor_(playerId, limit) {
+  var sheet = sessionsSheet_();
+  var last = sheet.getLastRow();
+  if (last < 2) return [];
+  var values = sheet.getRange(2, 1, last - 1, SESSION_HEADERS.length).getValues();
+  var out = [];
+  for (var i = values.length - 1; i >= 0 && out.length < (limit || 50); i--) {
+    if (String(values[i][0]) === String(playerId)) {
+      var s = {};
+      SESSION_HEADERS.forEach(function (h, j) { s[h] = values[i][j]; });
+      out.push(s);
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Torn API (key is only ever a function argument — never persisted)
+// ---------------------------------------------------------------------------
+
+function tornFetch_(path) {
+  var resp = UrlFetchApp.fetch(TORN_API + path, { muteHttpExceptions: true });
+  var body = JSON.parse(resp.getContentText());
+  if (body && body.error) {
+    var e = new Error('Torn API error ' + body.error.code + ': ' + body.error.error);
+    e.tornCode = body.error.code;
+    throw e;
+  }
+  return body;
+}
+
+// Identify the key's owner and grab their avatar in one call. The v2 profile
+// selection returns { profile: { id, name, image, ... } }, so it covers both
+// identity and the picture. The key only needs `profile` (+ the poker `log`).
+function whoIs_(apiKey) {
+  var body = tornFetch_('/v2/user/profile?key=' + encodeURIComponent(apiKey));
+  var prof = body.profile;
+  if (!prof || prof.id == null) throw new Error('Unexpected profile response from Torn.');
+  return {
+    id: String(prof.id),
+    name: prof.name,
+    image: (typeof prof.image === 'string') ? prof.image : ''
+  };
+}
+
+// Fetch poker join/leave logs (v2 endpoint), normalized, sorted ascending, and
+// filtered to entries newer than fromTs. The endpoint returns the newest
+// `limit` (max 100) entries, so big backlogs are paged by walking `to`
+// backward until fromTs is reached (capped at 10 pages, i.e. 1000 entries per
+// sync). The lower bound is applied client-side only: the `from` parameter is
+// deliberately not sent, because syncs with it returned nothing for entries
+// that verifiably existed. The `timestamp` parameter busts Torn's response
+// cache so a re-sync can't be served a stale copy.
+function fetchPokerLogs_(apiKey, fromTs) {
+  fromTs = fromTs || 0;
+  var all = [], to = 0;
+  for (var page = 0; page < 10; page++) {
+    var path = '/v2/user/log?log=' + LOG_POKER_JOIN + ',' + LOG_POKER_LEAVE +
+      '&limit=100' + (to ? '&to=' + to : '') +
+      '&timestamp=' + Math.floor(Date.now() / 1000) +
+      '&key=' + encodeURIComponent(apiKey);
+    var body = tornFetch_(path);
+    var list = Array.isArray(body.log) ? body.log : [];
+    if (!list.length) break;
+    all = all.concat(list);
+    var oldest = list.reduce(function (m, e) { return Math.min(m, Number(e.timestamp)); }, Infinity);
+    // Stop when the page was short, we reached already-processed entries, or
+    // the cursor failed to move (defensive: `to` not honored).
+    if (list.length < 100 || oldest <= fromTs + 1 || (to && oldest >= to)) break;
+    to = oldest - 1; // `to` is inclusive; continue below what we already have
+  }
+  var seen = {};
+  var events = all.map(normalizeLogEntry_).filter(function (e) {
+    if (e.ts <= fromTs || seen[e.id]) return false;
+    seen[e.id] = true;
+    return true;
+  });
+  events.sort(function (a, b) { return a.ts - b.ts; });
+  return events;
+}
+
+// Normalize one poker log entry to { id, type, ts, money, table }.
+//
+// The API v2 shape (confirmed live) looks like:
+//   { id: "...", timestamp: 1783598100,
+//     details: { id: 8410, title: "Casino poker table join", category: "Casino" },
+//     data: { table: 2, value: 1000 } }
+// so the join/leave type is details.id and the money is data.value. data.table
+// is a numeric table id (not a name), so the rung comes from ID_TO_RUNG.
+function normalizeLogEntry_(entry) {
+  var data = entry.data || {};
+  var params = entry.params || {};
+  var typeId = Number(entry.details && entry.details.id);
+
+  // Money: prefer data.value / other money-named fields; fall back to a "$N"
+  // in any text. Never grab "first number", which can be a table id.
+  var money = moneyFromKeys_(data, params);
+  if (money === null) money = moneyFromDollar_(gatherStrings_(entry));
+  if (money === null) money = 0;
+
+  // The numeric table id (data.table) tells us exactly which table, via
+  // ID_TO_RUNG. Keep a string name too if the log ever provides one.
+  var tableId = (typeof data.table === 'number') ? data.table : null;
+  var table = (typeof data.table === 'string') ? data.table : null;
+
+  return {
+    id: entry.id,
+    type: typeId === LOG_POKER_JOIN ? 'join' : 'leave',
+    ts: Number(entry.timestamp),
+    money: Number(money) || 0,
+    tableId: tableId,
+    table: table
+  };
+}
+
+// Collect every string value anywhere in the entry (titles + data + params).
+function gatherStrings_(entry) {
+  var out = [];
+  if (typeof entry.title === 'string') out.push(entry.title);
+  if (entry.details && typeof entry.details.title === 'string') out.push(entry.details.title);
+  [entry.data, entry.params].forEach(function (obj) {
+    if (obj) Object.keys(obj).forEach(function (k) {
+      if (typeof obj[k] === 'string') out.push(obj[k]);
+    });
+  });
+  return out;
+}
+
+// The dollar amount written in the log text, e.g. "$1,000" or "$0". Returns
+// null if no "$number" appears in any of the strings.
+function moneyFromDollar_(strings) {
+  for (var i = 0; i < strings.length; i++) {
+    var m = strings[i].match(/\$\s*([\d,]+(?:\.\d+)?)/);
+    if (m) return Number(m[1].replace(/,/g, ''));
+  }
+  return null;
+}
+
+// A numeric value stored under a money-named key (checked in priority order so
+// a table id under a different key is never mistaken for the buy-in).
+var MONEY_KEYS = ['money', 'amount', 'cost', 'buy_in', 'buyin', 'cash_out', 'cashout', 'cash', 'value', 'chips', 'won', 'pot', 'total'];
+function moneyFromKeys_(data, params) {
+  for (var i = 0; i < MONEY_KEYS.length; i++) {
+    var k = MONEY_KEYS[i];
+    if (typeof data[k] === 'number') return data[k];
+    if (typeof params[k] === 'number') return params[k];
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Ladder engine
+// ---------------------------------------------------------------------------
+
+// Apply a batch of normalized events to a user. Mutates u; returns finished
+// session rows for the Sessions sheet.
+//
+// The rules:
+//  - The ladder is climbed one table at a time. Only sessions at your current
+//    table or the next one up are ladder sessions; anything else is off-ladder
+//    play and never touches your ladder state (the row is still stored, marked
+//    not counted, so players can see why it didn't count).
+//  - You move UP when you sit at the next table: the cash-out before it only
+//    makes you eligible. You move DOWN at a cash-out that leaves your bankroll
+//    below your current table's minimum: you drop to the highest table you can
+//    still afford, and that is a bust on your record.
+//  - No topping up: a ladder buy-in must fit inside your bankroll. The one
+//    exception is a rathole rebuy: Torn forces a player who returns to a table
+//    within 2 hours to buy in with exactly what they left with, which can
+//    exceed both the table max and their bankroll. Those joins count, and
+//    since sessions are scored by how the stack changed, the forced excess
+//    never enters the ladder.
+//  - Broke (below the bottom table's minimum) and buying into the bottom
+//    table: a new cycle starts. The restart stake is the buy-in capped at the
+//    table max, so a rathole-forced rebuy can't restore a busted bankroll.
+function applyEvents_(u, events) {
+  var finished = [];
+  var seen = {};
+  (u.seenIds || []).forEach(function (id) { seen[id] = true; });
+
+  events.forEach(function (ev) {
+    if (seen[ev.id]) return;
+    seen[ev.id] = true;
+    u.seenIds.push(ev.id);
+    if (ev.ts > u.last_log_ts) u.last_log_ts = ev.ts;
+
+    if (ev.type === 'join') {
+      var joinRung = rungForTable_(ev.tableId, ev.money);
+      var counted = false, reason = '';
+
+      if (joinRung === 0 && u.bankroll < TIERS[0].minBuy) {
+        // Broke and buying into the bottom table: a new cycle. The stake is
+        // your own money, capped at the table max so a rathole-forced rebuy
+        // restarts you like a fresh player.
+        u.bankroll = Math.min(ev.money, TIERS[0].maxBuy);
+        u.cycles = (u.cycles || 0) + 1;
+        counted = true;
+      } else if (joinRung === u.rung || joinRung === u.rung + 1) {
+        if (ev.money <= u.bankroll || isRatholeRebuy_(u, joinRung, ev)) {
+          counted = true;
         } else {
-          prog = '<div class="progress-outer"><div class="progress-inner" style="width:100%"></div></div>' +
-            '<div class="progress-label"><span>All 21 tables cleared 👑</span><span></span></div>';
+          reason = 'buy-in is more than your ladder bankroll (no top-ups)';
         }
-        // Counted sessions grouped by cycle, newest cycle first. The API sends
-        // newest-first, so each cycle's rows get flipped back into play order.
-        var byCycle = {};
-        (d.sessions || []).filter(function (s) { return String(s.counted) === 'yes'; })
-          .forEach(function (s) { var c = Number(s.cycle) || 0; (byCycle[c] = byCycle[c] || []).push(s); });
-        var cycleNums = Object.keys(byCycle).map(Number).sort(function (a, b) { return b - a; });
-
-        var newest = cycleNums.length ? byCycle[cycleNums[0]][0] : null;
-        var newestBusted = !!newest && String(newest.reason || '') === 'out at the bottom';
-
-        // A washout is a cycle that busted without ever leaving Newbie Corner.
-        // Runs of them collapse into one line so the profile isn't a wall of
-        // $0 cash-outs.
-        var isWashout = function (c) {
-          return String(byCycle[c][0].reason || '') === 'out at the bottom' &&
-            byCycle[c].every(function (s) { return Number(s.tier_idx) === 0; });
-        };
-        var cycleCard = function (c) {
-          var rows = byCycle[c].slice().reverse().map(function (s) {
-            var lost = Number(s.cash_out) < Number(s.buy_in);
-            return '<tr><td>' + fmtWhen(s.leave_ts) + '</td><td>' + esc(s.table || 'unknown') + '</td>' +
-              '<td class="num">' + fmtMoney(s.buy_in) + '</td>' +
-              '<td class="num ' + (lost ? 'neg' : 'pos') + '">' + fmtMoney(s.cash_out) + '</td>' +
-              '<td class="num sm-hide">' + (s.remaining === '' || s.remaining == null ? '' : fmtMoney(s.remaining)) + '</td>' +
-              '<td class="muted">' + esc(s.reason || '') + '</td></tr>';
-          }).join('');
-          var current = c === cycleNums[0] && !newestBusted;
-          return '<div class="card"><h2>Cycle ' + c + (current ? ' <span class="tag">current</span>' : '') + '</h2>' +
-            (current ? '<div class="sub">' + nextLine + '</div>' : '') +
-            '<div style="overflow-x:auto"><table><thead><tr>' +
-            '<th>When</th><th>Table</th><th class="num">Bought in</th><th class="num">Cashed out</th><th class="num sm-hide">Bankroll</th><th>Result</th>' +
-            '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
-        };
-        var cards = [];
-        for (var ci = 0; ci < cycleNums.length;) {
-          var cj = ci;
-          while (cj < cycleNums.length && isWashout(cycleNums[cj])) cj++;
-          if (cj - ci >= 2) {
-            cards.push('<div class="card"><h2>Cycles ' + cycleNums[cj - 1] + '-' + cycleNums[ci] + '</h2>' +
-              '<div class="sub">' + (cj - ci) + ' cycles busted without leaving Newbie Corner.</div></div>');
-            ci = cj;
-          } else {
-            cards.push(cycleCard(cycleNums[ci]));
-            ci++;
-          }
+        if (counted && joinRung === u.rung + 1) {
+          // Taking a seat at the next table IS the climb.
+          u.rung = joinRung;
+          if (u.rung > (u.peak_rung || 0)) u.peak_rung = u.rung;
         }
-        var cycleCards = cards.join('');
-        if (newestBusted) {
-          cycleCards = '<div class="card"><h2>Cycle ' + (cycleNums[0] + 1) + ' <span class="tag">current</span></h2>' +
-            '<div class="sub">Busted. Buy into Newbie Corner to start this cycle.</div></div>' + cycleCards;
-        }
-        if (!cycleCards) cycleCards = '<div class="card"><h2>Cycle 1</h2><div class="sub">' + nextLine + '</div><div class="muted">No sessions yet.</div></div>';
+      } else {
+        reason = 'off the ladder (not your table or the next one up)';
+      }
 
-        var peakIdx = (p.peakIdx != null ? p.peakIdx : p.tierIdx);
-        var peakName = (p.peakTables ? p.peakTables[0] : p.tierTables[0]);
-        var tornLink = p.profileUrl ? '<a href="' + esc(p.profileUrl) + '" target="_blank" rel="noopener" class="tag">Torn profile ↗</a>' : '';
-        var isMe = p.id === state.meId;
-        var deleteBtn = isMe ? '<div class="spacer"></div>' +
-          (p.paused
-            ? '<button class="btn" onclick="doResume()" style="margin-right:8px">Resume ladder</button>'
-            : '<button class="btn secondary" onclick="doPause()" style="margin-right:8px">Pause ladder</button>') +
-          '<button class="btn danger" onclick="doDeleteData()">Delete my data</button>' : '';
-        el('view').innerHTML =
-          '<span class="backlink" data-goto-route="leaderboard">← back to leaderboard</span>' +
-          '<div class="card"><div class="phead">' + avatar(p, 64) +
-          '<div><div class="pn">' + esc(p.name) + (p.paused ? ' <span class="tag">paused</span>' : (p.atTable ? ' <span class="tag">playing</span>' : '')) + '</div>' +
-          '<div class="muted">Rank #' + (p.rank || '?') + ' · on ' + esc(p.tierTables.join(' · ')) + ' ' + tornLink + '</div></div>' + deleteBtn + '</div>' +
-          '<div class="stat-row">' +
-          '<div class="stat"><div class="v green">' + (peakIdx + 1) + ' / 21</div><div class="k">Highest table reached · ' + esc(peakName) + '</div></div>' +
-          '<div class="stat"><div class="v">' + (p.tierIdx + 1) + ' / 21</div><div class="k">Current table · ' + esc(p.tierTables[0]) + '</div></div>' +
-          '<div class="stat"><div class="v">' + p.busts + '</div><div class="k">Busts</div></div>' +
-          '<div class="stat"><div class="v">' + (p.cycles != null ? p.cycles : '—') + '</div><div class="k">Ladder cycles</div></div>' +
-          '<div class="stat"><div class="v" style="color:var(--gold)">' + fmtMoney(p.bankroll) + '</div><div class="k">Bankroll</div></div>' +
-          '</div>' + prog + '</div>' +
-          cycleCards;
-      }).catch(function (e) {
-        el('view').innerHTML = '<span class="backlink" data-goto-route="players">← back</span><div class="card">' + esc(e.message) + '</div>';
+      u.openSession = {
+        joinTs: ev.ts, buyIn: ev.money, tierIdx: joinRung,
+        table: TIERS[joinRung].tables[0],
+        // Ladder money actually at risk. Less than the real buy-in only when
+        // Torn forced the amount (restart seed cap or rathole rebuy).
+        stake: counted ? Math.min(ev.money, u.bankroll) : ev.money,
+        counted: counted, reason: reason
+      };
+      return;
+    }
+
+    // leave
+    if (!u.openSession) return; // leave with no matching join (history predates tracking)
+    var s = u.openSession;
+    u.openSession = null;
+    var net = ev.money - s.buyIn;
+    var outcome = s.reason;
+    if (s.counted) {
+      // Bankroll = the cash you now hold: what you kept back plus the cash-out.
+      // Floored at 0 for rathole sessions, where the stake exceeded the bankroll.
+      var prevBankroll = u.bankroll;
+      u.bankroll = Math.max(0, u.bankroll + net);
+      if (u.bankroll > u.peak_bankroll) u.peak_bankroll = u.bankroll;
+      outcome = '';
+
+      if (u.bankroll < TIERS[0].minBuy) {
+        u.rung = 0;
+        u.busts += 1; // cycle over; the next bottom buy-in starts the next one
+        outcome = 'out at the bottom';
+      } else if (u.bankroll < TIERS[u.rung].minBuy) {
+        while (u.rung > 0 && u.bankroll < TIERS[u.rung].minBuy) u.rung--;
+        u.busts += 1;
+        outcome = 'dropped to ' + TIERS[u.rung].tables[0];
+      } else if (u.rung + 1 < TIERS.length &&
+        u.bankroll >= TIERS[u.rung + 1].minBuy && prevBankroll < TIERS[u.rung + 1].minBuy) {
+        // This cash-out crossed the next table's minimum for the first time.
+        outcome = 'unlocked ' + TIERS[u.rung + 1].tables[0];
+      }
+      if (net > 0) u.wins += 1; else if (net < 0) u.losses += 1;
+    }
+    // Remember the cash-out per table (even for uncounted sessions) to spot
+    // rathole rebuys; the forced buy-in rule is per table.
+    if (!u.lastLeave) u.lastLeave = {};
+    u.lastLeave[s.tierIdx] = { amount: ev.money, ts: ev.ts };
+    u.sessions_played += 1;
+    // Store a forced oversized buy-in normalized: subtract the outside-money
+    // excess from both sides, so buy-in, cash-out and bankroll add up on the
+    // profile. Normal sessions have no excess and are stored as-is.
+    var excess = s.counted ? (s.buyIn - (s.stake != null ? s.stake : s.buyIn)) : 0;
+    finished.push([
+      u.id, u.name, s.joinTs, ev.ts, s.table, s.tierIdx,
+      TIERS[s.tierIdx].label, s.buyIn - excess, Math.max(0, ev.money - excess),
+      s.counted ? 'yes' : 'no',
+      outcome,
+      u.bankroll, // stake remaining after this session
+      u.cycles || 0 // cycle this session belongs to (a bust ends it at this leave)
+    ]);
+  });
+
+  return finished;
+}
+
+// A rathole rebuy: Torn forces a player who returns to a table within 2 hours
+// of leaving it to buy in with exactly the amount they left with.
+function isRatholeRebuy_(u, joinRung, ev) {
+  var ll = (u.lastLeave || {})[joinRung];
+  return !!ll && ev.money === ll.amount && (ev.ts - ll.ts) <= 7200;
+}
+
+// ---------------------------------------------------------------------------
+// Sync — the only place the Torn API is called, and only for the player
+// making the request. The key lives in local variables and is discarded.
+// ---------------------------------------------------------------------------
+
+function handleSync_(apiKey) {
+  apiKey = String(apiKey || '').trim();
+  if (!apiKey) throw new Error('No API key given.');
+  var who = whoIs_(apiKey);
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var u = findUser_(who.id);
+    if (!u) {
+      u = {
+        id: who.id, name: who.name, image: who.image,
+        bankroll: 0, busts: 0, peak_bankroll: 0,
+        sessions_played: 0, wins: 0, losses: 0, rung: 0, peak_rung: 0, cycles: 0,
+        // The ladder starts now; old poker history is not replayed.
+        last_log_ts: Math.floor(Date.now() / 1000),
+        openSession: null, seenIds: [], lastLeave: {}, paused_at: 0,
+        joined_at: new Date().toISOString()
+      };
+    } else {
+      u.name = who.name;
+      if (who.image) u.image = who.image; // keep the stored avatar if none came back
+    }
+    // Paused: the ladder isn't watching. No log fetch, nothing processed.
+    if (!u.paused_at) {
+      var events = fetchPokerLogs_(apiKey, u.last_log_ts);
+      var rows = applyEvents_(u, events);
+      appendSessions_(rows);
+    }
+    u.last_sync = new Date().toISOString();
+    saveUser_(u);
+    return {
+      ok: true,
+      me: publicUser_(u),
+      sessions: loadSessionsFor_(u.id, 50),
+      tiers: TIERS
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function rankedPlayers_() {
+  var players = loadUsers_().map(publicUser_);
+  // It's a climb: highest table reached first, bankroll breaks ties.
+  players.sort(function (a, b) {
+    return b.tierIdx - a.tierIdx || b.bankroll - a.bankroll;
+  });
+  players.forEach(function (p, i) { p.rank = i + 1; });
+  return players;
+}
+
+function handleLeaderboard_() {
+  return { ok: true, players: rankedPlayers_(), tiers: TIERS };
+}
+
+// Pause the ladder. Syncs first so everything played up to now still counts,
+// then refuses if the player is sitting at a table (their open session would
+// dangle across the pause). While paused, syncs skip the Torn log entirely.
+function handlePause_(apiKey) {
+  apiKey = String(apiKey || '').trim();
+  if (!apiKey) throw new Error('No API key given.');
+  var who = whoIs_(apiKey);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var u = findUser_(who.id);
+    if (!u) throw new Error('Sign in first.');
+    if (!u.paused_at) {
+      var rows = applyEvents_(u, fetchPokerLogs_(apiKey, u.last_log_ts));
+      appendSessions_(rows);
+      u.last_sync = new Date().toISOString();
+      var atTable = !!u.openSession;
+      if (!atTable) u.paused_at = Math.floor(Date.now() / 1000);
+      saveUser_(u); // the sync sticks even when the pause is refused
+      if (atTable) throw new Error('Please cash out of your current game before pausing.');
+    }
+    return { ok: true, me: publicUser_(u), sessions: loadSessionsFor_(u.id, 50), tiers: TIERS };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Resume the ladder. Everything played while paused is skipped, not replayed:
+// the log cursor jumps to now and the normal rules judge whatever comes next.
+function handleResume_(apiKey) {
+  apiKey = String(apiKey || '').trim();
+  if (!apiKey) throw new Error('No API key given.');
+  var who = whoIs_(apiKey);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var u = findUser_(who.id);
+    if (!u) throw new Error('Sign in first.');
+    if (u.paused_at) {
+      u.last_log_ts = Math.floor(Date.now() / 1000);
+      u.paused_at = 0;
+      u.last_sync = new Date().toISOString();
+      saveUser_(u);
+    }
+    return { ok: true, me: publicUser_(u), sessions: loadSessionsFor_(u.id, 50), tiers: TIERS };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Delete the caller's own data. Ownership is proved by the API key (only the
+// account owner can produce a valid key for their id).
+function handleDelete_(apiKey) {
+  apiKey = String(apiKey || '').trim();
+  if (!apiKey) throw new Error('No API key given.');
+  var who = whoIs_(apiKey);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    deleteRowsById_(usersSheet_(), who.id);
+    deleteRowsById_(sessionsSheet_(), who.id);
+    return { ok: true, deleted: who.id };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Public: one player's profile and recent sessions, by Torn id.
+function handlePlayer_(id) {
+  var u = findUser_(id);
+  if (!u) throw new Error('Player not found.');
+  var player = publicUser_(u);
+  // Attach the player's rank from the full board.
+  var ranked = rankedPlayers_();
+  for (var i = 0; i < ranked.length; i++) if (ranked[i].id === player.id) { player.rank = ranked[i].rank; break; }
+  return { ok: true, player: player, sessions: loadSessionsFor_(u.id, 50), tiers: TIERS };
+}
+
+function publicUser_(u) {
+  var clamp = function (n) { return Math.max(0, Math.min(TIERS.length - 1, Number(n) || 0)); };
+  // Current position = the table you're on now (u.rung). Highest reached is a
+  // high-water mark that never drops (u.peak_rung).
+  var tierIdx = clamp(u.rung);
+  var peakIdx = clamp(Math.max(Number(u.rung) || 0, Number(u.peak_rung) || 0));
+  var isReal = /^\d+$/.test(String(u.id));
+  return {
+    id: u.id, name: u.name, image: u.image || '',
+    bankroll: u.bankroll, peakBankroll: u.peak_bankroll,
+    tierIdx: tierIdx, tierLabel: TIERS[tierIdx].label, tierTables: TIERS[tierIdx].tables,
+    peakIdx: peakIdx, peakLabel: TIERS[peakIdx].label, peakTables: TIERS[peakIdx].tables,
+    // What it costs to move up to the next table.
+    nextTierMin: tierIdx + 1 < TIERS.length ? TIERS[tierIdx + 1].minBuy : null,
+    sessionsPlayed: u.sessions_played, wins: u.wins, losses: u.losses,
+    busts: u.busts, cycles: Number(u.cycles) || 0, lastSync: u.last_sync,
+    atTable: !!u.openSession, paused: !!u.paused_at,
+    profileUrl: isReal ? 'https://www.torn.com/profiles.php?XID=' + u.id : ''
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Web app entry points
+// ---------------------------------------------------------------------------
+
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// Public, keyless: the leaderboard and individual player profiles.
+function doGet(e) {
+  try {
+    var action = (e && e.parameter && e.parameter.action) || 'leaderboard';
+    if (action === 'leaderboard') return json_(handleLeaderboard_());
+    if (action === 'player') return json_(handlePlayer_(e.parameter.id));
+    return json_({ ok: false, error: 'Unknown action.' });
+  } catch (err) {
+    return json_({ ok: false, error: err.message });
+  }
+}
+
+// Key-bearing calls come in a POST body (never in the URL, so the key can't
+// end up in request logs).
+function doPost(e) {
+  try {
+    var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    if (body.action === 'sync') return json_(handleSync_(body.key));
+    if (body.action === 'pause') return json_(handlePause_(body.key));
+    if (body.action === 'resume') return json_(handleResume_(body.key));
+    if (body.action === 'delete') return json_(handleDelete_(body.key));
+    return json_({ ok: false, error: 'Unknown action.' });
+  } catch (err) {
+    var msg = err.tornCode === 2 ? 'That API key is not valid.' : err.message;
+    return json_({ ok: false, error: msg });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// One-time setup (run manually from the editor)
+// ---------------------------------------------------------------------------
+
+function setup() {
+  usersSheet_();
+  sessionsSheet_();
+  Logger.log('Setup complete: Users and Sessions tabs are ready.');
+}
+
+// One-off migration (July 2026) for sheets created under the old layout.
+// Sessions: deletes the profit column and rewrites the header row (older
+// sheets also predate the remaining and cycle columns). Users: rewrites the
+// header row (adds last_leave_json). Run once from the editor, then run
+// recompute() to re-score history and backfill the derived columns on
+// existing rows. Safe to re-run.
+function migrate() {
+  var sess = sessionsSheet_();
+  var headers = sess.getRange(1, 1, 1, sess.getLastColumn()).getValues()[0];
+  var profitCol = headers.indexOf('profit');
+  if (profitCol >= 0) sess.deleteColumn(profitCol + 1);
+  if (sess.getMaxColumns() < SESSION_HEADERS.length) {
+    sess.insertColumnsAfter(sess.getMaxColumns(), SESSION_HEADERS.length - sess.getMaxColumns());
+  }
+  sess.getRange(1, 1, 1, SESSION_HEADERS.length).setValues([SESSION_HEADERS]);
+
+  var users = usersSheet_();
+  if (users.getMaxColumns() < USER_HEADERS.length) {
+    users.insertColumnsAfter(users.getMaxColumns(), USER_HEADERS.length - users.getMaxColumns());
+  }
+  users.getRange(1, 1, 1, USER_HEADERS.length).setValues([USER_HEADERS]);
+  Logger.log('Migrated. Now run recompute() to re-score history under the current rules.');
+}
+
+// Rebuild every player's derived stats (bankroll, rung, peak, cycles, busts,
+// wins/losses) by replaying their stored sessions under the current rules, and
+// rewrite each session row's derived columns (counted, reason, remaining,
+// cycle) to match. Run this once from the editor after changing the engine.
+// The raw facts (who, when, table, buy-in, cash-out) are never altered, and
+// neither are API keys (never stored) or each player's seen-log ids, so future
+// syncs continue normally. Safe to re-run.
+function recompute() {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var users = loadUsers_();
+    var sessSheet = sessionsSheet_();
+    var last = sessSheet.getLastRow();
+    var rows = last >= 2 ? sessSheet.getRange(2, 1, last - 1, SESSION_HEADERS.length).getValues() : [];
+    var byPlayer = {};
+    rows.forEach(function (row, i) {
+      var s = {}; SESSION_HEADERS.forEach(function (h, j) { s[h] = row[j]; });
+      s._row = i + 2; // sheet row this session lives on, for the write-back
+      (byPlayer[String(s.player_id)] = byPlayer[String(s.player_id)] || []).push(s);
+    });
+
+    users.forEach(function (u) {
+      var sessions = (byPlayer[String(u.id)] || []).slice()
+        .sort(function (a, b) { return Number(a.join_ts) - Number(b.join_ts); });
+
+      // Reset derived stats; keep identity, seen-log ids and last_log_ts.
+      u.bankroll = 0; u.busts = 0; u.peak_bankroll = 0; u.sessions_played = 0;
+      u.wins = 0; u.losses = 0; u.rung = 0; u.peak_rung = 0; u.cycles = 0;
+      u.openSession = null; u.lastLeave = {};
+
+      var events = [];
+      sessions.forEach(function (s, i) {
+        var tid = RUNG_TO_ID[Number(s.tier_idx)];
+        events.push({ id: 'rc' + i + 'j', type: 'join', ts: Number(s.join_ts), tableId: (tid != null ? tid : null), money: Number(s.buy_in) });
+        events.push({ id: 'rc' + i + 'l', type: 'leave', ts: Number(s.leave_ts), money: Number(s.cash_out) });
       });
-    }
 
-    // ---------------------------------------------------------------------------
-    // Hover mini-profile + click navigation (event delegation)
-    // ---------------------------------------------------------------------------
-    var hoverCard = el('hoverCard');
-    // Only show the hover card on devices with a real pointer (not touch), so it
-    // can't get stuck on phones where there's no mouse-out.
-    var canHover = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-    function hideHover() { hoverCard.style.display = 'none'; }
-    document.addEventListener('mouseover', function (e) {
-      if (!canHover) return;
-      var a = e.target.closest && e.target.closest('[data-pid]');
-      if (!a) return;
-      var p = state.byId[a.getAttribute('data-pid')];
-      if (!p) return;
-      hoverCard.innerHTML =
-        '<div class="hh">' + avatar(p, 40) + '<div><div class="hn">' + esc(p.name) + '</div>' +
-        '<div class="ht">' + esc(p.tierLabel) + ' · ' + esc(p.tierTables[0]) + '</div></div></div>' +
-        '<div class="hrow"><span>Bankroll</span><span>' + fmtMoney(p.bankroll) + '</span></div>' +
-        '<div class="hrow"><span>Highest</span><span>' + ((p.peakIdx != null ? p.peakIdx : p.tierIdx) + 1) + ' / 21</span></div>' +
-        '<div class="hrow"><span>Cycles</span><span>' + (p.cycles != null ? p.cycles : '—') + '</span></div>' +
-        '<div class="hrow"><span>Busts</span><span>' + p.busts + '</span></div>';
-      hoverCard.style.display = 'block';
+      // Replay against an empty seen-set so all sessions apply, then restore the
+      // real seen-log ids so future syncs still dedupe correctly.
+      var realSeen = u.seenIds;
+      u.seenIds = [];
+      var replayed = applyEvents_(u, events); // one row per stored session, in order
+      u.seenIds = realSeen;
+
+      // Overwrite each stored row with its recomputed version, so the derived
+      // columns reflect the current rules.
+      replayed.forEach(function (row, i) {
+        if (sessions[i]) sessSheet.getRange(sessions[i]._row, 1, 1, SESSION_HEADERS.length).setValues([row]);
+      });
+
+      saveUser_(u);
     });
-    document.addEventListener('mousemove', function (e) {
-      if (hoverCard.style.display !== 'block') return;
-      var x = e.clientX + 16, y = e.clientY + 16;
-      if (x + 230 > window.innerWidth) x = e.clientX - 236;
-      if (y + 160 > window.innerHeight) y = e.clientY - 166;
-      hoverCard.style.left = x + 'px'; hoverCard.style.top = y + 'px';
-    });
-    document.addEventListener('mouseout', function (e) {
-      var a = e.target.closest && e.target.closest('[data-pid]');
-      if (a) hideHover();
-    });
-    window.addEventListener('scroll', hideHover, true);
-    // A tap or a page change must always dismiss the card: on touch there is no
-    // mouse-out, and a re-render can put a player element under a still cursor,
-    // re-showing the card with nothing to mouse out of.
-    document.addEventListener('touchstart', hideHover, { passive: true });
-    window.addEventListener('hashchange', hideHover);
-    document.addEventListener('click', function (e) {
-      hideHover(); // never leave the card lingering after a tap/click
-      var pid = e.target.closest && e.target.closest('[data-pid]');
-      if (pid) { location.hash = '#player/' + pid.getAttribute('data-pid'); return; }
-      var goto = e.target.closest && e.target.closest('[data-goto]');
-      if (goto) { location.hash = '#player/' + goto.getAttribute('data-goto'); return; }
-      var gotor = e.target.closest && e.target.closest('[data-goto-route]');
-      if (gotor) { location.hash = '#' + gotor.getAttribute('data-goto-route'); }
-    });
-
-    // ---------------------------------------------------------------------------
-    // Auth
-    // ---------------------------------------------------------------------------
-    function openLogin() { closeNav(); el('loginModal').classList.add('open'); el('apiKey').value = state.key || lsGet('pl_key'); el('apiKey').focus(); }
-    function closeLogin() { el('loginModal').classList.remove('open'); el('loginError').textContent = ''; }
-    function openHowItWorks() { closeNav(); el('howModal').classList.add('open'); }
-    function closeHowItWorks() { el('howModal').classList.remove('open'); }
-    function openClimb(html) { el('climbBody').innerHTML = html; el('climbModal').classList.add('open'); }
-    function closeClimb() { el('climbModal').classList.remove('open'); }
-    // Close any modal when its dark backdrop is clicked.
-    ['loginModal', 'howModal', 'climbModal'].forEach(function (id) {
-      el(id).addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
-    });
-
-    // After a sync: congratulate a climb and spell out the move-up choice.
-    // What has already been announced is remembered in localStorage, so a page
-    // refresh never re-shows the same news. Nothing is announced mid-session:
-    // the bankroll is on the table and settles at the cash-out.
-    function maybeCongrats(me, tiers) {
-      if (me.paused) return;
-      var seen;
-      try { seen = JSON.parse(lsGet('pl_climb') || '{}'); } catch (e) { seen = {}; }
-      var ready = !me.atTable && me.nextTierMin && me.bankroll >= me.nextTierMin;
-      var climbed = seen.t != null && me.tierIdx > seen.t;
-      var readyNews = ready && seen.r !== me.tierIdx + 1;
-
-      var html = '';
-      if (climbed) {
-        html += '<p>🎉 Congrats, you climbed to <b>' + esc(me.tierTables[0]) + '</b>, table ' +
-          (me.tierIdx + 1) + ' of 21.</p>';
-        if (!me.nextTierMin) html += '<p>👑 That is the top of the ladder.</p>';
-      }
-      if (readyNews) {
-        html += '<p>With a bankroll of <b>' + fmtMoney(me.bankroll) + '</b> you are ready to move up. ' +
-          'Take a seat at <b>' + esc(tiers[me.tierIdx + 1].tables[0]) + '</b> (minimum buy-in ' +
-          fmtMoney(tiers[me.tierIdx + 1].minBuy) + ') and the climb counts, or stay at <b>' +
-          esc(me.tierTables[0]) + '</b> and grow your bankroll first.</p>';
-      }
-
-      seen.t = me.tierIdx;
-      if (ready) seen.r = me.tierIdx + 1;
-      else if (!me.atTable) seen.r = -1; // eligibility gone; announce it again when it returns
-      lsSet('pl_climb', JSON.stringify(seen));
-      if (html) openClimb(html);
-    }
-
-    function doPause() {
-      if (!state.key) return;
-      apiPause(state.key).then(function (d) {
-        applyMe(d.me);
-        state.tiers = null;
-        return ensureBoard();
-      }).then(route).catch(function (e) { alert(e.message); });
-    }
-
-    function doResume() {
-      if (!state.key) return;
-      apiResume(state.key).then(function (d) {
-        applyMe(d.me);
-        state.tiers = null;
-        return ensureBoard();
-      }).then(route).catch(function (e) { alert(e.message); });
-    }
-
-    function doDeleteData() {
-      if (!state.key) return;
-      if (!confirm('Delete all your ladder data? This removes your player row and every session from the leaderboard. Your Torn account is untouched.')) return;
-      apiDelete(state.key).then(function () {
-        alert('Your data has been deleted.');
-        logout();
-      }).catch(function (e) { alert(e.message); });
-    }
-
-    function doLogin() {
-      var key = el('apiKey').value.trim();
-      if (!key) { el('loginError').textContent = 'Paste your API key first.'; return; }
-      el('loginBtn').disabled = true; el('loginError').textContent = '';
-      apiSync(key).then(function (d) {
-        state.key = key;
-        lsSet('pl_key', state.key);
-        applyMe(d.me);
-        closeLogin();
-        maybeCongrats(d.me, d.tiers);
-        // Fresh sync may have moved players; reload the board then re-render.
-        state.tiers = null;
-        return ensureBoard();
-      }).then(function () {
-        location.hash = '#player/' + state.meId; route();
-      }).catch(function (e) {
-        el('loginError').textContent = e.message;
-      }).finally(function () { el('loginBtn').disabled = false; });
-    }
-
-    function applyMe(me) {
-      state.meId = me.id;
-      // Cache the identity so the next page load opens signed in immediately,
-      // instead of depending on the boot sync succeeding first.
-      lsSet('pl_me', JSON.stringify({ id: me.id, name: me.name }));
-      el('joinBtn').style.display = 'none';
-      el('logoutBtn').style.display = '';
-      el('syncBtn').style.display = '';
-      el('youLink').style.display = '';
-      el('youLink').setAttribute('href', '#player/' + me.id);
-      el('youLink').textContent = me.name;
-    }
-
-    // Manual re-sync: re-reads your poker log and refreshes the board.
-    function doSync() {
-      if (!state.key) return;
-      var b = el('syncBtn');
-      b.disabled = true; b.textContent = 'Syncing…';
-      apiSync(state.key).then(function (d) {
-        applyMe(d.me);
-        maybeCongrats(d.me, d.tiers);
-        state.tiers = null;
-        return ensureBoard();
-      }).then(route).catch(function (e) {
-        alert(e.message);
-      }).finally(function () { b.disabled = false; b.textContent = 'Sync'; });
-    }
-
-    function logout() {
-      lsDel('pl_key'); lsDel('pl_me'); lsDel('pl_climb');
-      state.key = ''; state.meId = null;
-      el('joinBtn').style.display = ''; el('logoutBtn').style.display = 'none';
-      el('syncBtn').style.display = 'none'; el('youLink').style.display = 'none';
-      state.tiers = null; route();
-    }
-
-    // ---------------------------------------------------------------------------
-    // Boot: public board loads for everyone; a saved key signs in instantly
-    // using the cached identity, then a background sync refreshes it. Only a
-    // confirmed invalid key logs you out; transient failures never do.
-    // ---------------------------------------------------------------------------
-    var cachedMe = null;
-    try { cachedMe = JSON.parse(lsGet('pl_me') || 'null'); } catch (e) { }
-    if (state.key && cachedMe) applyMe(cachedMe);
-    (state.key
-      ? apiSync(state.key).then(function (d) { applyMe(d.me); maybeCongrats(d.me, d.tiers); }).catch(function (e) {
-        if (/not valid|Incorrect Key|access is not high/i.test(e.message || '')) {
-          logout();
-        } else if (state.key && !cachedMe) {
-          // Key saved but no cached identity yet: show a signed-in nav so you
-          // stay logged in and the next sync can retry.
-          el('joinBtn').style.display = 'none';
-          el('logoutBtn').style.display = '';
-          el('syncBtn').style.display = '';
-        }
-      })
-      : Promise.resolve()
-    ).then(route);
-
-    // ---------------------------------------------------------------------------
-    // Ladder tiers (mirror of Code.gs TABLES, grouped by buy-in range). Kept here
-    // so the ladder frame always renders, even before the backend responds.
-    // ---------------------------------------------------------------------------
-    var LADDER_TIERS = (function () {
-      var raw = [
-        [['Newbie Corner'], 500, 2000, 5, 10], [['Hobo Holdem'], 1250, 5000, 12.5, 25],
-        [['Broke Jokes'], 2500, 10000, 25, 50], [['8-bit'], 5000, 20000, 50, 100],
-        [['Sprinkles'], 12500, 50000, 125, 250], [['E-asy Street'], 25000, 100000, 250, 500],
-        [['Gatling Gun'], 50000, 200000, 500, 1000], [['Quickdraw'], 125000, 500000, 1250, 2500],
-        [['Tight Knit'], 250000, 1000000, 2500, 5000], [['Six of the Best'], 500000, 2000000, 5000, 10000],
-        [['Ballsy'], 1250000, 5000000, 12500, 25000], [['Boom or Bust'], 2500000, 10000000, 25000, 50000],
-        [['Duel at Dawn', 'Fourplay', "Old 'n Slow", 'Periodic'], 5000000, 20000000, 50000, 100000],
-        [['Pound It'], 12500000, 50000000, 125000, 250000], [['Old Folks Home'], 25000000, 100000000, 250000, 500000],
-        [['Tripod', 'Comatose Cave', 'River Wizard'], 50000000, 200000000, 500000, 1000000],
-        [["Cat's Chance"], 125000000, 500000000, 1250000, 2500000],
-        [['Slow Cooker', 'Juan on Juan'], 250000000, 1000000000, 2500000, 5000000],
-        [['High Rollers'], 500000000, 2000000000, 5000000, 10000000],
-        [['Fire Pit'], 1250000000, 5000000000, 12500000, 25000000],
-        [['Oligarch'], 5000000000, 20000000000, 50000000, 100000000]
-      ];
-      return raw.map(function (r, i) { return { idx: i, label: 'Tier ' + (i + 1), tables: r[0], minBuy: r[1], maxBuy: r[2], sb: r[3], bb: r[4] }; });
-    })();
-  </script>
-</body>
-
-</html>
+    Logger.log('Recomputed ' + users.length + ' players from their stored sessions.');
+  } finally {
+    lock.releaseLock();
+  }
+}
