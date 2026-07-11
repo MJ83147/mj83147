@@ -708,6 +708,104 @@
       color: var(--gold);
     }
 
+    /* Current position: text on the left, a thin one-player ladder on the right */
+    .pos-layout {
+      display: grid;
+      grid-template-columns: 1fr 250px;
+      gap: 28px;
+      align-items: start;
+    }
+
+    .pos-text p {
+      font-size: 15px;
+      margin-bottom: 10px;
+    }
+
+    .pos-text b {
+      color: var(--gold);
+    }
+
+    .miniladder {
+      position: relative;
+      padding: 8px 0;
+    }
+
+    .miniladder::before,
+    .miniladder::after {
+      content: '';
+      position: absolute;
+      top: 4px;
+      bottom: 4px;
+      width: 5px;
+      border-radius: 3px;
+      background: linear-gradient(90deg, #4a3c1c, #a9852f 50%, #4a3c1c);
+      box-shadow: inset 0 0 3px rgba(0, 0, 0, .45);
+    }
+
+    .miniladder::before {
+      left: 27px;
+    }
+
+    .miniladder::after {
+      left: 124px;
+    }
+
+    .mrung {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 17px;
+    }
+
+    .mnum {
+      width: 19px;
+      text-align: right;
+      font-size: 10px;
+      color: var(--dim);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mbar {
+      position: relative;
+      width: 102px;
+      height: 7px;
+      border-radius: 4px;
+      background: #141a11;
+      border: 1px solid rgba(58, 74, 51, .7);
+    }
+
+    .mrung.done .mbar,
+    .mrung.cur .mbar {
+      background: linear-gradient(180deg, #d8b256, #8a6d29);
+      border-color: transparent;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .5);
+    }
+
+    .mrung.peak .mbar {
+      border-color: var(--gold);
+    }
+
+    .mbar .avatar {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .mlabel {
+      font-size: 10px;
+      color: var(--dim);
+      white-space: nowrap;
+    }
+
+    .mrung.cur .mlabel {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
     /* Leaderboard top-five boards */
     .boards {
       display: grid;
@@ -1101,6 +1199,14 @@
       .charts {
         grid-template-columns: 1fr;
       }
+
+      .pos-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .miniladder {
+        margin: 0 auto;
+      }
     }
   </style>
 </head>
@@ -1486,7 +1592,7 @@
       var rows = state.players.map(function (p) {
         return '<tr class="rowlink rank-' + p.rank + '" data-goto="' + esc(p.id) + '">' +
           '<td class="rk">' + p.rank + '</td>' +
-          '<td><span class="cellname">' + avatar(p, 26) + '<span class="lbname">' + esc(p.name) + '</span>' + (p.paused ? ' <span class="tag">paused</span>' : (p.atTable ? ' <span class="tag">playing</span>' : '')) + '</span></td>' +
+          '<td><span class="cellname">' + avatar(p, 26) + '<span class="lbname">' + esc(p.name) + '</span>' + (p.paused ? ' <span class="tag">paused</span>' : '') + '</span></td>' +
           '<td class="num"><b>' + (p.tierIdx + 1) + '</b> <span class="muted">/ 21</span></td>' +
           '<td class="sm-hide">' + esc(p.tierTables[0]) + '</td>' +
           '<td class="num muted sm-hide">' + fmtMoney(p.bankroll) + '</td>' +
@@ -1567,6 +1673,54 @@
         '<p>The service is provided as-is with no guarantee of accuracy or availability. Torn may change its API at any time. Use at your own discretion.</p>' +
         '<p class="muted">Reference: Torn API Terms of Service at <a class="flink" href="https://www.torn.com/api.html" target="_blank" rel="noopener">torn.com/api.html</a>.</p>' +
         '</div>';
+    }
+
+    // "Current position" card: how many buy-ins the bankroll covers at the
+    // current table, the move up if it's affordable, and a thin ladder with
+    // just this player on it.
+    function positionCard(p, tiers) {
+      var t = tiers[p.tierIdx];
+      var lines = [];
+      if (p.paused) lines.push('The ladder is <b>paused</b>: games are not tracked.');
+      if (p.bankroll < tiers[0].minBuy) {
+        lines.push('<b>Bust.</b> Buy into <b>Newbie Corner</b> to start a new cycle.');
+      } else {
+        var buyins = Math.floor(p.bankroll / t.minBuy);
+        lines.push('You currently have enough for <b>' + buyins + '</b> buy-in' + (buyins === 1 ? '' : 's') +
+          ' at <b>' + esc(t.tables.join(' / ')) + '</b> (' + fmtMoney(t.minBuy) + ' minimum).');
+        if (!p.nextTierMin) {
+          lines.push('This is the top of the ladder 👑');
+        } else if (p.bankroll >= p.nextTierMin) {
+          var next = tiers[p.tierIdx + 1];
+          var nextBuyins = Math.floor(p.bankroll / next.minBuy);
+          lines.push('Or move up to <b>' + esc(next.tables[0]) + '</b>, where you\'d have <b>' + nextBuyins +
+            '</b> buy-in' + (nextBuyins === 1 ? '' : 's') + '.');
+        } else {
+          lines.push('Win ' + fmtMoney(p.nextTierMin - p.bankroll) + ' more to unlock <b>' +
+            esc(tiers[p.tierIdx + 1].tables[0]) + '</b>.');
+        }
+      }
+      return '<div class="card"><h2>Current position</h2>' +
+        '<div class="pos-layout"><div class="pos-text">' +
+        lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
+        '</div>' + miniLadder(p, tiers) + '</div></div>';
+    }
+
+    // The thin ladder: every rung up to the current table is climbed (gold),
+    // the current rung carries the avatar, and a past peak keeps a gold edge.
+    function miniLadder(p, tiers) {
+      var peakIdx = Math.max(p.peakIdx != null ? p.peakIdx : p.tierIdx, p.tierIdx);
+      var rows = '';
+      for (var i = tiers.length - 1; i >= 0; i--) {
+        var cls = i === p.tierIdx ? ' cur' : (i < p.tierIdx ? ' done' : (i === peakIdx ? ' peak' : ''));
+        var label = i === p.tierIdx ? esc(tiers[i].tables[0]) :
+          (i === peakIdx && peakIdx !== p.tierIdx ? 'peak' : (i === tiers.length - 1 ? '👑' : ''));
+        rows += '<div class="mrung' + cls + '" title="Table ' + (i + 1) + ': ' + esc(tiers[i].tables.join(' / ')) + '">' +
+          '<span class="mnum">' + (i + 1) + '</span>' +
+          '<span class="mbar">' + (i === p.tierIdx ? avatar(p, 18) : '') + '</span>' +
+          '<span class="mlabel">' + label + '</span></div>';
+      }
+      return '<div class="miniladder">' + rows + '</div>';
     }
 
     // ---------------------------------------------------------------------------
@@ -1835,7 +1989,7 @@
         el('view').innerHTML =
           '<span class="backlink" data-goto-route="leaderboard">← back to leaderboard</span>' +
           '<div class="card"><div class="phead">' + avatar(p, 64) +
-          '<div><div class="pn">' + esc(p.name) + (p.paused ? ' <span class="tag">paused</span>' : (p.atTable ? ' <span class="tag">playing</span>' : '')) + '</div>' +
+          '<div><div class="pn">' + esc(p.name) + (p.paused ? ' <span class="tag">paused</span>' : '') + '</div>' +
           '<div class="muted">Rank #' + (p.rank || '?') + ' · on ' + esc(p.tierTables.join(' · ')) + syncedLine + ' ' + tornLink + '</div></div>' + deleteBtn + '</div>' +
           '<div class="stat-row">' +
           '<div class="stat"><div class="v green">' + (peakIdx + 1) + ' / 21</div><div class="k">Highest table reached · ' + esc(peakName) + '</div></div>' +
@@ -1845,6 +1999,7 @@
           '<div class="stat"><div class="v" style="color:var(--gold)">' + fmtMoney(p.bankroll) + '</div><div class="k">Bankroll</div></div>' +
           '<div class="stat"><div class="v green">' + fmtMoney(p.peakBankroll) + '</div><div class="k">Peak bankroll</div></div>' +
           '</div>' + prog + '</div>' +
+          positionCard(p, tiers) +
           profileCharts(d.history, tiers) +
           cycleCards;
       }).catch(function (e) {
@@ -1944,13 +2099,12 @@
 
     // After a sync: congratulate a climb and spell out the move-up choice.
     // What has already been announced is remembered in localStorage, so a page
-    // refresh never re-shows the same news. Nothing is announced mid-session:
-    // the bankroll is on the table and settles at the cash-out.
+    // refresh never re-shows the same news.
     function maybeCongrats(me, tiers) {
       if (me.paused) return;
       var seen;
       try { seen = JSON.parse(lsGet('pl_climb') || '{}'); } catch (e) { seen = {}; }
-      var ready = !me.atTable && me.nextTierMin && me.bankroll >= me.nextTierMin;
+      var ready = me.nextTierMin && me.bankroll >= me.nextTierMin;
       var climbed = seen.t != null && me.tierIdx > seen.t;
       var readyNews = ready && seen.r !== me.tierIdx + 1;
 
@@ -1969,7 +2123,7 @@
 
       seen.t = me.tierIdx;
       if (ready) seen.r = me.tierIdx + 1;
-      else if (!me.atTable) seen.r = -1; // eligibility gone; announce it again when it returns
+      else seen.r = -1; // eligibility gone; announce it again when it returns
       lsSet('pl_climb', JSON.stringify(seen));
       if (html) openClimb(html);
     }
