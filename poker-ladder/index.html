@@ -708,6 +708,64 @@
       color: var(--gold);
     }
 
+    /* Leaderboard top-five boards */
+    .boards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .boards .card {
+      margin-bottom: 0;
+      padding: 16px 18px;
+    }
+
+    .boardtitle {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--dim);
+      margin-bottom: 8px;
+    }
+
+    .boardrow {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 6px 2px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(90, 110, 74, .15);
+      border-radius: 6px;
+    }
+
+    .boardrow:last-child {
+      border-bottom: 0;
+    }
+
+    .boardrow:hover {
+      background: #1c2616;
+    }
+
+    .boardrow .brk {
+      color: var(--dim);
+      min-width: 12px;
+      text-align: right;
+    }
+
+    .boardrow .boardname {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .boardrow b {
+      margin-left: auto;
+      color: var(--gold);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
     /* Hover mini-profile */
     #hoverCard {
       position: fixed;
@@ -1264,6 +1322,25 @@
       return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' +
         d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
     }
+    // "2 h ago" for an ISO timestamp; '' when it can't be parsed.
+    function timeAgo(iso) {
+      var t = Date.parse(iso);
+      if (!t) return '';
+      var s = Math.max(0, (Date.now() - t) / 1000);
+      if (s < 60) return 'just now';
+      if (s < 3600) return Math.round(s / 60) + ' min ago';
+      if (s < 86400) return Math.round(s / 3600) + ' h ago';
+      var d = Math.round(s / 86400);
+      return d + (d === 1 ? ' day ago' : ' days ago');
+    }
+    // A duration in seconds as "45 min", "7 h" or "3 days".
+    function fmtDur(secs) {
+      secs = Math.max(0, Number(secs) || 0);
+      if (secs < 3600) return Math.max(1, Math.round(secs / 60)) + ' min';
+      if (secs < 86400) return Math.round(secs / 3600) + ' h';
+      var d = Math.round(secs / 86400);
+      return d + (d === 1 ? ' day' : ' days');
+    }
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
     function el(id) { return document.getElementById(id); }
     function initials(name) {
@@ -1419,7 +1496,36 @@
         '<div class="card"><h2>Leaderboard</h2><div class="sub">The climb is about getting through all 21 tables. Ranked by highest table reached, then stake.</div>' +
         '<div style="overflow-x:auto"><table><thead><tr><th class="rk">#</th><th>Player</th><th class="num">Table</th><th class="sm-hide">Now on</th>' +
         '<th class="num sm-hide">Bankroll</th><th class="num">Busts</th>' +
-        '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+        '</tr></thead><tbody>' + rows + '</tbody></table></div></div>' +
+        topBoards(state.players);
+    }
+
+    // Top-five boards under the main leaderboard. Built from the players the
+    // board already holds; a board hides itself when nobody scores on it (or
+    // the deployed backend doesn't send the field yet).
+    function topBoards(players) {
+      var defs = [
+        { title: 'Highest table ever', val: function (p) { return (p.peakIdx != null ? p.peakIdx : p.tierIdx) + 1; }, fmt: function (v) { return v + ' / 21'; } },
+        { title: 'Peak bankroll', val: function (p) { return Number(p.peakBankroll) || 0; }, fmt: fmtMoney },
+        { title: 'Most games played', val: function (p) { return Number(p.sessionsPlayed) || 0; }, fmt: String },
+        { title: 'Biggest single win', val: function (p) { return Number(p.biggestWin) || 0; }, fmt: fmtMoney, requires: 'biggestWin' }
+      ];
+      var boards = defs.map(function (d) {
+        if (d.requires && !players.some(function (p) { return p[d.requires] != null; })) return '';
+        var top = players.slice()
+          .sort(function (a, b) { return d.val(b) - d.val(a) || (Number(b.peakBankroll) || 0) - (Number(a.peakBankroll) || 0); })
+          .slice(0, 5)
+          .filter(function (p) { return d.val(p) > 0; });
+        if (!top.length) return '';
+        var rows = top.map(function (p, i) {
+          return '<div class="boardrow rowlink" data-goto="' + esc(p.id) + '">' +
+            '<span class="brk">' + (i + 1) + '</span>' + avatar(p, 22) +
+            '<span class="boardname">' + esc(p.name) + '</span>' +
+            '<b>' + d.fmt(d.val(p)) + '</b></div>';
+        }).join('');
+        return '<div class="card"><h3 class="boardtitle">' + d.title + '</h3>' + rows + '</div>';
+      }).join('');
+      return boards ? '<div class="boards">' + boards + '</div>' : '';
     }
 
     function renderPlayers() {
@@ -1671,7 +1777,16 @@
             byCycle[c].every(function (s) { return Number(s.tier_idx) === 0; });
         };
         var cycleCard = function (c) {
-          var rows = byCycle[c].slice().reverse().map(function (s) {
+          var list = byCycle[c]; // newest first
+          var games = list.length;
+          var net = list.reduce(function (s, x) { return s + (Number(x.cash_out) - Number(x.buy_in)); }, 0);
+          var hi = list.reduce(function (m, x) { return Math.max(m, Number(x.tier_idx) || 0); }, 0);
+          var span = Number(list[0].leave_ts) - Number(list[games - 1].join_ts);
+          var summary = games + (games === 1 ? ' game' : ' games') +
+            ' · net <span class="' + (net < 0 ? 'neg' : 'pos') + '">' + (net >= 0 ? '+' : '') + fmtMoney(net) + '</span>' +
+            ' · reached ' + esc(tiers[Math.min(hi, tiers.length - 1)].tables[0]) +
+            ' · ' + fmtDur(span);
+          var rows = list.slice().reverse().map(function (s) {
             var lost = Number(s.cash_out) < Number(s.buy_in);
             return '<tr><td>' + fmtWhen(s.leave_ts) + '</td><td>' + esc(s.table || 'unknown') + '</td>' +
               '<td class="num">' + fmtMoney(s.buy_in) + '</td>' +
@@ -1681,7 +1796,7 @@
           }).join('');
           var current = c === cycleNums[0] && !newestBusted;
           return '<div class="card"><h2>Cycle ' + c + (current ? ' <span class="tag">current</span>' : '') + '</h2>' +
-            (current ? '<div class="sub">' + nextLine + '</div>' : '') +
+            '<div class="sub">' + summary + (current ? '<br>' + nextLine : '') + '</div>' +
             '<div style="overflow-x:auto"><table><thead><tr>' +
             '<th>When</th><th>Table</th><th class="num">Bought in</th><th class="num">Cashed out</th><th class="num sm-hide">Bankroll</th><th>Result</th>' +
             '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
@@ -1709,6 +1824,8 @@
         var peakIdx = (p.peakIdx != null ? p.peakIdx : p.tierIdx);
         var peakName = (p.peakTables ? p.peakTables[0] : p.tierTables[0]);
         var tornLink = p.profileUrl ? '<a href="' + esc(p.profileUrl) + '" target="_blank" rel="noopener" class="tag">Torn profile ↗</a>' : '';
+        var ago = p.lastSync ? timeAgo(p.lastSync) : '';
+        var syncedLine = ago ? ' · synced ' + ago : '';
         var isMe = p.id === state.meId;
         var deleteBtn = isMe ? '<div class="spacer"></div>' +
           (p.paused
@@ -1719,7 +1836,7 @@
           '<span class="backlink" data-goto-route="leaderboard">← back to leaderboard</span>' +
           '<div class="card"><div class="phead">' + avatar(p, 64) +
           '<div><div class="pn">' + esc(p.name) + (p.paused ? ' <span class="tag">paused</span>' : (p.atTable ? ' <span class="tag">playing</span>' : '')) + '</div>' +
-          '<div class="muted">Rank #' + (p.rank || '?') + ' · on ' + esc(p.tierTables.join(' · ')) + ' ' + tornLink + '</div></div>' + deleteBtn + '</div>' +
+          '<div class="muted">Rank #' + (p.rank || '?') + ' · on ' + esc(p.tierTables.join(' · ')) + syncedLine + ' ' + tornLink + '</div></div>' + deleteBtn + '</div>' +
           '<div class="stat-row">' +
           '<div class="stat"><div class="v green">' + (peakIdx + 1) + ' / 21</div><div class="k">Highest table reached · ' + esc(peakName) + '</div></div>' +
           '<div class="stat"><div class="v">' + (p.tierIdx + 1) + ' / 21</div><div class="k">Current table · ' + esc(p.tierTables[0]) + '</div></div>' +
@@ -1977,7 +2094,7 @@
         [['Ballsy'], 1250000, 5000000, 12500, 25000], [['Boom or Bust'], 2500000, 10000000, 25000, 50000],
         [['Duel at Dawn', 'Fourplay', "Old 'n Slow", 'Periodic'], 5000000, 20000000, 50000, 100000],
         [['Pound It'], 12500000, 50000000, 125000, 250000], [['Old Folks Home'], 25000000, 100000000, 250000, 500000],
-        [['Tripod', 'Comatose Cave', 'River Wizard'], 50000000, 200000000, 500000, 1000000],
+        [['Tripod', 'Comatose Cove', 'River Wizard'], 50000000, 200000000, 500000, 1000000],
         [["Cat's Chance"], 125000000, 500000000, 1250000, 2500000],
         [['Slow Cooker', 'Juan on Juan'], 250000000, 1000000000, 2500000, 5000000],
         [['High Rollers'], 500000000, 2000000000, 5000000, 10000000],
