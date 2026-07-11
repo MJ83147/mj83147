@@ -667,6 +667,47 @@
       color: var(--text);
     }
 
+    /* Profile charts */
+    .charts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .charts .card {
+      margin-bottom: 0;
+    }
+
+    .chartwrap {
+      position: relative;
+    }
+
+    .chartwrap svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .charttip {
+      position: absolute;
+      display: none;
+      pointer-events: none;
+      background: #1a2213;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 9px;
+      font-size: 12px;
+      line-height: 1.4;
+      white-space: nowrap;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .4);
+      z-index: 5;
+    }
+
+    .charttip b {
+      color: var(--gold);
+    }
+
     /* Hover mini-profile */
     #hoverCard {
       position: fixed;
@@ -997,6 +1038,10 @@
         text-overflow: ellipsis;
         white-space: nowrap;
         vertical-align: middle;
+      }
+
+      .charts {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -1418,6 +1463,173 @@
         '</div>';
     }
 
+    // ---------------------------------------------------------------------------
+    // Profile charts: table position and bankroll over time, drawn from the
+    // history the player endpoint returns (one point per counted session).
+    // Plain inline SVG, no libraries. Colors are the theme's gold/green; SVG
+    // presentation attributes can't read CSS variables, so they're hex here.
+    // ---------------------------------------------------------------------------
+    var CHARTS = {}; // id -> plotted points, for the hover crosshair + tooltip
+
+    function fmtDay(ts, withYear) {
+      var o = { month: 'short', day: 'numeric' };
+      if (withYear) o.year = '2-digit';
+      return new Date(Number(ts) * 1000).toLocaleDateString(undefined, o);
+    }
+
+    // Smallest "nice" number (1 / 2 / 2.5 / 5 x 10^n) at or above v.
+    function niceCeil(v) {
+      var p = Math.pow(10, Math.floor(Math.log(v) / Math.LN10));
+      var m = v / p;
+      return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p;
+    }
+
+    // One chart card. cfg: { id, title, sub, color, stepLine, log, yMin, yMax,
+    // yTicks: [{v,label}], val(h) -> number, tip(h) -> html, endLabel }.
+    function chartCard(hist, cfg) {
+      var W = 640, H = 220, L = 52, R = 14, T = 14, B = 26;
+      var t0 = Number(hist[0].ts), t1 = Number(hist[hist.length - 1].ts);
+      var withYear = new Date(t0 * 1000).getFullYear() !== new Date(t1 * 1000).getFullYear();
+      var xs = function (ts) { return t1 === t0 ? (L + W - R) / 2 : L + (W - L - R) * (ts - t0) / (t1 - t0); };
+      var yv = cfg.log
+        ? function (v) { return Math.log(Math.max(v, cfg.yMin)) / Math.LN10; }
+        : Number;
+      var lo = yv(cfg.yMin), hi = yv(cfg.yMax);
+      var ys = function (v) { return H - B - (H - T - B) * (yv(v) - lo) / (hi - lo); };
+
+      var pts = hist.map(function (h) {
+        return { x: xs(Number(h.ts)), y: ys(cfg.val(h)), tip: cfg.tip(h) };
+      });
+      var path = pts.map(function (p, i) {
+        var x = p.x.toFixed(1), y = p.y.toFixed(1);
+        if (!i) return 'M' + x + ' ' + y;
+        return cfg.stepLine ? 'H' + x + 'V' + y : 'L' + x + ' ' + y;
+      }).join('');
+
+      var grid = cfg.yTicks.map(function (tk) {
+        var y = ys(tk.v).toFixed(1);
+        return '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y + '" stroke="rgba(90,110,74,.25)" stroke-width="1"/>' +
+          '<text x="' + (L - 8) + '" y="' + y + '" dy="3.5" text-anchor="end" font-size="11" fill="#9aa88f">' + esc(tk.label) + '</text>';
+      }).join('');
+      var xticks = (t1 === t0 ? [t0] : [t0, (t0 + t1) / 2, t1]).map(function (ts, i, arr) {
+        var anchor = i === 0 ? 'start' : (i === arr.length - 1 ? 'end' : 'middle');
+        return '<text x="' + xs(ts).toFixed(1) + '" y="' + (H - 7) + '" text-anchor="' + anchor + '" font-size="11" fill="#9aa88f">' + esc(fmtDay(ts, withYear)) + '</text>';
+      }).join('');
+
+      // A faint wash under a plain line; step charts stay bare.
+      var area = cfg.stepLine ? '' :
+        '<path d="' + path + 'V' + (H - B) + 'H' + pts[0].x.toFixed(1) + 'Z" fill="' + cfg.color + '" opacity=".1"/>';
+      var last = pts[pts.length - 1];
+      var endLabel = '<text x="' + (last.x - 8).toFixed(1) + '" y="' + Math.max(T + 9, last.y - 9).toFixed(1) + '" text-anchor="end" font-size="11" fill="#e8eadf">' + esc(cfg.endLabel) + '</text>';
+
+      CHARTS[cfg.id] = { pts: pts, W: W, H: H };
+      return '<div class="card"><h2>' + cfg.title + '</h2><div class="sub">' + cfg.sub + '</div>' +
+        '<div class="chartwrap" data-chart="' + cfg.id + '">' +
+        '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">' +
+        grid + xticks + area +
+        '<path d="' + path + '" fill="none" stroke="' + cfg.color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '<circle cx="' + last.x.toFixed(1) + '" cy="' + last.y.toFixed(1) + '" r="4" fill="' + cfg.color + '" stroke="#202a1e" stroke-width="2"/>' +
+        endLabel +
+        '<line id="' + cfg.id + '-cx" y1="' + T + '" y2="' + (H - B) + '" stroke="rgba(232,234,223,.35)" stroke-width="1" style="display:none"/>' +
+        '<circle id="' + cfg.id + '-dot" r="4.5" fill="' + cfg.color + '" stroke="#202a1e" stroke-width="2" style="display:none"/>' +
+        '</svg><div class="charttip" id="' + cfg.id + '-tip"></div></div></div>';
+    }
+
+    // The two profile charts, or '' when there isn't enough history yet (or
+    // the deployed backend predates the history field).
+    function profileCharts(hist, tiers) {
+      hist = (hist || []).filter(function (h) { return Number(h.ts) > 0; });
+      if (hist.length < 2) return '';
+      var tname = function (r) { return tiers[Math.max(0, Math.min(tiers.length - 1, r))].tables[0]; };
+
+      // Table position: a step chart (the rung only changes at a sit-down or a
+      // drop). Y runs from table 1 to just above the peak, ticked on integers.
+      var maxR = hist.reduce(function (m, h) { return Math.max(m, Number(h.rung) || 0); }, 0);
+      var rTop = Math.max(3, Math.min(21, maxR + 2));
+      var rStep = Math.ceil((rTop - 1) / 5);
+      var rTicks = [];
+      for (var v = 1; v <= rTop; v += rStep) rTicks.push({ v: v, label: String(v) });
+      var lastR = Number(hist[hist.length - 1].rung) || 0;
+      var rungChart = chartCard(hist, {
+        id: 'ch-rung', title: 'The climb', color: '#e3b341', stepLine: true,
+        sub: 'Table (1&ndash;21) after each counted game.',
+        yMin: 1, yMax: rTop, yTicks: rTicks,
+        val: function (h) { return (Number(h.rung) || 0) + 1; },
+        tip: function (h) {
+          var r = Number(h.rung) || 0;
+          return '<b>Table ' + (r + 1) + '</b> · ' + esc(tname(r)) + '<br>' + esc(fmtWhen(h.ts));
+        },
+        endLabel: 'Table ' + (lastR + 1)
+      });
+
+      // Bankroll: a line chart. The tables grow 2.5x per tier, so once the
+      // history spans a few orders of magnitude a log scale is the only way
+      // the early game stays visible.
+      var maxB = hist.reduce(function (m, h) { return Math.max(m, Number(h.bankroll) || 0); }, 0);
+      var minPos = hist.reduce(function (m, h) {
+        var b = Number(h.bankroll) || 0;
+        return b > 0 ? Math.min(m, b) : m;
+      }, Infinity);
+      if (!isFinite(minPos)) minPos = 500;
+      var log = maxB / Math.max(minPos, 1) >= 1000;
+      var bMin, bMax, bTicks = [];
+      if (log) {
+        var dLo = Math.floor(Math.log(Math.max(minPos, 10)) / Math.LN10);
+        var dHi = Math.ceil(Math.log(maxB) / Math.LN10);
+        if (dHi <= dLo) dHi = dLo + 1;
+        bMin = Math.pow(10, dLo); bMax = Math.pow(10, dHi);
+        var dStep = Math.ceil((dHi - dLo) / 5);
+        for (var d = dLo; d <= dHi; d += dStep) bTicks.push({ v: Math.pow(10, d), label: fmtMoney(Math.pow(10, d)) });
+      } else {
+        var step = niceCeil(Math.max(maxB, 1) / 4);
+        bMin = 0; bMax = step * Math.max(1, Math.ceil(Math.max(maxB, 1) / step));
+        for (var b = 0; b <= bMax; b += step) bTicks.push({ v: b, label: fmtMoney(b) });
+      }
+      var bankChart = chartCard(hist, {
+        id: 'ch-bank', title: 'Bankroll', color: '#7ccb6e', stepLine: false, log: log,
+        sub: 'Ladder bankroll after each counted game.' + (log ? ' Log scale.' : ''),
+        yMin: bMin, yMax: bMax, yTicks: bTicks,
+        val: function (h) { return Number(h.bankroll) || 0; },
+        tip: function (h) {
+          return '<b>$' + (Number(h.bankroll) || 0).toLocaleString() + '</b><br>' + esc(fmtWhen(h.ts));
+        },
+        endLabel: fmtMoney(hist[hist.length - 1].bankroll)
+      });
+
+      return '<div class="charts">' + rungChart + bankChart + '</div>';
+    }
+
+    // Hover layer: nearest point by x gets the crosshair, marker and tooltip.
+    // Delegated on the document so it survives every re-render.
+    function hideChartHover(wrap) {
+      var id = wrap.getAttribute('data-chart');
+      ['-cx', '-dot'].forEach(function (s) { var n = el(id + s); if (n) n.style.display = 'none'; });
+      var tip = el(id + '-tip');
+      if (tip) tip.style.display = 'none';
+    }
+    document.addEventListener('pointermove', function (e) {
+      var wrap = e.target.closest && e.target.closest('[data-chart]');
+      document.querySelectorAll('[data-chart]').forEach(function (w) { if (w !== wrap) hideChartHover(w); });
+      if (!wrap) return;
+      var c = CHARTS[wrap.getAttribute('data-chart')];
+      if (!c) return;
+      var id = wrap.getAttribute('data-chart');
+      var svg = wrap.querySelector('svg');
+      var r = svg.getBoundingClientRect();
+      var x = (e.clientX - r.left) * c.W / r.width;
+      var best = c.pts[0];
+      for (var i = 1; i < c.pts.length; i++) if (Math.abs(c.pts[i].x - x) < Math.abs(best.x - x)) best = c.pts[i];
+      var cx = el(id + '-cx'), dot = el(id + '-dot'), tip = el(id + '-tip');
+      cx.setAttribute('x1', best.x); cx.setAttribute('x2', best.x); cx.style.display = '';
+      dot.setAttribute('cx', best.x); dot.setAttribute('cy', best.y); dot.style.display = '';
+      tip.innerHTML = best.tip;
+      tip.style.display = 'block';
+      var px = best.x * r.width / c.W, py = best.y * r.height / c.H;
+      if (px > r.width - 170) { tip.style.left = 'auto'; tip.style.right = (r.width - px + 12) + 'px'; }
+      else { tip.style.right = 'auto'; tip.style.left = (px + 12) + 'px'; }
+      tip.style.top = Math.max(0, py - 44) + 'px';
+    });
+
     function renderProfile(id) {
       el('view').innerHTML = '<div class="card muted">Loading profile…</div>';
       apiPlayer(id).then(function (d) {
@@ -1514,7 +1726,9 @@
           '<div class="stat"><div class="v">' + p.busts + '</div><div class="k">Busts</div></div>' +
           '<div class="stat"><div class="v">' + (p.cycles != null ? p.cycles : '—') + '</div><div class="k">Ladder cycles</div></div>' +
           '<div class="stat"><div class="v" style="color:var(--gold)">' + fmtMoney(p.bankroll) + '</div><div class="k">Bankroll</div></div>' +
+          '<div class="stat"><div class="v green">' + fmtMoney(p.peakBankroll) + '</div><div class="k">Peak bankroll</div></div>' +
           '</div>' + prog + '</div>' +
+          profileCharts(d.history, tiers) +
           cycleCards;
       }).catch(function (e) {
         el('view').innerHTML = '<span class="backlink" data-goto-route="players">← back</span><div class="card">' + esc(e.message) + '</div>';
