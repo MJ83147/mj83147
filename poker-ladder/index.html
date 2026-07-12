@@ -92,6 +92,9 @@
       align-items: center;
       gap: 6px;
       flex: 1;
+      /* Between full-width and the mobile hamburger the row is too tight:
+         wrap onto a second line rather than pushing buttons off-screen. */
+      flex-wrap: wrap;
     }
 
     .navtoggle {
@@ -529,6 +532,20 @@
       font-variant-numeric: tabular-nums;
     }
 
+    /* Session tables in cycle cards: a long cycle scrolls inside its card
+       instead of stretching the whole page. Header stays visible. */
+    .tscroll {
+      overflow: auto;
+      max-height: 420px;
+    }
+
+    .tscroll thead th {
+      position: sticky;
+      top: 0;
+      background: var(--card);
+      z-index: 1;
+    }
+
     .rowlink {
       cursor: pointer;
     }
@@ -594,11 +611,19 @@
       align-items: center;
       gap: 16px;
       margin-bottom: 16px;
+      /* Pause/Delete drop to their own row when the head is too narrow. */
+      flex-wrap: wrap;
     }
 
     .phead .pn {
       font-size: 22px;
       font-weight: 800;
+    }
+
+    /* Pause + Delete move between rows as one unit when space runs out. */
+    .pactions {
+      display: flex;
+      gap: 8px;
     }
 
     .stat-row {
@@ -1120,6 +1145,15 @@
         font-size: 16px;
       }
 
+      /* Profile actions share a full-width row under the name. */
+      .pactions {
+        width: 100%;
+      }
+
+      .pactions .btn {
+        flex: 1;
+      }
+
       .wrap {
         padding: 16px 14px 20px;
       }
@@ -1423,6 +1457,12 @@
       return (neg ? '-$' : '$') + s;
     }
     function trim(x) { return (Math.round(x * 100) / 100).toString(); }
+    // Exact dollars, never abbreviated. Bankrolls and amounts players act on
+    // must not round: $249,999,999 shown as "$250m" reads as a $250m buy-in.
+    function fmtExact(n) {
+      n = Math.round(Number(n) || 0);
+      return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US');
+    }
     function fmtWhen(ts) {
       if (!ts) return ''; var d = new Date(Number(ts) * 1000);
       return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' +
@@ -1595,7 +1635,7 @@
           '<td><span class="cellname">' + avatar(p, 26) + '<span class="lbname">' + esc(p.name) + '</span>' + (p.paused ? ' <span class="tag">paused</span>' : '') + '</span></td>' +
           '<td class="num"><b>' + (p.tierIdx + 1) + '</b> <span class="muted">/ 21</span></td>' +
           '<td class="sm-hide">' + esc(p.tierTables[0]) + '</td>' +
-          '<td class="num muted sm-hide">' + fmtMoney(p.bankroll) + '</td>' +
+          '<td class="num muted sm-hide">' + fmtExact(p.bankroll) + '</td>' +
           '<td class="num">' + p.busts + '</td></tr>';
       }).join('') || '<tr><td colspan="6" class="muted">Nobody on the ladder yet, be the first.</td></tr>';
       el('view').innerHTML =
@@ -1639,7 +1679,7 @@
         return '<div class="pcard rowlink" data-goto="' + esc(p.id) + '">' + avatar(p, 44) +
           '<div><div class="pn">' + esc(p.name) + '</div>' +
           '<div class="pt">' + esc(p.tierLabel) + ' · ' + esc(p.tierTables[0]) + '</div>' +
-          '<div class="pt">' + fmtMoney(p.bankroll) + ' · ' + p.busts + ' busts</div></div></div>';
+          '<div class="pt">' + fmtExact(p.bankroll) + ' · ' + p.busts + ' busts</div></div></div>';
       }).join('') || '<div class="muted">No players yet.</div>';
       el('view').innerHTML = '<div class="card"><h2>Players</h2><div class="sub">' + state.players.length +
         ' on the ladder. Click anyone to see their profile.</div><div class="grid">' + cards + '</div></div>';
@@ -1696,7 +1736,7 @@
           lines.push('Or move up to <b>' + esc(next.tables[0]) + '</b>, where you\'d have <b>' + nextBuyins +
             '</b> buy-in' + (nextBuyins === 1 ? '' : 's') + '.');
         } else {
-          lines.push('Win ' + fmtMoney(p.nextTierMin - p.bankroll) + ' more to unlock <b>' +
+          lines.push('Win ' + fmtExact(p.nextTierMin - p.bankroll) + ' more to unlock <b>' +
             esc(tiers[p.tierIdx + 1].tables[0]) + '</b>.');
         }
       }
@@ -1853,7 +1893,7 @@
         tip: function (h) {
           return '<b>$' + (Number(h.bankroll) || 0).toLocaleString() + '</b><br>' + esc(fmtWhen(h.ts));
         },
-        endLabel: fmtMoney(hist[hist.length - 1].bankroll)
+        endLabel: fmtExact(hist[hist.length - 1].bankroll)
       });
 
       return '<div class="charts">' + rungChart + bankChart + '</div>';
@@ -1901,7 +1941,7 @@
         if (p.paused) nextLine = 'Ladder paused. Games played now do not count.';
         else if (!p.nextTierMin) nextLine = 'All 21 tables cleared 👑';
         else if (p.bankroll >= p.nextTierMin) nextLine = 'Next: take a seat at ' + esc(tiers[p.tierIdx + 1].tables.join(' / '));
-        else nextLine = 'Next: win ' + fmtMoney(p.nextTierMin - p.bankroll) + ' more to unlock ' + esc(tiers[p.tierIdx + 1].tables[0]);
+        else nextLine = 'Next: win ' + fmtExact(p.nextTierMin - p.bankroll) + ' more to unlock ' + esc(tiers[p.tierIdx + 1].tables[0]);
 
         var prog = '';
         if (p.nextTierMin) {
@@ -1945,13 +1985,13 @@
             return '<tr><td>' + fmtWhen(s.leave_ts) + '</td><td>' + esc(s.table || 'unknown') + '</td>' +
               '<td class="num">' + fmtMoney(s.buy_in) + '</td>' +
               '<td class="num ' + (lost ? 'neg' : 'pos') + '">' + fmtMoney(s.cash_out) + '</td>' +
-              '<td class="num sm-hide">' + (s.remaining === '' || s.remaining == null ? '' : fmtMoney(s.remaining)) + '</td>' +
+              '<td class="num sm-hide">' + (s.remaining === '' || s.remaining == null ? '' : fmtExact(s.remaining)) + '</td>' +
               '<td class="muted">' + esc(s.reason || '') + '</td></tr>';
           }).join('');
           var current = c === cycleNums[0] && !newestBusted;
           return '<div class="card"><h2>Cycle ' + c + (current ? ' <span class="tag">current</span>' : '') + '</h2>' +
             '<div class="sub">' + summary + (current ? '<br>' + nextLine : '') + '</div>' +
-            '<div style="overflow-x:auto"><table><thead><tr>' +
+            '<div class="tscroll"><table><thead><tr>' +
             '<th>When</th><th>Table</th><th class="num">Bought in</th><th class="num">Cashed out</th><th class="num sm-hide">Bankroll</th><th>Result</th>' +
             '</tr></thead><tbody>' + rows + '</tbody></table></div></div>';
         };
@@ -1981,11 +2021,11 @@
         var ago = p.lastSync ? timeAgo(p.lastSync) : '';
         var syncedLine = ago ? ' · synced ' + ago : '';
         var isMe = p.id === state.meId;
-        var deleteBtn = isMe ? '<div class="spacer"></div>' +
+        var deleteBtn = isMe ? '<div class="spacer"></div><div class="pactions">' +
           (p.paused
-            ? '<button class="btn" onclick="doResume()" style="margin-right:8px">Resume ladder</button>'
-            : '<button class="btn secondary" onclick="doPause()" style="margin-right:8px">Pause ladder</button>') +
-          '<button class="btn danger" onclick="doDeleteData()">Delete my data</button>' : '';
+            ? '<button class="btn" onclick="doResume()">Resume ladder</button>'
+            : '<button class="btn secondary" onclick="doPause()">Pause ladder</button>') +
+          '<button class="btn danger" onclick="doDeleteData()">Delete my data</button></div>' : '';
         el('view').innerHTML =
           '<span class="backlink" data-goto-route="leaderboard">← back to leaderboard</span>' +
           '<div class="card"><div class="phead">' + avatar(p, 64) +
@@ -1996,7 +2036,7 @@
           '<div class="stat"><div class="v">' + (p.tierIdx + 1) + ' / 21</div><div class="k">Current table · ' + esc(p.tierTables[0]) + '</div></div>' +
           '<div class="stat"><div class="v">' + p.busts + '</div><div class="k">Busts</div></div>' +
           '<div class="stat"><div class="v">' + (p.cycles != null ? p.cycles : '—') + '</div><div class="k">Ladder cycles</div></div>' +
-          '<div class="stat"><div class="v" style="color:var(--gold)">' + fmtMoney(p.bankroll) + '</div><div class="k">Bankroll</div></div>' +
+          '<div class="stat"><div class="v" style="color:var(--gold)">' + fmtExact(p.bankroll) + '</div><div class="k">Bankroll</div></div>' +
           '<div class="stat"><div class="v green">' + fmtMoney(p.peakBankroll) + '</div><div class="k">Peak bankroll</div></div>' +
           '</div>' + prog + '</div>' +
           positionCard(p, tiers) +
@@ -2024,7 +2064,7 @@
       hoverCard.innerHTML =
         '<div class="hh">' + avatar(p, 40) + '<div><div class="hn">' + esc(p.name) + '</div>' +
         '<div class="ht">' + esc(p.tierLabel) + ' · ' + esc(p.tierTables[0]) + '</div></div></div>' +
-        '<div class="hrow"><span>Bankroll</span><span>' + fmtMoney(p.bankroll) + '</span></div>' +
+        '<div class="hrow"><span>Bankroll</span><span>' + fmtExact(p.bankroll) + '</span></div>' +
         '<div class="hrow"><span>Highest</span><span>' + ((p.peakIdx != null ? p.peakIdx : p.tierIdx) + 1) + ' / 21</span></div>' +
         '<div class="hrow"><span>Cycles</span><span>' + (p.cycles != null ? p.cycles : '—') + '</span></div>' +
         '<div class="hrow"><span>Busts</span><span>' + p.busts + '</span></div>';
@@ -2115,7 +2155,7 @@
         if (!me.nextTierMin) html += '<p>👑 That is the top of the ladder.</p>';
       }
       if (readyNews) {
-        html += '<p>With a bankroll of <b>' + fmtMoney(me.bankroll) + '</b> you are ready to move up. ' +
+        html += '<p>With a bankroll of <b>' + fmtExact(me.bankroll) + '</b> you are ready to move up. ' +
           'Take a seat at <b>' + esc(tiers[me.tierIdx + 1].tables[0]) + '</b> (minimum buy-in ' +
           fmtMoney(tiers[me.tierIdx + 1].minBuy) + ') and the climb counts, or stay at <b>' +
           esc(me.tierTables[0]) + '</b> and grow your bankroll first.</p>';
