@@ -1718,6 +1718,7 @@
         lines.push('<span class="muted">Only the tables named above count. Lower tables are not part of your climb.</span>');
       }
       if (p.paused) lines.unshift('<span class="warn">Your ladder is paused: games are not tracked. Resume from your profile.</span>');
+      lines.push('<a class="flink" style="font-size:13px" onclick="openTipsHelp(\'help\')">Help, my games aren\'t registering</a>');
       return '<div class="youbox">' + avatar(p, 44) +
         '<div><div class="youbox-k">Your table · ' + title + '</div>' +
         '<div class="youbox-t">' + esc(tableName) + '</div>' +
@@ -2125,8 +2126,8 @@
           var rows = list.slice().reverse().map(function (s) {
             var lost = Number(s.cash_out) < Number(s.buy_in);
             return '<tr><td>' + fmtWhen(s.leave_ts) + '</td><td>' + esc(s.table || 'unknown') + '</td>' +
-              '<td class="num">' + fmtMoney(s.buy_in) + '</td>' +
-              '<td class="num ' + (lost ? 'neg' : 'pos') + '">' + fmtMoney(s.cash_out) + '</td>' +
+              '<td class="num">' + fmtExact(s.buy_in) + '</td>' +
+              '<td class="num ' + (lost ? 'neg' : 'pos') + '">' + fmtExact(s.cash_out) + '</td>' +
               '<td class="num sm-hide">' + (s.remaining === '' || s.remaining == null ? '' : fmtExact(s.remaining)) + '</td>' +
               '<td class="muted">' + esc(s.reason || '') + '</td></tr>';
           }).join('');
@@ -2178,7 +2179,9 @@
           '<div class="stat"><div class="v">' + (p.tierIdx + 1) + ' / 21</div><div class="k">Current table · ' + esc(p.tierTables[0]) + '</div></div>' +
           '<div class="stat"><div class="v">' + p.busts + '</div><div class="k">Busts</div></div>' +
           '<div class="stat"><div class="v">' + (p.cycles != null ? p.cycles : '—') + '</div><div class="k">Ladder cycles</div></div>' +
-          '<div class="stat"><div class="v" style="color:var(--gold)">' + fmtExact(p.bankroll) + '</div><div class="k">Bankroll</div></div>' +
+          '<div class="stat"><div class="v" style="color:var(--gold)">' + fmtExact(p.bankroll) + '</div><div class="k">Bankroll</div>' +
+          (isMe ? '<a class="flink" style="font-size:11px" onclick="openTipsHelp(\'help\')">Help, my games aren\'t registering</a>' : '') +
+          '</div>' +
           '<div class="stat"><div class="v green">' + fmtMoney(p.peakBankroll) + '</div><div class="k">Peak bankroll</div></div>' +
           '</div>' + prog + '</div>' +
           positionCard(p, tiers) +
