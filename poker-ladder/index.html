@@ -1299,8 +1299,7 @@
         <a class="navlink" data-route="ladder" href="#ladder">Ladder</a>
         <a class="navlink" data-route="leaderboard" href="#leaderboard">Leaderboard</a>
         <a class="navlink" data-route="players" href="#players">Players</a>
-        <a class="navlink" onclick="openHowItWorks()">How it works</a>
-        <a class="navlink" onclick="openHelp()">Help</a>
+        <a class="navlink" onclick="openTipsHelp()">Tips &amp; help</a>
         <div class="spacer"></div>
         <a id="youLink" class="navlink" style="display:none">Your profile</a>
         <button class="btn secondary" id="syncBtn" style="display:none" onclick="doSync()">Sync</button>
@@ -1316,8 +1315,7 @@
     <footer style="text-align:center; color:var(--dim); font-size:12px">
       <div>Start at Newbie Corner, climb to Oligarch, using only money won at the tables.
         <a class="flink" data-goto-route="terms">Terms &amp; Conditions</a> ·
-        <a class="flink" onclick="openHowItWorks()">How it works</a> ·
-        <a class="flink" onclick="openHelp()">Help</a> ·
+        <a class="flink" onclick="openTipsHelp()">Tips &amp; help</a> ·
         <span>Data via the official Torn API</span>
       </div>
       <div style="margin-top:8px">Made by <b style="color:var(--gold)">Systoned</b></div>
@@ -1326,45 +1324,119 @@
 
   <div id="hoverCard"></div>
 
-  <!-- HOW IT WORKS MODAL -->
-  <div class="modal-back" id="howModal">
+  <!-- TIPS & HELP MODAL -->
+  <div class="modal-back" id="tipsModal">
     <div class="card modal">
       <div class="head-flex" style="margin-bottom:10px">
-        <h2 style="margin:0">How it works</h2>
+        <h2 style="margin:0">Tips &amp; help</h2>
         <div class="spacer"></div>
-        <span class="close-x" onclick="closeHowItWorks()">✕</span>
+        <span class="close-x" onclick="closeTipsHelp()">✕</span>
       </div>
-      <p style="font-size:14px; margin-bottom:6px"><b style="color:var(--gold)">End goal:</b> climb all <b>21
-          tables</b>, from Newbie Corner to Oligarch, using only money won at the tables. Everyone starts at the
-        bottom. First to the top wins.</p>
-      <h3>Rules</h3>
-      <ul class="howlist">
-        <li>You play the tables <b>in order</b>, one at a time.</li>
-        <li><b>No skipping.</b> Games at higher tables don't count, even if you have enough to buy in.</li>
-        <li>You can only buy in with what's in your <b>ladder bankroll</b>. This is tracked automatically; a buy-in
-          bigger than your bankroll simply won't be counted.</li>
-        <li>Within a table, buy in with anything from its minimum to its maximum.</li>
-        <li>You can keep playing your usual poker games alongside the ladder. The system works out which games are
-          part of the climb and ignores the rest.</li>
-        <li>Taking an extended break? Hit <b>Pause ladder</b> on your profile and nothing is tracked until you
-          resume.</li>
-      </ul>
-      <h3>How it works</h3>
-      <ol class="howlist">
-        <li>Start at <b>Newbie Corner</b>: play poker as you normally would, bank as much as you can, cash out.</li>
-        <li>With enough for the next table's minimum, <b>take a seat there</b>. The climb registers when you sit
-          down. Continue in this fashion.</li>
-        <li>Left a table with $0? If your bankroll still covers a buy-in there, sit back down; the buy-in comes out
-          of your tracked bankroll.</li>
-        <li>If you can no longer afford your table, you <b>drop</b> to the highest table your bankroll covers.</li>
-        <li>Cash out with less than <b>$500</b> in your bankroll (the lowest table's minimum) and that's a
-          <b>bust</b>: this cycle of the ladder is over and you start again from the bottom.</li>
-        <li>Do as many <b>cycles</b> as you wish. Sign in and press Sync to update your climb.</li>
-      </ol>
-      <p class="hint">Your climb starts the moment you sign up, so old poker history doesn't count. The app reads
-        only your poker join/leave log entries. Nothing is stored except your ladder progress, and you can delete it
-        anytime from your profile.</p>
-      <button class="btn" onclick="closeHowItWorks()">Got it</button>
+
+      <details class="faq" id="sectTips">
+        <summary>Tips</summary>
+        <h3>Which table can I play?</h3>
+        <p class="hint">At any point you're in one of two positions:</p>
+        <ul class="howlist">
+          <li><b>Free to move up.</b> You have enough for the next table's minimum buy-in. Play at your current
+            table or move up, your choice.</li>
+          <li><b>Trapped.</b> You don't have enough for the next table yet. Keep playing your current table
+            until you do.</li>
+        </ul>
+        <p class="hint">You cannot play a table lower than the one you're on, unless you fall to it.</p>
+        <h3>Buy-ins</h3>
+        <p class="hint">You can buy in with anywhere from the table minimum to the table maximum, as long as your
+          <b>ladder bankroll</b> allows it. Example: the table max is $50,000 but your bankroll is $30,000, so
+          your max buy-in is $30,000. Buy in for more and the game simply won't count.</p>
+        <h3>When should I move up?</h3>
+        <p class="hint">You can move up as soon as you have enough for the next table's minimum buy-in. When you
+          go is up to you.</p>
+        <ul class="howlist">
+          <li>Want to climb <b>fast</b>? Move up as soon as you have enough.</li>
+          <li>Want to climb <b>safe</b>? Stay at your current table until you have amassed enough buy-ins to
+            comfortably join the next rung up.</li>
+        </ul>
+        <p class="hint">Remember: once you go up, the only way to go down is to fall.</p>
+        <h3>Play as much as you like</h3>
+        <p class="hint">There's no game limit at your table: 1 game or 7, it's up to you. Its variants count as
+          the same table (Newbie Corner II, III and IV are all Newbie Corner). And where a rung has several tables
+          with the same buy-in, like Duel at Dawn, Fourplay, Old 'n Slow and Periodic, play whichever you like:
+          one of them or all of them.</p>
+        <h3>Ratholing (the 2-hour rule)</h3>
+        <p class="hint">Rejoin a table within 2 hours of leaving it and Torn forces you to buy in with the exact
+          amount you left with. If that's more than your ladder bankroll, the game won't count. Two ways around it:
+          <b>wait 2 hours</b>, or <b>join a different version of the same table</b> (Newbie Corner II, III or IV all
+          count as Newbie Corner).</p>
+        <h3>My table has no players</h3>
+        <p class="hint">You don't need to play a hand: <b>sitting down is the climb</b>. Sit down at the next
+          table, cash out, done. You're past it and your bankroll is untouched. But this is <b>at your own
+            risk</b>: you haven't gained any bankroll, so you arrive at a bigger table with the same money. The
+          II / III / IV versions of a table sometimes have more players too.</p>
+        <h3>Keep it updated</h3>
+        <p class="hint">Games register when you <b>leave the table</b>, and the app refreshes on page load and
+          when you hit <b>Sync</b>. So if you've just cashed out of Newbie Corner and sat down at Hobo Holdem,
+          the app will say you're still at Newbie Corner until you leave. Going away for a while? Hit
+          <b>Pause ladder</b> on your profile so nothing gets tracked while you're gone.</p>
+      </details>
+
+      <details class="faq" id="sectHow">
+        <summary>How it works</summary>
+        <p style="font-size:14px; margin:8px 0 6px"><b style="color:var(--gold)">End goal:</b> climb all <b>21
+            tables</b>, from Newbie Corner to Oligarch, using only money won at the tables. Everyone starts at the
+          bottom. First to the top wins.</p>
+        <h3>Rules</h3>
+        <ul class="howlist">
+          <li>You play the tables <b>in order</b>, one at a time.</li>
+          <li><b>No skipping.</b> Games at higher tables don't count, even if you have enough to buy in.</li>
+          <li>You can only buy in with what's in your <b>ladder bankroll</b>. This is tracked automatically; a buy-in
+            bigger than your bankroll simply won't be counted.</li>
+          <li>Within a table, buy in with anything from its minimum to its maximum.</li>
+          <li>You can keep playing your usual poker games alongside the ladder. The system works out which games are
+            part of the climb and ignores the rest.</li>
+          <li>Taking an extended break? Hit <b>Pause ladder</b> on your profile and nothing is tracked until you
+            resume.</li>
+        </ul>
+        <h3>How it works</h3>
+        <ol class="howlist">
+          <li>Start at <b>Newbie Corner</b>: play poker as you normally would, bank as much as you can, cash out.</li>
+          <li>With enough for the next table's minimum, <b>take a seat there</b>. The climb registers when you sit
+            down. Continue in this fashion.</li>
+          <li>Left a table with $0? If your bankroll still covers a buy-in there, sit back down; the buy-in comes out
+            of your tracked bankroll.</li>
+          <li>If you can no longer afford your table, you <b>drop</b> to the highest table your bankroll covers.</li>
+          <li>Cash out with less than <b>$500</b> in your bankroll (the lowest table's minimum) and that's a
+            <b>bust</b>: this cycle of the ladder is over and you start again from the bottom.</li>
+          <li>Do as many <b>cycles</b> as you wish. Sign in and press Sync to update your climb.</li>
+        </ol>
+        <p class="hint">Your climb starts the moment you sign up, so old poker history doesn't count. The app reads
+          only your poker join/leave log entries. Nothing is stored except your ladder progress, and you can delete it
+          anytime from your profile.</p>
+      </details>
+
+      <details class="faq" id="sectHelp">
+        <summary>Help</summary>
+        <details class="faq" style="margin-top:8px">
+          <summary>My game isn't syncing but I just played</summary>
+          <p class="hint">The two usual reasons a game doesn't count:</p>
+          <ul class="howlist">
+            <li>You <b>skipped ahead</b>: only your current table and the next one up are part of the ladder.</li>
+            <li>You <b>bought in with more than your ladder bankroll</b>: buy-ins must fit what you've won at the
+              tables.</li>
+          </ul>
+          <button class="btn secondary" onclick="helpCheck()">Check my recent games</button>
+          <div id="helpCheckOut" class="hint"></div>
+        </details>
+        <details class="faq">
+          <summary>Nothing is updating at all</summary>
+          <p class="hint">It might be an API issue on Torn's side. Wait a minute and press <b>Sync</b> again. While
+            Torn's API is down, the ladder can't read anything.</p>
+        </details>
+        <p class="hint">If the issue persists, send a message to
+          <a href="https://www.torn.com/profiles.php?XID=3583736" target="_blank" rel="noopener"
+            style="color:var(--gold)">Systoned</a>.</p>
+      </details>
+
+      <button class="btn" onclick="closeTipsHelp()">Got it</button>
     </div>
   </div>
 
@@ -1381,35 +1453,6 @@
     </div>
   </div>
 
-  <!-- HELP MODAL -->
-  <div class="modal-back" id="helpModal">
-    <div class="card modal">
-      <div class="head-flex" style="margin-bottom:10px">
-        <h2 style="margin:0">Help</h2>
-        <div class="spacer"></div>
-        <span class="close-x" onclick="closeHelp()">✕</span>
-      </div>
-      <details class="faq">
-        <summary>My game isn't syncing but I just played</summary>
-        <p class="hint">The two usual reasons a game doesn't count:</p>
-        <ul class="howlist">
-          <li>You <b>skipped ahead</b>: only your current table and the next one up are part of the ladder.</li>
-          <li>You <b>bought in with more than your ladder bankroll</b>: buy-ins must fit what you've won at the
-            tables.</li>
-        </ul>
-        <button class="btn secondary" onclick="helpCheck()">Check my recent games</button>
-        <div id="helpCheckOut" class="hint"></div>
-      </details>
-      <details class="faq">
-        <summary>Nothing is updating at all</summary>
-        <p class="hint">It might be an API issue on Torn's side. Wait a minute and press <b>Sync</b> again. While
-          Torn's API is down, the ladder can't read anything.</p>
-      </details>
-      <p class="hint">If the issue persists, send a message to
-        <a href="https://www.torn.com/profiles.php?XID=3583736" target="_blank" rel="noopener"
-          style="color:var(--gold)">Systoned</a>.</p>
-    </div>
-  </div>
 
   <!-- LOGIN MODAL -->
   <div class="modal-back" id="loginModal">
@@ -2201,14 +2244,22 @@
     // ---------------------------------------------------------------------------
     function openLogin() { closeNav(); el('loginModal').classList.add('open'); el('apiKey').value = state.key || lsGet('pl_key'); el('apiKey').focus(); }
     function closeLogin() { el('loginModal').classList.remove('open'); el('loginError').textContent = ''; }
-    function openHowItWorks() { closeNav(); el('howModal').classList.add('open'); }
-    function closeHowItWorks() { el('howModal').classList.remove('open'); }
+    // Tips & help: three sections in one modal. The Help section (with the
+    // sync checker) is only shown to signed-in users. `section` picks which
+    // one opens expanded: 'tips' (default), 'how' or 'help'.
+    function openTipsHelp(section) {
+      closeNav();
+      el('sectHelp').style.display = state.key ? '' : 'none';
+      if (section === 'help' && !state.key) section = 'tips';
+      var ids = { tips: 'sectTips', how: 'sectHow', help: 'sectHelp' };
+      Object.keys(ids).forEach(function (k) { el(ids[k]).open = k === (section || 'tips'); });
+      el('tipsModal').classList.add('open');
+    }
+    function closeTipsHelp() { el('tipsModal').classList.remove('open'); }
     function openClimb(html) { el('climbBody').innerHTML = html; el('climbModal').classList.add('open'); }
     function closeClimb() { el('climbModal').classList.remove('open'); }
-    function openHelp() { closeNav(); el('helpModal').classList.add('open'); }
-    function closeHelp() { el('helpModal').classList.remove('open'); }
     // Close any modal when its dark backdrop is clicked.
-    ['loginModal', 'howModal', 'climbModal', 'helpModal'].forEach(function (id) {
+    ['loginModal', 'tipsModal', 'climbModal'].forEach(function (id) {
       el(id).addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
     });
 
