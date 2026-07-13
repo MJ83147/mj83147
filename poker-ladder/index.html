@@ -337,6 +337,13 @@
       margin: 2px 0 6px;
     }
 
+    .youbox-bank {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--gold);
+      white-space: nowrap;
+    }
+
     .youbox p {
       font-size: 14px;
       margin: 3px 0;
@@ -1415,7 +1422,7 @@
 
       <details class="faq" id="sectHelp">
         <summary>Help</summary>
-        <details class="faq" style="margin-top:8px">
+        <details class="faq" id="helpSyncFaq" style="margin-top:8px">
           <summary>My game isn't syncing but I just played</summary>
           <p class="hint">The two usual reasons a game doesn't count:</p>
           <ul class="howlist">
@@ -1718,10 +1725,11 @@
         lines.push('<span class="muted">Only the tables named above count. Lower tables are not part of your climb.</span>');
       }
       if (p.paused) lines.unshift('<span class="warn">Your ladder is paused: games are not tracked. Resume from your profile.</span>');
-      lines.push('<a class="flink" style="font-size:13px" onclick="openTipsHelp(\'help\')">Help, my games aren\'t registering</a>');
+      lines.push('<button class="btn secondary" style="font-size:13px;padding:6px 12px;margin-top:4px" onclick="openGamesHelp()">Help, my games aren\'t registering</button>');
       return '<div class="youbox">' + avatar(p, 44) +
         '<div><div class="youbox-k">Your table · ' + title + '</div>' +
-        '<div class="youbox-t">' + esc(tableName) + '</div>' +
+        '<div class="youbox-t">' + esc(tableName) +
+        '<span class="youbox-bank"> · ' + fmtExact(p.bankroll) + ' bankroll</span></div>' +
         lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
         '</div></div>';
     }
@@ -1777,10 +1785,21 @@
       }).join('') || '<tr><td colspan="6" class="muted">Nobody on the ladder yet, be the first.</td></tr>';
       el('view').innerHTML =
         '<div class="card"><h2>Leaderboard</h2><div class="sub">The climb is about getting through all 21 tables. Ranked by highest table reached, then stake.</div>' +
-        '<div style="overflow-x:auto"><table><thead><tr><th class="rk">#</th><th>Player</th><th class="num">Table</th><th class="sm-hide">Now on</th>' +
+        '<div class="tscroll" id="lbScroll"><table><thead><tr><th class="rk">#</th><th>Player</th><th class="num">Table</th><th class="sm-hide">Now on</th>' +
         '<th class="num sm-hide">Bankroll</th><th class="num">Busts</th>' +
         '</tr></thead><tbody>' + rows + '</tbody></table></div></div>' +
         topBoards(state.players);
+      // Top 10 in view, the rest behind a scroll. Sized off the real rows
+      // (heights differ on mobile), with a sliver of row 11 showing so it's
+      // obviously scrollable.
+      var sc = el('lbScroll');
+      var trs = sc.querySelectorAll('tbody tr');
+      if (trs.length > 10) {
+        var cut = trs[10].getBoundingClientRect().top - sc.getBoundingClientRect().top;
+        sc.style.maxHeight = Math.round(cut + 20) + 'px';
+      } else {
+        sc.style.maxHeight = 'none';
+      }
     }
 
     // Top-five boards under the main leaderboard. Built from the players the
@@ -2180,7 +2199,7 @@
           '<div class="stat"><div class="v">' + p.busts + '</div><div class="k">Busts</div></div>' +
           '<div class="stat"><div class="v">' + (p.cycles != null ? p.cycles : '—') + '</div><div class="k">Ladder cycles</div></div>' +
           '<div class="stat"><div class="v" style="color:var(--gold)">' + fmtExact(p.bankroll) + '</div><div class="k">Bankroll</div>' +
-          (isMe ? '<a class="flink" style="font-size:11px" onclick="openTipsHelp(\'help\')">Help, my games aren\'t registering</a>' : '') +
+          (isMe ? '<button class="btn secondary" style="font-size:11px;padding:4px 8px;margin-top:6px" onclick="openGamesHelp()">Help, my games aren\'t registering</button>' : '') +
           '</div>' +
           '<div class="stat"><div class="v green">' + fmtMoney(p.peakBankroll) + '</div><div class="k">Peak bankroll</div></div>' +
           '</div>' + prog + '</div>' +
@@ -2259,6 +2278,13 @@
       el('tipsModal').classList.add('open');
     }
     function closeTipsHelp() { el('tipsModal').classList.remove('open'); }
+    // "My games aren't registering" buttons: straight to the recent-games
+    // checker inside the Help section.
+    function openGamesHelp() {
+      openTipsHelp('help');
+      el('helpSyncFaq').open = true;
+      helpCheck();
+    }
     function openClimb(html) { el('climbBody').innerHTML = html; el('climbModal').classList.add('open'); }
     function closeClimb() { el('climbModal').classList.remove('open'); }
     // Close any modal when its dark backdrop is clicked.
@@ -2279,7 +2305,12 @@
           var skipped = (d.sessions || []).filter(function (s) { return String(s.counted) !== 'yes'; }).slice(0, 5);
           if (skipped.length) {
             out.innerHTML = 'Recent games that did not count:<br>' + skipped.map(function (s) {
-              return '· <b>' + esc(s.table) + '</b> (' + fmtWhen(s.leave_ts) + '): ' + esc(s.reason || 'not counted');
+              var extra = '';
+              if (/more than your ladder bankroll/.test(String(s.reason || ''))) {
+                extra = '<br>&nbsp;&nbsp;you bought in with <b>' + fmtExact(s.buy_in) +
+                  '</b> but only had <b>' + fmtExact(s.remaining) + '</b> bankroll';
+              }
+              return '· <b>' + esc(s.table) + '</b> (' + fmtWhen(s.leave_ts) + '): ' + esc(s.reason || 'not counted') + extra;
             }).join('<br>');
           } else {
             out.textContent = 'All your recent games counted. If one is missing entirely, Torn\'s log can lag a little; wait a minute and press Sync again.';
