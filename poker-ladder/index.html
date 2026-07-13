@@ -1692,6 +1692,20 @@
     function yourTableBox(p, tiers) {
       var lines = [];
       var tableName, title;
+      if (p.atTable && p.atTable.counted) {
+        // Sitting at a ladder table right now: no buy-in advice, the money is
+        // already on the table.
+        tableName = tiers[p.tierIdx].tables.join(' / ');
+        title = 'Table ' + (p.tierIdx + 1) + ' of ' + tiers.length;
+        lines.push('You\'re sitting at <b>' + esc(p.atTable.table) + '</b> right now, bought in for <b>' +
+          fmtExact(p.atTable.buyIn) + '</b>. Good luck!');
+        lines.push('<button class="btn secondary" style="font-size:13px;padding:6px 12px;margin-top:4px" onclick="openGamesHelp()">Help, my games aren\'t registering</button>');
+        return '<div class="youbox">' + avatar(p, 44) +
+          '<div><div class="youbox-k">Your table · ' + title + '</div>' +
+          '<div class="youbox-t">' + esc(tableName) + '</div>' +
+          lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
+          '</div></div>';
+      }
       if (p.bankroll < tiers[0].minBuy) {
         tableName = tiers[0].tables[0];
         title = 'Table 1 of ' + tiers.length + ' · new cycle';
@@ -1878,6 +1892,14 @@
       var t = tiers[p.tierIdx];
       var lines = [];
       if (p.paused) lines.push('The ladder is <b>paused</b>: games are not tracked.');
+      if (p.atTable && p.atTable.counted) {
+        lines.push('You\'re sitting at <b>' + esc(p.atTable.table) + '</b> right now, bought in for <b>' +
+          fmtExact(p.atTable.buyIn) + '</b>. Good luck!');
+        return '<div class="card"><h2>Current position</h2>' +
+          '<div class="pos-layout"><div class="pos-text">' +
+          lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
+          '</div>' + miniLadder(p, tiers) + '</div></div>';
+      }
       if (p.bankroll < tiers[0].minBuy) {
         lines.push('<b>Bust.</b> Buy into <b>Newbie Corner</b> to start a new cycle.');
       } else {
@@ -2321,33 +2343,54 @@
       }).catch(function (e) { out.textContent = e.message; });
     }
 
-    // After a sync: congratulate a climb and spell out the move-up choice.
-    // What has already been announced is remembered in localStorage, so a page
-    // refresh never re-shows the same news.
-    function maybeCongrats(me, tiers) {
+    // After a sync, one popup that explains where the player stands — and only
+    // when the sync brought news. The rules:
+    //  - Sitting at a table right now (the sync saw a join with no leave yet):
+    //    congratulate a climb, otherwise stay silent. Never talk about moving
+    //    up while the player is seated; an uncounted join may be a deliberate
+    //    normal game, so no warning either.
+    //  - Between games (the last synced event was a leave): explain the
+    //    position, but only when there's a climb or a newly counted game to
+    //    react to. A plain page refresh shows nothing.
+    // localStorage remembers what has been reacted to (t: table, ts: newest
+    // counted leave), so the same news never repeats.
+    function maybeCongrats(me, tiers, sessions) {
       if (me.paused) return;
       var seen;
       try { seen = JSON.parse(lsGet('pl_climb') || '{}'); } catch (e) { seen = {}; }
-      var ready = me.nextTierMin && me.bankroll >= me.nextTierMin;
+      var seated = !!me.atTable;
       var climbed = seen.t != null && me.tierIdx > seen.t;
-      var readyNews = ready && seen.r !== me.tierIdx + 1;
+      var lastCounted = 0;
+      (sessions || []).forEach(function (s) {
+        if (String(s.counted) === 'yes') lastCounted = Math.max(lastCounted, Number(s.leave_ts) || 0);
+      });
+      var newGames = seen.ts != null && lastCounted > seen.ts;
 
       var html = '';
       if (climbed) {
         html += '<p>🎉 Congrats, you climbed to <b>' + esc(me.tierTables[0]) + '</b>, table ' +
           (me.tierIdx + 1) + ' of 21.</p>';
-        if (!me.nextTierMin) html += '<p>👑 That is the top of the ladder.</p>';
       }
-      if (readyNews) {
-        html += '<p>With a bankroll of <b>' + fmtExact(me.bankroll) + '</b> you are ready to move up. ' +
-          'Take a seat at <b>' + esc(tiers[me.tierIdx + 1].tables[0]) + '</b> (minimum buy-in ' +
-          fmtMoney(tiers[me.tierIdx + 1].minBuy) + ') and the climb counts, or stay at <b>' +
-          esc(me.tierTables[0]) + '</b> and grow your bankroll first.</p>';
+      if (!seated && (climbed || newGames)) {
+        if (me.bankroll < tiers[0].minBuy) {
+          html += '<p>You busted this cycle. Buy into <b>' + esc(tiers[0].tables[0]) + '</b> (' +
+            fmtExact(tiers[0].minBuy) + ' to ' + fmtExact(tiers[0].maxBuy) + ') to start a new one.</p>';
+        } else if (!me.nextTierMin) {
+          html += '<p>👑 You\'re at the top of the ladder.</p>';
+        } else if (me.bankroll >= me.nextTierMin) {
+          html += '<p>With a bankroll of <b>' + fmtExact(me.bankroll) + '</b> you have enough for <b>' +
+            esc(tiers[me.tierIdx + 1].tables[0]) + '</b> (minimum buy-in ' + fmtExact(me.nextTierMin) +
+            '). Take a seat there whenever you\'re ready, or stay at <b>' + esc(me.tierTables[0]) +
+            '</b> and grow your bankroll first.</p>';
+        } else {
+          html += '<p>You don\'t have enough for <b>' + esc(tiers[me.tierIdx + 1].tables[0]) +
+            '</b> yet, so stay and play at <b>' + esc(me.tierTables[0]) + '</b> until you do. You need <b>' +
+            fmtExact(me.nextTierMin - me.bankroll) + '</b> more.</p>';
+        }
       }
 
       seen.t = me.tierIdx;
-      if (ready) seen.r = me.tierIdx + 1;
-      else seen.r = -1; // eligibility gone; announce it again when it returns
+      seen.ts = lastCounted;
       lsSet('pl_climb', JSON.stringify(seen));
       if (html) openClimb(html);
     }
@@ -2388,7 +2431,7 @@
         lsSet('pl_key', state.key);
         applyMe(d.me);
         closeLogin();
-        maybeCongrats(d.me, d.tiers);
+        maybeCongrats(d.me, d.tiers, d.sessions);
         // Fresh sync may have moved players; reload the board then re-render.
         state.tiers = null;
         return ensureBoard();
@@ -2419,7 +2462,7 @@
       b.disabled = true; b.textContent = 'Syncing…';
       apiSync(state.key).then(function (d) {
         applyMe(d.me);
-        maybeCongrats(d.me, d.tiers);
+        maybeCongrats(d.me, d.tiers, d.sessions);
         state.tiers = null;
         return ensureBoard();
       }).then(route).catch(function (e) {
@@ -2444,7 +2487,7 @@
     try { cachedMe = JSON.parse(lsGet('pl_me') || 'null'); } catch (e) { }
     if (state.key && cachedMe) applyMe(cachedMe);
     (state.key
-      ? apiSync(state.key).then(function (d) { applyMe(d.me); maybeCongrats(d.me, d.tiers); }).catch(function (e) {
+      ? apiSync(state.key).then(function (d) { applyMe(d.me); maybeCongrats(d.me, d.tiers, d.sessions); }).catch(function (e) {
         if (/not valid|Incorrect Key|access is not high/i.test(e.message || '')) {
           logout();
         } else if (state.key && !cachedMe) {
