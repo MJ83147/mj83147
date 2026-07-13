@@ -310,6 +310,51 @@
       color: var(--green);
     }
 
+    /* Signed-in banner at the top of the ladder page: which table counts
+       right now and the exact buy-in range allowed there. */
+    .youbox {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      background: linear-gradient(180deg, #1d2815, #161e0d);
+      border: 1px solid var(--green);
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 18px;
+    }
+
+    .youbox-k {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--dim);
+    }
+
+    .youbox-t {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--green);
+      margin: 2px 0 6px;
+    }
+
+    .youbox p {
+      font-size: 14px;
+      margin: 3px 0;
+    }
+
+    .youbox b {
+      color: var(--gold);
+    }
+
+    .youbox .warn {
+      color: var(--red);
+      font-weight: 700;
+    }
+
+    .youbox .warn b {
+      color: var(--red);
+    }
+
     @media (max-width: 760px) {
       .ladder-layout {
         grid-template-columns: 1fr;
@@ -1576,9 +1621,11 @@
           '<div class="rbar"></div>' +
           '</div></div>';
       }
+      var me = state.meId != null ? state.byId[state.meId] : null;
       el('view').innerHTML =
         '<div class="card"><h2>The ladder</h2>' +
         '<div class="sub">Climb from Newbie Corner up to Oligarch, one table at a time. Each dot is a player on the table they are currently on. Hover for stats, click to open a profile.</div>' +
+        (me ? yourTableBox(me, tiers) : '') +
         '<div class="ladder-layout">' +
         '<div class="ladder-scroll">' +
         '<div class="ladder-top">🏆<div class="capsub">Oligarch, the summit</div></div>' +
@@ -1586,6 +1633,52 @@
         '<div class="ladder-foot">▲ everyone starts here</div>' +
         '</div>' +
         '<div class="stats-col">' + ladderStats(players, tiers) + '</div>' +
+        '</div></div>';
+    }
+
+    // The signed-in banner above the ladder. States which table counts right
+    // now and the exact buy-in range that fits the bankroll, because players
+    // keep buying in for the table max or sitting at lower tables.
+    function yourTableBox(p, tiers) {
+      var lines = [];
+      var tableName, title;
+      if (p.bankroll < tiers[0].minBuy) {
+        tableName = tiers[0].tables[0];
+        title = 'Table 1 of ' + tiers.length + ' · new cycle';
+        lines.push('You busted. To start a new cycle, buy in at <b>' + esc(tableName) + '</b> for anything between <b>' +
+          fmtExact(tiers[0].minBuy) + '</b> and <b>' + fmtExact(tiers[0].maxBuy) + '</b>.');
+      } else {
+        var t = tiers[p.tierIdx];
+        tableName = t.tables.join(' / ');
+        title = 'Table ' + (p.tierIdx + 1) + ' of ' + tiers.length;
+        if (p.bankroll >= t.maxBuy) {
+          var maxIns = Math.floor(p.bankroll / t.maxBuy);
+          lines.push('You can currently play at <b>' + esc(tableName) + '</b>, where your bankroll covers <b>' +
+            maxIns + '</b> max buy-in' + (maxIns === 1 ? '' : 's') + ' of ' + fmtExact(t.maxBuy) + '.');
+        } else {
+          lines.push('You can currently play at <b>' + esc(tableName) + '</b>, where your bankroll covers <b>1</b> buy-in of up to <b>' +
+            fmtExact(p.bankroll) + '</b>.');
+          lines.push('<span class="warn">⚠ Do not buy in for the table max of ' + fmtExact(t.maxBuy) +
+            ': anything over ' + fmtExact(p.bankroll) + ' will not count.</span>');
+        }
+        var next = tiers[p.tierIdx + 1];
+        if (!next) {
+          lines.push('This is the top of the ladder 👑');
+        } else if (p.bankroll >= next.minBuy) {
+          var nIns = Math.floor(p.bankroll / next.minBuy);
+          lines.push('Or you can move up to <b>' + esc(next.tables.join(' / ')) + '</b>, where your bankroll covers <b>' +
+            nIns + '</b> min buy-in' + (nIns === 1 ? '' : 's') + ' of ' + fmtExact(next.minBuy) + '.');
+        } else {
+          lines.push('Or earn <b>' + fmtExact(next.minBuy - p.bankroll) + '</b> more to be eligible for <b>' +
+            esc(next.tables[0]) + '</b>, with 1 min buy-in of ' + fmtExact(next.minBuy) + '.');
+        }
+        lines.push('<span class="muted">Only the tables named above count. Lower tables are not part of your climb.</span>');
+      }
+      if (p.paused) lines.unshift('<span class="warn">Your ladder is paused: games are not tracked. Resume from your profile.</span>');
+      return '<div class="youbox">' + avatar(p, 44) +
+        '<div><div class="youbox-k">Your table · ' + title + '</div>' +
+        '<div class="youbox-t">' + esc(tableName) + '</div>' +
+        lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
         '</div></div>';
     }
 
@@ -1728,6 +1821,12 @@
         var buyins = Math.floor(p.bankroll / t.minBuy);
         lines.push('You currently have enough for <b>' + buyins + '</b> buy-in' + (buyins === 1 ? '' : 's') +
           ' at <b>' + esc(t.tables.join(' / ')) + '</b> (' + fmtMoney(t.minBuy) + ' minimum).');
+        var posMax = Math.min(p.bankroll, t.maxBuy);
+        lines.push('Your max buy-in is <b>' + fmtExact(posMax) + '</b>' +
+          (posMax < t.maxBuy
+            ? ' (your bankroll). Do not buy in for the table max of ' + fmtExact(t.maxBuy) +
+              '; any buy-in over <b>' + fmtExact(posMax) + '</b> will not count.'
+            : ' (the table max).'));
         if (!p.nextTierMin) {
           lines.push('This is the top of the ladder 👑');
         } else if (p.bankroll >= p.nextTierMin) {
