@@ -341,7 +341,13 @@
       font-size: 15px;
       font-weight: 700;
       color: var(--gold);
+      /* Wraps onto its own line as a unit when the row is too narrow. */
+      display: inline-block;
       white-space: nowrap;
+    }
+
+    .youbox>div {
+      min-width: 0;
     }
 
     .youbox p {
@@ -360,6 +366,55 @@
 
     .youbox .warn b {
       color: var(--red);
+    }
+
+    /* Champions strip at the summit of the ladder */
+    .champs {
+      border: 1px solid var(--gold);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #2a2413, #1c180b);
+      padding: 10px 14px;
+      margin: 8px 0 10px;
+    }
+
+    .champs-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--gold);
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    .champrow {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 4px 0;
+      font-size: 14px;
+      border-radius: 6px;
+    }
+
+    .champrow:hover {
+      background: #2b2410;
+    }
+
+    .champrow .crk {
+      color: var(--gold);
+      font-weight: 800;
+      min-width: 14px;
+      text-align: right;
+    }
+
+    .champrow .boardname {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .champrow b {
+      color: var(--gold);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
     @media (max-width: 760px) {
@@ -697,6 +752,13 @@
       font-size: 19px;
       font-weight: 800;
       color: var(--gold);
+      /* Billions-length figures must shrink-wrap inside the box, never
+         spill out of it. */
+      overflow-wrap: anywhere;
+    }
+
+    .stat {
+      min-width: 0;
     }
 
     .stat .v.green {
@@ -1286,6 +1348,15 @@
         grid-template-columns: 1fr;
       }
 
+      /* Long dollar figures fit their boxes on small screens. */
+      .stat .v {
+        font-size: 16px;
+      }
+
+      .stathero .big {
+        font-size: 30px;
+      }
+
       .pos-layout {
         grid-template-columns: 1fr;
       }
@@ -1460,6 +1531,18 @@
     </div>
   </div>
 
+  <!-- CLIMB ANALYSIS (per completed cycle, from the profile page) -->
+  <div class="modal-back" id="anlModal">
+    <div class="card modal" style="max-width:560px">
+      <div class="head-flex" style="margin-bottom:10px">
+        <h2 style="margin:0" id="anlTitle">Climb analysis</h2>
+        <div class="spacer"></div>
+        <span class="close-x" onclick="closeAnalysis()">✕</span>
+      </div>
+      <div id="anlBody"></div>
+    </div>
+  </div>
+
 
   <!-- LOGIN MODAL -->
   <div class="modal-back" id="loginModal">
@@ -1520,6 +1603,10 @@
     function apiResume(key) {
       if (!CONFIGURED) return notConfigured();
       return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'resume', key: key }) }).then(parseApi);
+    }
+    function apiNewLadder(key) {
+      if (!CONFIGURED) return notConfigured();
+      return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'newladder', key: key }) }).then(parseApi);
     }
     function apiLeaderboard() {
       if (!CONFIGURED) return notConfigured();
@@ -1671,6 +1758,17 @@
           '<div class="rbar"></div>' +
           '</div></div>';
       }
+      // Champions: everyone who has completed the ladder, fastest climb first.
+      var champs = players.filter(function (p) { return Number(p.completions) > 0; })
+        .sort(function (a, b) { return (Number(a.fastestClimb) || Infinity) - (Number(b.fastestClimb) || Infinity); });
+      var champBox = champs.length ?
+        '<div class="champs"><div class="champs-title">👑 Completed the ladder</div>' +
+        champs.map(function (p, i) {
+          return '<div class="champrow rowlink" data-goto="' + esc(p.id) + '">' +
+            '<span class="crk">' + (i + 1) + '</span>' + avatar(p, 24) +
+            '<span class="boardname">' + esc(p.name) + '</span>' +
+            '<b>' + fmtDur(p.fastestClimb) + (Number(p.completions) > 1 ? ' · ×' + p.completions : '') + '</b></div>';
+        }).join('') + '</div>' : '';
       var me = state.meId != null ? state.byId[state.meId] : null;
       el('view').innerHTML =
         '<div class="card"><h2>The ladder</h2>' +
@@ -1679,6 +1777,7 @@
         '<div class="ladder-layout">' +
         '<div class="ladder-scroll">' +
         '<div class="ladder-top">🏆<div class="capsub">Oligarch, the summit</div></div>' +
+        champBox +
         '<div class="ladder">' + rows + '</div>' +
         '<div class="ladder-foot">▲ everyone starts here</div>' +
         '</div>' +
@@ -2057,9 +2156,16 @@
         endLabel: 'Table ' + (lastR + 1)
       });
 
-      // Bankroll: a line chart. The tables grow 2.5x per tier, so once the
-      // history spans a few orders of magnitude a log scale is the only way
-      // the early game stays visible.
+      var bankChart = bankChartCard(hist, 'ch-bank', 'Bankroll', 'Ladder bankroll after each counted game.');
+
+      return '<div class="charts">' + rungChart + bankChart + '</div>';
+    }
+
+    // A bankroll line chart card, shared by the profile page and the climb
+    // analysis modal. The tables grow 2.5x per tier, so once the history spans
+    // a few orders of magnitude a log scale is the only way the early game
+    // stays visible.
+    function bankChartCard(hist, id, title, sub) {
       var maxB = hist.reduce(function (m, h) { return Math.max(m, Number(h.bankroll) || 0); }, 0);
       var minPos = hist.reduce(function (m, h) {
         var b = Number(h.bankroll) || 0;
@@ -2080,9 +2186,9 @@
         bMin = 0; bMax = step * Math.max(1, Math.ceil(Math.max(maxB, 1) / step));
         for (var b = 0; b <= bMax; b += step) bTicks.push({ v: b, label: fmtMoney(b) });
       }
-      var bankChart = chartCard(hist, {
-        id: 'ch-bank', title: 'Bankroll', color: '#7ccb6e', stepLine: false, log: log,
-        sub: 'Ladder bankroll after each counted game.' + (log ? ' Log scale.' : ''),
+      return chartCard(hist, {
+        id: id, title: title, color: '#7ccb6e', stepLine: false, log: log,
+        sub: sub + (log ? ' Log scale.' : ''),
         yMin: bMin, yMax: bMax, yTicks: bTicks,
         val: function (h) { return Number(h.bankroll) || 0; },
         tip: function (h) {
@@ -2090,8 +2196,6 @@
         },
         endLabel: fmtExact(hist[hist.length - 1].bankroll)
       });
-
-      return '<div class="charts">' + rungChart + bankChart + '</div>';
     }
 
     // Hover layer: nearest point by x gets the crosshair, marker and tooltip.
@@ -2165,12 +2269,95 @@
           return String(byCycle[c][0].reason || '') === 'out at the bottom' &&
             byCycle[c].every(function (s) { return Number(s.tier_idx) === 0; });
         };
+        // A completed cycle (reached Oligarch) gets a "Climb analysis" button:
+        // duration to the summit, win-loss record, standout games, a bankroll
+        // chart across the climb, and a per-table breakdown.
+        ANALYSES = {};
+        var buildAnalysis = function (c, list) {
+          var chron = list.slice().reverse(); // play order
+          var top = chron.filter(function (s) { return Number(s.tier_idx) === tiers.length - 1; })[0];
+          if (!top) return false;
+          var startTs = Number(chron[0].join_ts);
+          var summitTs = Number(top.join_ts);
+          var climbed = chron.filter(function (s) { return Number(s.join_ts) <= summitTs; });
+
+          var net = 0, wins = 0, losses = 0, seated = 0, drops = 0;
+          var bigWin = null, bigLoss = null;
+          climbed.forEach(function (s) {
+            var d = Number(s.cash_out) - Number(s.buy_in);
+            net += d;
+            if (d > 0) wins++; else if (d < 0) losses++;
+            seated += Math.max(0, Number(s.leave_ts) - Number(s.join_ts));
+            if (/^dropped to/.test(String(s.reason || ''))) drops++;
+            if (d > 0 && (!bigWin || d > bigWin.d)) bigWin = { d: d, s: s };
+            if (d < 0 && (!bigLoss || d < bigLoss.d)) bigLoss = { d: d, s: s };
+          });
+
+          var byTier = {};
+          climbed.forEach(function (s) {
+            var t = Number(s.tier_idx) || 0;
+            var b = byTier[t] = byTier[t] || { games: 0, net: 0, secs: 0, w: 0, l: 0 };
+            var d = Number(s.cash_out) - Number(s.buy_in);
+            b.games += 1; b.net += d;
+            b.secs += Math.max(0, Number(s.leave_ts) - Number(s.join_ts));
+            if (d > 0) b.w++; else if (d < 0) b.l++;
+          });
+          var tierNums = Object.keys(byTier).map(Number).sort(function (a, b) { return a - b; });
+          var grind = tierNums.reduce(function (m, t) { return byTier[t].secs > byTier[m].secs ? t : m; }, tierNums[0]);
+          var earner = tierNums.reduce(function (m, t) { return byTier[t].net > byTier[m].net ? t : m; }, tierNums[0]);
+          var rows = tierNums.map(function (t) {
+            var b = byTier[t];
+            var mark = t === grind ? ' 🥵' : (t === earner ? ' 💰' : '');
+            return '<tr><td>' + (t + 1) + '. ' + esc(tiers[t].tables[0]) + mark + '</td>' +
+              '<td class="num">' + b.games + '</td>' +
+              '<td class="num muted">' + b.w + '-' + b.l + '</td>' +
+              '<td class="num">' + fmtDur(b.secs) + '</td>' +
+              '<td class="num ' + (b.net < 0 ? 'neg' : 'pos') + '">' + (b.net >= 0 ? '+' : '') + fmtMoney(b.net) + '</td></tr>';
+          }).join('');
+
+          var chip = function (v, k) {
+            return '<div class="stat"><div class="v" style="font-size:16px">' + v + '</div><div class="k">' + k + '</div></div>';
+          };
+          var chips = '<div class="stat-row" style="margin:12px 0">' +
+            chip(wins + '-' + losses, 'Win-loss') +
+            (bigWin ? chip('+' + fmtMoney(bigWin.d), 'Biggest win · ' + esc(bigWin.s.table)) : '') +
+            (bigLoss ? chip('<span class="neg">' + fmtMoney(bigLoss.d) + '</span>', 'Biggest loss · ' + esc(bigLoss.s.table)) : '') +
+            chip(String(drops), 'Falls') +
+            chip(fmtDur(seated), 'Time at the tables') +
+            '</div>';
+
+          var callouts = '<p class="hint" style="margin:0 0 10px">' +
+            'Hardest grind 🥵: <b style="color:var(--gold)">' + esc(tiers[grind].tables[0]) + '</b> (' +
+            byTier[grind].games + ' games, ' + fmtDur(byTier[grind].secs) + ') · Best earner 💰: <b style="color:var(--gold)">' +
+            esc(tiers[earner].tables[0]) + '</b> (+' + fmtMoney(byTier[earner].net) + ')</p>';
+
+          var chartHist = climbed.filter(function (s) { return s.remaining !== '' && s.remaining != null; })
+            .map(function (s) { return { ts: Number(s.leave_ts), bankroll: Number(s.remaining) }; });
+          var chart = chartHist.length >= 2
+            ? bankChartCard(chartHist, 'ch-anl' + c, 'The road to the top', 'Bankroll after each game of the climb.')
+            : '';
+
+          ANALYSES[c] = {
+            title: 'Climb analysis · cycle ' + c,
+            html: '<p style="font-size:15px">🏆 Completed in <b style="color:var(--gold)">' + fmtDur(summitTs - startTs) +
+              '</b> · ' + climbed.length + ' games · net <span class="' + (net < 0 ? 'neg' : 'pos') + '">' +
+              (net >= 0 ? '+' : '') + fmtMoney(net) + '</span></p>' +
+              '<p class="hint" style="margin:6px 0 10px">From the first Newbie Corner sit-down to taking a seat at Oligarch.</p>' +
+              chips + callouts + chart +
+              '<div style="overflow-x:auto"><table><thead><tr><th>Table</th><th class="num">Games</th><th class="num">W-L</th><th class="num">Time</th><th class="num">Net</th></tr></thead>' +
+              '<tbody>' + rows + '</tbody></table></div>'
+          };
+          return true;
+        };
         var cycleCard = function (c) {
           var list = byCycle[c]; // newest first
           var games = list.length;
           var net = list.reduce(function (s, x) { return s + (Number(x.cash_out) - Number(x.buy_in)); }, 0);
           var hi = list.reduce(function (m, x) { return Math.max(m, Number(x.tier_idx) || 0); }, 0);
           var span = Number(list[0].leave_ts) - Number(list[games - 1].join_ts);
+          var analysisBtn = buildAnalysis(c, list)
+            ? ' <button class="btn secondary" style="font-size:12px;padding:4px 10px;vertical-align:middle" onclick="showAnalysis(' + c + ')">🏆 Climb analysis</button>'
+            : '';
           var summary = games + (games === 1 ? ' game' : ' games') +
             ' · net <span class="' + (net < 0 ? 'neg' : 'pos') + '">' + (net >= 0 ? '+' : '') + fmtMoney(net) + '</span>' +
             ' · reached ' + esc(tiers[Math.min(hi, tiers.length - 1)].tables[0]) +
@@ -2184,7 +2371,7 @@
               '<td class="muted">' + esc(s.reason || '') + '</td></tr>';
           }).join('');
           var current = c === cycleNums[0] && !newestBusted;
-          return '<div class="card"><h2>Cycle ' + c + (current ? ' <span class="tag">current</span>' : '') + '</h2>' +
+          return '<div class="card"><h2>Cycle ' + c + (current ? ' <span class="tag">current</span>' : '') + analysisBtn + '</h2>' +
             '<div class="sub">' + summary + (current ? '<br>' + nextLine : '') + '</div>' +
             '<div class="tscroll"><table><thead><tr>' +
             '<th>When</th><th>Table</th><th class="num">Bought in</th><th class="num">Cashed out</th><th class="num sm-hide">Bankroll</th><th>Result</th>' +
@@ -2217,6 +2404,7 @@
         var syncedLine = ago ? ' · synced ' + ago : '';
         var isMe = p.id === state.meId;
         var deleteBtn = isMe ? '<div class="spacer"></div><div class="pactions">' +
+          (p.completedThisCycle ? '<button class="btn" onclick="doNewLadder()">🏆 Start a new ladder</button>' : '') +
           (p.paused
             ? '<button class="btn" onclick="doResume()">Resume ladder</button>'
             : '<button class="btn secondary" onclick="doPause()">Pause ladder</button>') +
@@ -2231,9 +2419,16 @@
           '<div class="stat"><div class="v">' + (p.tierIdx + 1) + ' / 21</div><div class="k">Current table · ' + esc(p.tierTables[0]) + '</div></div>' +
           '<div class="stat"><div class="v">' + p.busts + '</div><div class="k">Busts</div></div>' +
           '<div class="stat"><div class="v">' + (p.cycles != null ? p.cycles : '—') + '</div><div class="k">Ladder cycles</div></div>' +
-          '<div class="stat"><div class="v" style="color:var(--gold)">' + fmtExact(p.bankroll) + '</div><div class="k">Bankroll</div>' +
-          (isMe ? '<button class="btn secondary" style="font-size:11px;padding:4px 8px;margin-top:6px" onclick="openGamesHelp()">Help, my games aren\'t registering</button>' : '') +
-          '</div>' +
+          (function () {
+            // A billions-length figure gets a double-width box (and a small
+            // shrink) so the exact number stays on one line.
+            var bk = fmtExact(p.bankroll);
+            var wide = bk.length > 12 ? 'grid-column:span 2;' : '';
+            var size = bk.length > 12 ? 'font-size:17px;' : (bk.length > 9 ? 'font-size:16px;' : '');
+            return '<div class="stat" style="' + wide + '"><div class="v" style="color:var(--gold);' + size + '">' + bk + '</div><div class="k">Bankroll</div>' +
+              (isMe ? '<button class="btn secondary" style="font-size:11px;padding:4px 8px;margin-top:6px;width:100%;white-space:normal" onclick="openGamesHelp()">Help, my games aren\'t registering</button>' : '') +
+              '</div>';
+          })() +
           '<div class="stat"><div class="v green">' + fmtMoney(p.peakBankroll) + '</div><div class="k">Peak bankroll</div></div>' +
           '</div>' + prog + '</div>' +
           positionCard(p, tiers) +
@@ -2318,10 +2513,21 @@
       el('helpSyncFaq').open = true;
       helpCheck();
     }
+    // Climb analysis modal: the HTML per completed cycle is prepared by
+    // renderProfile and stashed here, keyed by cycle number.
+    var ANALYSES = {};
+    function showAnalysis(cycle) {
+      if (!ANALYSES[cycle]) return;
+      el('anlTitle').textContent = ANALYSES[cycle].title;
+      el('anlBody').innerHTML = ANALYSES[cycle].html;
+      el('anlModal').classList.add('open');
+    }
+    function closeAnalysis() { el('anlModal').classList.remove('open'); }
+
     function openClimb(html) { el('climbBody').innerHTML = html; el('climbModal').classList.add('open'); }
     function closeClimb() { el('climbModal').classList.remove('open'); }
     // Close any modal when its dark backdrop is clicked.
-    ['loginModal', 'tipsModal', 'climbModal'].forEach(function (id) {
+    ['loginModal', 'tipsModal', 'climbModal', 'anlModal'].forEach(function (id) {
       el(id).addEventListener('click', function (e) { if (e.target === this) this.classList.remove('open'); });
     });
 
@@ -2418,6 +2624,16 @@
     function doResume() {
       if (!state.key) return;
       apiResume(state.key).then(function (d) {
+        applyMe(d.me);
+        state.tiers = null;
+        return ensureBoard();
+      }).then(route).catch(function (e) { alert(e.message); });
+    }
+
+    function doNewLadder() {
+      if (!state.key) return;
+      if (!confirm('Start a new ladder? Your completed climb stays in your history, and you start again from Newbie Corner with a fresh bankroll.')) return;
+      apiNewLadder(state.key).then(function (d) {
         applyMe(d.me);
         state.tiers = null;
         return ensureBoard();
