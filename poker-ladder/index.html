@@ -1824,15 +1824,26 @@
         { title: 'Highest table ever', val: function (p) { return (p.peakIdx != null ? p.peakIdx : p.tierIdx) + 1; }, fmt: function (v) { return v + ' / 21'; } },
         { title: 'Peak bankroll', val: function (p) { return Number(p.peakBankroll) || 0; }, fmt: fmtMoney },
         { title: 'Most games played', val: function (p) { return Number(p.sessionsPlayed) || 0; }, fmt: String },
-        { title: 'Biggest single win', val: function (p) { return Number(p.biggestWin) || 0; }, fmt: fmtMoney, requires: 'biggestWin' }
+        { title: 'Biggest single win', val: function (p) { return Number(p.biggestWin) || 0; }, fmt: fmtMoney, requires: 'biggestWin' },
+        // Completing the ladder = sitting down at Oligarch. Smaller is better
+        // for the climb time, and both boards stay visible (blank) until
+        // someone has actually done it.
+        { title: 'Fastest climb', val: function (p) { return Number(p.fastestClimb) || 0; }, fmt: fmtDur, requires: 'fastestClimb', asc: true, emptyText: 'Nobody has completed the ladder yet.' },
+        { title: 'Ladder completions', val: function (p) { return Number(p.completions) || 0; }, fmt: String, requires: 'completions', emptyText: 'Nobody has completed the ladder yet.' }
       ];
       var boards = defs.map(function (d) {
         if (d.requires && !players.some(function (p) { return p[d.requires] != null; })) return '';
-        var top = players.slice()
-          .sort(function (a, b) { return d.val(b) - d.val(a) || (Number(b.peakBankroll) || 0) - (Number(a.peakBankroll) || 0); })
-          .slice(0, 5)
-          .filter(function (p) { return d.val(p) > 0; });
-        if (!top.length) return '';
+        var top = players.filter(function (p) { return d.val(p) > 0; })
+          .sort(function (a, b) {
+            var diff = d.asc ? d.val(a) - d.val(b) : d.val(b) - d.val(a);
+            return diff || (Number(b.peakBankroll) || 0) - (Number(a.peakBankroll) || 0);
+          })
+          .slice(0, 5);
+        if (!top.length) {
+          return d.emptyText
+            ? '<div class="card"><h3 class="boardtitle">' + d.title + '</h3><div class="muted" style="font-size:13px">' + d.emptyText + '</div></div>'
+            : '';
+        }
         var rows = top.map(function (p, i) {
           return '<div class="boardrow rowlink" data-goto="' + esc(p.id) + '">' +
             '<span class="brk">' + (i + 1) + '</span>' + avatar(p, 22) +
