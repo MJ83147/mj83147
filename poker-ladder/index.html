@@ -1805,7 +1805,17 @@
           lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
           '</div></div>';
       }
-      if (p.bankroll < tiers[0].minBuy) {
+      if (p.bankroll < tiers[0].minBuy && !(Number(p.sessionsPlayed) || 0)) {
+        // Brand new: never played a counted game. Walk them in, don't call
+        // it a bust.
+        tableName = tiers[0].tables[0];
+        title = 'Table 1 of ' + tiers.length + ' · your first climb';
+        lines.push('Welcome! Take a seat at <b>' + esc(tableName) + '</b> and buy in with anything from <b>' +
+          fmtExact(tiers[0].minBuy) + '</b> to <b>' + fmtExact(tiers[0].maxBuy) + '</b>. That first buy-in is your own money and becomes your starting bankroll.');
+        lines.push('Play, cash out, then press <b>Sync</b>. Everything you win at the tables is your ladder bankroll.');
+        lines.push('Reach <b>' + fmtExact(tiers[1].minBuy) + '</b> and you can take a seat at <b>' + esc(tiers[1].tables[0]) +
+          '</b>. That\'s the climb: 21 tables to Oligarch.');
+      } else if (p.bankroll < tiers[0].minBuy) {
         tableName = tiers[0].tables[0];
         title = 'Table 1 of ' + tiers.length + ' · new cycle';
         lines.push('You busted. To start a new cycle, buy in at <b>' + esc(tableName) + '</b> for anything between <b>' +
@@ -1842,7 +1852,7 @@
       return '<div class="youbox">' + avatar(p, 44) +
         '<div><div class="youbox-k">Your table · ' + title + '</div>' +
         '<div class="youbox-t">' + esc(tableName) +
-        '<span class="youbox-bank"> · ' + fmtExact(p.bankroll) + ' bankroll</span></div>' +
+        (Number(p.bankroll) > 0 ? '<span class="youbox-bank"> · ' + fmtExact(p.bankroll) + ' bankroll</span>' : '') + '</div>' +
         lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
         '</div></div>';
     }
@@ -1851,11 +1861,16 @@
     // personal stats live on the profile page.
     function ladderStats(players, tiers) {
       var pk = function (p) { return p.peakIdx != null ? p.peakIdx : p.tierIdx; };
-      var leader = players.slice().sort(function (a, b) { return pk(b) - pk(a) || b.bankroll - a.bankroll; })[0];
+      // The race is led by whoever is highest RIGHT NOW (rank #1), not by an
+      // old peak: a completer on their second climb starts from the bottom
+      // like everyone else. Players arrive ranked from the backend.
+      var leader = players[0];
       var curHigh = players.reduce(function (m, p) { return Math.max(m, p.tierIdx); }, 0);
       var everHigh = players.reduce(function (m, p) { return Math.max(m, pk(p)); }, 0);
       var games = players.reduce(function (s, p) { return s + (p.sessionsPlayed || 0); }, 0);
       var busts = players.reduce(function (s, p) { return s + (p.busts || 0); }, 0);
+      var totalBank = players.reduce(function (s, p) { return s + (Number(p.bankroll) || 0); }, 0);
+      var topPeak = players.slice().sort(function (a, b) { return (Number(b.peakBankroll) || 0) - (Number(a.peakBankroll) || 0); })[0];
 
       // Top five tables by counted games played there (from the backend tally).
       var byTable = state.tableGames || {};
@@ -1876,6 +1891,8 @@
         row('Climbers', players.length) +
         row('Games played', games) +
         row('Total busts', busts) +
+        row('Combined bankroll', fmtMoney(totalBank)) +
+        (topPeak ? row('Highest bankroll ever', fmtMoney(topPeak.peakBankroll) + ' · ' + esc(topPeak.name)) : '') +
         (leader ? row('Leading', esc(leader.name)) : '') +
         '</div>' +
         '<div class="statbox"><h3>Top tables by games played</h3>' +
@@ -1901,6 +1918,7 @@
         '<div class="tscroll" id="lbScroll"><table><thead><tr><th class="rk">#</th><th>Player</th><th class="num">Table</th><th class="sm-hide">Now on</th>' +
         '<th class="num sm-hide">Bankroll</th><th class="num">Busts</th>' +
         '</tr></thead><tbody>' + rows + '</tbody></table></div></div>' +
+        distCharts(state.players, state.tiers || LADDER_TIERS) +
         topBoards(state.players);
       // Top 10 in view, the rest behind a scroll. Sized off the real rows
       // (heights differ on mobile), with a sliver of row 11 showing so it's
@@ -1913,6 +1931,35 @@
       } else {
         sc.style.maxHeight = 'none';
       }
+    }
+
+    // The climbs in aggregate: how the field is spread over the 21 tables,
+    // now and at their highest. All 21 rungs are drawn top-down so the gaps
+    // read as part of the shape.
+    function distCharts(players, tiers) {
+      if (!players.length) return '';
+      var cur = {}, peak = {};
+      players.forEach(function (p) {
+        cur[p.tierIdx] = (cur[p.tierIdx] || 0) + 1;
+        var pkI = p.peakIdx != null ? p.peakIdx : p.tierIdx;
+        peak[pkI] = (peak[pkI] || 0) + 1;
+      });
+      var mk = function (counts, title, sub) {
+        var maxN = 1;
+        Object.keys(counts).forEach(function (k) { maxN = Math.max(maxN, counts[k]); });
+        var rows = '';
+        for (var i = tiers.length - 1; i >= 0; i--) {
+          var n = counts[i] || 0;
+          rows += '<div class="bar-row"><span class="bar-label">' + (i + 1) + '. ' + esc(tiers[i].tables[0]) + '</span>' +
+            '<span class="bar-track">' + (n ? '<span class="bar-fill" style="width:' + Math.max(4, Math.round(100 * n / maxN)) + '%"></span>' : '') + '</span>' +
+            '<b class="bar-n' + (n ? '' : ' muted') + '">' + n + '</b></div>';
+        }
+        return '<div class="card"><h3 class="boardtitle">' + title + '</h3><div class="sub">' + sub + '</div>' + rows + '</div>';
+      };
+      return '<div class="boards" style="grid-template-columns:repeat(auto-fit,minmax(290px,1fr))">' +
+        mk(cur, 'Where the field is now', 'Players per table, right now.') +
+        mk(peak, 'Highest table reached', 'Each player counted at the top of their best climb.') +
+        '</div>';
     }
 
     // Top-five boards under the main leaderboard. Built from the players the
@@ -2010,7 +2057,17 @@
           lines.map(function (l) { return '<p>' + l + '</p>'; }).join('') +
           '</div>' + miniLadder(p, tiers) + '</div></div>';
       }
-      if (p.bankroll < tiers[0].minBuy) {
+      if (p.bankroll < tiers[0].minBuy && !(Number(p.sessionsPlayed) || 0)) {
+        lines.push('Your climb hasn\'t started yet. How to begin:');
+        lines.push('<ol class="howlist">' +
+          '<li>Take a seat at <b>Newbie Corner</b>: buy in with anything from ' + fmtExact(tiers[0].minBuy) +
+          ' to ' + fmtExact(tiers[0].maxBuy) + ' of your own money. That stake becomes your starting bankroll.</li>' +
+          '<li>Play and cash out. What you win at the tables is your <b>ladder bankroll</b>.</li>' +
+          '<li>Press <b>Sync</b> after you leave the table so your games register.</li>' +
+          '<li>Reach ' + fmtExact(tiers[1].minBuy) + ' and take a seat at <b>' + esc(tiers[1].tables[0]) +
+          '</b>. That\'s the climb: 21 tables to Oligarch.</li>' +
+          '</ol>');
+      } else if (p.bankroll < tiers[0].minBuy) {
         lines.push('<b>Bust.</b> Buy into <b>Newbie Corner</b> to start a new cycle.');
       } else {
         var buyins = Math.floor(p.bankroll / t.minBuy);
@@ -2401,7 +2458,9 @@
         var peakName = (p.peakTables ? p.peakTables[0] : p.tierTables[0]);
         var tornLink = p.profileUrl ? '<a href="' + esc(p.profileUrl) + '" target="_blank" rel="noopener" class="tag">Torn profile ↗</a>' : '';
         var ago = p.lastSync ? timeAgo(p.lastSync) : '';
-        var syncedLine = ago ? ' · synced ' + ago : '';
+        // While paused nothing is tracked, so a fresh sync time (the player
+        // merely opened the app) would read as live tracking. Hide it.
+        var syncedLine = ago && !p.paused ? ' · synced ' + ago : '';
         var isMe = p.id === state.meId;
         var deleteBtn = isMe ? '<div class="spacer"></div><div class="pactions">' +
           (p.completedThisCycle ? '<button class="btn" onclick="doNewLadder()">🏆 Start a new ladder</button>' : '') +
