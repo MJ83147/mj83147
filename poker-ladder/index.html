@@ -1588,36 +1588,49 @@
     function notConfigured() { return Promise.reject(new Error('Backend not connected yet. Set LADDER_API_URL in index.html.')); }
     // POST bodies go as text/plain so the browser skips a CORS preflight that
     // Apps Script web apps don't answer.
-    function apiSync(key) {
-      if (!CONFIGURED) return notConfigured();
-      return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'sync', key: key }) }).then(parseApi);
+    //
+    // Google's serving layer for Apps Script web apps sometimes answers with
+    // an HTML error page ("Page not found") instead of the script's JSON.
+    // It's intermittent and outside the script: an immediate retry succeeds.
+    // Every call retries itself except "new ladder": sync/pause/resume/delete
+    // are idempotent (the backend dedupes log entries by id), but a repeated
+    // newladder would refuse with a misleading error if the first one landed.
+    function apiSync(key) { return apiPost({ action: 'sync', key: key }, 2); }
+    function apiDelete(key) { return apiPost({ action: 'delete', key: key }, 2); }
+    function apiPause(key) { return apiPost({ action: 'pause', key: key }, 2); }
+    function apiResume(key) { return apiPost({ action: 'resume', key: key }, 2); }
+    function apiNewLadder(key) { return apiPost({ action: 'newladder', key: key }, 0); }
+    function apiLeaderboard() { return apiGet('?action=leaderboard'); }
+    function apiPlayer(id) { return apiGet('?action=player&id=' + encodeURIComponent(id)); }
+
+    function apiPost(payload, retries) {
+      return apiRequest(LADDER_API_URL, { method: 'POST', body: JSON.stringify(payload) }, retries);
     }
-    function apiDelete(key) {
-      if (!CONFIGURED) return notConfigured();
-      return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'delete', key: key }) }).then(parseApi);
+    function apiGet(query) {
+      return apiRequest(LADDER_API_URL + query, undefined, 2);
     }
-    function apiPause(key) {
+    function apiRequest(url, opts, retriesLeft) {
       if (!CONFIGURED) return notConfigured();
-      return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'pause', key: key }) }).then(parseApi);
-    }
-    function apiResume(key) {
-      if (!CONFIGURED) return notConfigured();
-      return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'resume', key: key }) }).then(parseApi);
-    }
-    function apiNewLadder(key) {
-      if (!CONFIGURED) return notConfigured();
-      return fetch(LADDER_API_URL, { method: 'POST', body: JSON.stringify({ action: 'newladder', key: key }) }).then(parseApi);
-    }
-    function apiLeaderboard() {
-      if (!CONFIGURED) return notConfigured();
-      return fetch(LADDER_API_URL + '?action=leaderboard').then(parseApi);
-    }
-    function apiPlayer(id) {
-      if (!CONFIGURED) return notConfigured();
-      return fetch(LADDER_API_URL + '?action=player&id=' + encodeURIComponent(id)).then(parseApi);
+      return fetch(url, opts)
+        .catch(function (e) { e.transient = true; throw e; }) // network failure: worth a retry too
+        .then(parseApi)
+        .catch(function (err) {
+          if (!err.transient || retriesLeft < 1) throw err;
+          return new Promise(function (r) { setTimeout(r, 800); })
+            .then(function () { return apiRequest(url, opts, retriesLeft - 1); });
+        });
     }
     function parseApi(resp) {
-      return resp.json().then(function (b) { if (!b.ok) throw new Error(b.error || 'Request failed.'); return b; });
+      return resp.text().then(function (text) {
+        var b;
+        try { b = JSON.parse(text); } catch (e) {
+          var err = new Error('The ladder server briefly failed to respond. Please try again.');
+          err.transient = true;
+          throw err;
+        }
+        if (!b.ok) throw new Error(b.error || 'Request failed.');
+        return b;
+      });
     }
 
     // ---------------------------------------------------------------------------
