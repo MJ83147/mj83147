@@ -1708,9 +1708,17 @@
     function ensureBoard() {
       if (state.tiers) return Promise.resolve();
       return apiLeaderboard()
-        .then(setBoard)
+        .then(function (d) {
+          setBoard(d);
+          state.staleAt = 0;
+          lsSet('pl_board', JSON.stringify({ at: Date.now(), d: d }));
+        })
         .catch(function () {
-          // Backend unreachable/unconfigured: still show the empty ladder frame.
+          // Server unreachable: fall back to the last board this browser saw,
+          // so the pages still show data instead of an empty frame.
+          var c = null;
+          try { c = JSON.parse(lsGet('pl_board') || 'null'); } catch (e) { }
+          if (c && c.d) { setBoard(c.d); state.staleAt = c.at || 1; return; }
           state.players = []; state.tiers = LADDER_TIERS; state.byId = {}; state.tableGames = {};
         });
     }
@@ -1718,6 +1726,14 @@
       state.players = d.players || []; state.tiers = d.tiers || LADDER_TIERS;
       state.tableGames = d.tableGames || {};
       state.byId = {}; state.players.forEach(function (p) { state.byId[p.id] = p; });
+    }
+    // Banner shown above a page rendered from the saved copy.
+    function staleNote(at) {
+      if (!at) return '';
+      var ago = timeAgo(new Date(at).toISOString());
+      return '<div class="card" style="padding:10px 16px;font-size:13px;color:var(--dim)">' +
+        'The server did not respond, so this is the last data loaded in this browser' +
+        (ago ? ' (' + ago + ')' : '') + '. Refresh the page to try again.</div>';
     }
 
     // ---------------------------------------------------------------------------
@@ -1784,6 +1800,7 @@
         }).join('') + '</div>' : '';
       var me = state.meId != null ? state.byId[state.meId] : null;
       el('view').innerHTML =
+        staleNote(state.staleAt) +
         '<div class="card"><h2>The ladder</h2>' +
         '<div class="sub">Climb from Newbie Corner up to Oligarch, one table at a time. Each dot is a player on the table they are currently on. Hover for stats, click to open a profile.</div>' +
         (me ? yourTableBox(me, tiers) : '') +
@@ -1927,6 +1944,7 @@
           '<td class="num">' + p.busts + '</td></tr>';
       }).join('') || '<tr><td colspan="6" class="muted">Nobody on the ladder yet, be the first.</td></tr>';
       el('view').innerHTML =
+        staleNote(state.staleAt) +
         '<div class="card"><h2>Leaderboard</h2><div class="sub">The climb is about getting through all 21 tables. Ranked by highest table reached, then stake.</div>' +
         '<div class="tscroll" id="lbScroll"><table><thead><tr><th class="rk">#</th><th>Player</th><th class="num">Table</th><th class="sm-hide">Now on</th>' +
         '<th class="num sm-hide">Bankroll</th><th class="num">Busts</th>' +
@@ -2021,7 +2039,7 @@
           '<div class="pt">' + esc(p.tierLabel) + ' · ' + esc(p.tierTables[0]) + '</div>' +
           '<div class="pt">' + fmtExact(p.bankroll) + ' · ' + p.busts + ' busts</div></div></div>';
       }).join('') || '<div class="muted">No players yet.</div>';
-      el('view').innerHTML = '<div class="card"><h2>Players</h2><div class="sub">' + state.players.length +
+      el('view').innerHTML = staleNote(state.staleAt) + '<div class="card"><h2>Players</h2><div class="sub">' + state.players.length +
         ' on the ladder. Click anyone to see their profile.</div><div class="grid">' + cards + '</div></div>';
     }
 
@@ -2302,6 +2320,20 @@
     function renderProfile(id) {
       el('view').innerHTML = '<div class="card muted">Loading profile…</div>';
       apiPlayer(id).then(function (d) {
+        lsSet('pl_p_' + id, JSON.stringify({ at: Date.now(), d: d }));
+        renderProfileData(d, 0);
+      }).catch(function (e) {
+        // Server unreachable: show the last copy of this profile the browser
+        // loaded, if there is one.
+        var c = null;
+        try { c = JSON.parse(lsGet('pl_p_' + id) || 'null'); } catch (e2) { }
+        if (c && c.d) return renderProfileData(c.d, c.at || 1);
+        el('view').innerHTML = '<span class="backlink" data-goto-route="players">← back</span><div class="card">' + esc(e.message) + '</div>';
+      });
+    }
+
+    function renderProfileData(d, staleAt) {
+      (function () {
         var p = d.player, tiers = d.tiers;
 
         // The one line that says what this player does next. Used by both the
@@ -2339,17 +2371,27 @@
           return String(byCycle[c][0].reason || '') === 'out at the bottom' &&
             byCycle[c].every(function (s) { return Number(s.tier_idx) === 0; });
         };
-        // A completed cycle (reached Oligarch) gets a "Climb analysis" button:
-        // duration to the summit, win-loss record, standout games, a bankroll
-        // chart across the climb, and a per-table breakdown.
+        // Any cycle that got past Newbie Corner gets a "Climb analysis" button:
+        // duration, win-loss record, standout games, a bankroll chart across
+        // the climb, and a per-table breakdown. A completed cycle (reached
+        // Oligarch) is measured to the summit sit-down; a cycle that stalled or
+        // busted higher up is measured across the whole cycle.
         ANALYSES = {};
         var buildAnalysis = function (c, list) {
           var chron = list.slice().reverse(); // play order
+          var peakTier = chron.reduce(function (m, s) { return Math.max(m, Number(s.tier_idx) || 0); }, 0);
+          if (peakTier < 1) return false; // never left Newbie Corner: nothing to analyse
           var top = chron.filter(function (s) { return Number(s.tier_idx) === tiers.length - 1; })[0];
-          if (!top) return false;
+          var completed = !!top;
           var startTs = Number(chron[0].join_ts);
-          var summitTs = Number(top.join_ts);
-          var climbed = chron.filter(function (s) { return Number(s.join_ts) <= summitTs; });
+          var endTs, climbed;
+          if (completed) {
+            endTs = Number(top.join_ts);
+            climbed = chron.filter(function (s) { return Number(s.join_ts) <= endTs; });
+          } else {
+            climbed = chron; // the whole cycle, right up to where it ended
+            endTs = Number(chron[chron.length - 1].leave_ts);
+          }
 
           var net = 0, wins = 0, losses = 0, seated = 0, drops = 0;
           var bigWin = null, bigLoss = null;
@@ -2404,15 +2446,27 @@
           var chartHist = climbed.filter(function (s) { return s.remaining !== '' && s.remaining != null; })
             .map(function (s) { return { ts: Number(s.leave_ts), bankroll: Number(s.remaining) }; });
           var chart = chartHist.length >= 2
-            ? bankChartCard(chartHist, 'ch-anl' + c, 'The road to the top', 'Bankroll after each game of the climb.')
+            ? bankChartCard(chartHist, 'ch-anl' + c,
+                completed ? 'The road to the top' : 'The climb',
+                'Bankroll after each game of the ' + (completed ? 'climb' : 'cycle') + '.')
             : '';
 
+          var netSpan = ' · ' + climbed.length + ' games · net <span class="' + (net < 0 ? 'neg' : 'pos') + '">' +
+            (net >= 0 ? '+' : '') + fmtMoney(net) + '</span>';
+          var headline = completed
+            ? '🏆 Completed in <b style="color:var(--gold)">' + fmtDur(endTs - startTs) + '</b>' + netSpan
+            : 'Reached <b style="color:var(--gold)">' + esc(tiers[peakTier].tables[0]) + '</b> (table ' +
+              (peakTier + 1) + ' of ' + tiers.length + ') in <b style="color:var(--gold)">' +
+              fmtDur(endTs - startTs) + '</b>' + netSpan;
+          var subline = completed
+            ? 'From the first Newbie Corner sit-down to taking a seat at Oligarch.'
+            : 'From the first Newbie Corner sit-down to the end of this cycle.';
+
           ANALYSES[c] = {
+            completed: completed,
             title: 'Climb analysis · cycle ' + c,
-            html: '<p style="font-size:15px">🏆 Completed in <b style="color:var(--gold)">' + fmtDur(summitTs - startTs) +
-              '</b> · ' + climbed.length + ' games · net <span class="' + (net < 0 ? 'neg' : 'pos') + '">' +
-              (net >= 0 ? '+' : '') + fmtMoney(net) + '</span></p>' +
-              '<p class="hint" style="margin:6px 0 10px">From the first Newbie Corner sit-down to taking a seat at Oligarch.</p>' +
+            html: '<p style="font-size:15px">' + headline + '</p>' +
+              '<p class="hint" style="margin:6px 0 10px">' + subline + '</p>' +
               chips + callouts + chart +
               '<div style="overflow-x:auto"><table><thead><tr><th>Table</th><th class="num">Games</th><th class="num">W-L</th><th class="num">Time</th><th class="num">Net</th></tr></thead>' +
               '<tbody>' + rows + '</tbody></table></div>'
@@ -2426,7 +2480,8 @@
           var hi = list.reduce(function (m, x) { return Math.max(m, Number(x.tier_idx) || 0); }, 0);
           var span = Number(list[0].leave_ts) - Number(list[games - 1].join_ts);
           var analysisBtn = buildAnalysis(c, list)
-            ? ' <button class="btn secondary" style="font-size:12px;padding:4px 10px;vertical-align:middle" onclick="showAnalysis(' + c + ')">🏆 Climb analysis</button>'
+            ? ' <button class="btn secondary" style="font-size:12px;padding:4px 10px;vertical-align:middle" onclick="showAnalysis(' + c + ')">' +
+              (ANALYSES[c].completed ? '🏆' : '📈') + ' Climb analysis</button>'
             : '';
           var summary = games + (games === 1 ? ' game' : ' games') +
             ' · net <span class="' + (net < 0 ? 'neg' : 'pos') + '">' + (net >= 0 ? '+' : '') + fmtMoney(net) + '</span>' +
@@ -2483,6 +2538,7 @@
           '<button class="btn danger" onclick="doDeleteData()">Delete my data</button></div>' : '';
         el('view').innerHTML =
           '<span class="backlink" data-goto-route="leaderboard">← back to leaderboard</span>' +
+          staleNote(staleAt) +
           '<div class="card"><div class="phead">' + avatar(p, 64) +
           '<div><div class="pn">' + esc(p.name) + (p.paused ? ' <span class="tag">paused</span>' : '') + '</div>' +
           '<div class="muted">Rank #' + (p.rank || '?') + ' · on ' + esc(p.tierTables.join(' · ')) + syncedLine + ' ' + tornLink + '</div></div>' + deleteBtn + '</div>' +
@@ -2506,9 +2562,7 @@
           positionCard(p, tiers) +
           profileCharts(d.history, tiers) +
           cycleCards;
-      }).catch(function (e) {
-        el('view').innerHTML = '<span class="backlink" data-goto-route="players">← back</span><div class="card">' + esc(e.message) + '</div>';
-      });
+      })();
     }
 
     // ---------------------------------------------------------------------------
