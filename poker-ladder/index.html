@@ -2318,16 +2318,23 @@
     });
 
     function renderProfile(id) {
-      el('view').innerHTML = '<div class="card muted">Loading profile…</div>';
+      // Stale-while-revalidate: if this browser has seen this profile before,
+      // paint it instantly from cache, then refresh in the background. The
+      // profile endpoint is the slowest call (the server replays every session
+      // row for the player), so this is what makes clicking between profiles
+      // feel instant instead of a spinner every time.
+      var cached = null;
+      try { cached = JSON.parse(lsGet('pl_p_' + id) || 'null'); } catch (e) { }
+      if (cached && cached.d) renderProfileData(cached.d, 0);
+      else el('view').innerHTML = '<div class="card muted">Loading profile…</div>';
       apiPlayer(id).then(function (d) {
         lsSet('pl_p_' + id, JSON.stringify({ at: Date.now(), d: d }));
-        renderProfileData(d, 0);
+        // Don't clobber the page if the user has already navigated away.
+        if (location.hash.replace(/^#/, '') === 'player/' + id) renderProfileData(d, 0);
       }).catch(function (e) {
-        // Server unreachable: show the last copy of this profile the browser
-        // loaded, if there is one.
-        var c = null;
-        try { c = JSON.parse(lsGet('pl_p_' + id) || 'null'); } catch (e2) { }
-        if (c && c.d) return renderProfileData(c.d, c.at || 1);
+        // Server unreachable: keep the cached view if we already showed one,
+        // otherwise surface the error.
+        if (cached && cached.d) return;
         el('view').innerHTML = '<span class="backlink" data-goto-route="players">← back</span><div class="card">' + esc(e.message) + '</div>';
       });
     }
