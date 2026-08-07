@@ -15,7 +15,6 @@
       --dim: #9aa88f;
       --gold: #e3b341;
       --green: #7ccb6e;
-      --other:#7ccb6e;
       --red: #e06c5c;
       --chip: #2f4d33;
     }
@@ -1683,6 +1682,13 @@
       var d = Math.round(secs / 86400);
       return d + (d === 1 ? ' day' : ' days');
     }
+    // A rung can hold several tables. When suggesting where to sit, name them
+    // all as "X", "X or Y" or "X, Y or Z", so no options are hidden.
+    function orList(arr) {
+      arr = (arr || []).slice();
+      if (arr.length <= 1) return arr[0] || '';
+      return arr.slice(0, -1).join(', ') + ' or ' + arr[arr.length - 1];
+    }
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
     function el(id) { return document.getElementById(id); }
     function initials(name) {
@@ -1870,11 +1876,11 @@
           lines.push('This is the top of the ladder 👑');
         } else if (p.bankroll >= next.minBuy) {
           var nIns = Math.floor(p.bankroll / next.minBuy);
-          lines.push('Or you can move up to <b>' + esc(next.tables.join(' / ')) + '</b>, where your bankroll covers <b>' +
+          lines.push('Or you can move up to <b>' + esc(orList(next.tables)) + '</b>, where your bankroll covers <b>' +
             nIns + '</b> min buy-in' + (nIns === 1 ? '' : 's') + ' of ' + fmtExact(next.minBuy) + '.');
         } else {
           lines.push('Or earn <b>' + fmtExact(next.minBuy - p.bankroll) + '</b> more to be eligible for <b>' +
-            esc(next.tables[0]) + '</b>, with 1 min buy-in of ' + fmtExact(next.minBuy) + '.');
+            esc(orList(next.tables)) + '</b>, with 1 min buy-in of ' + fmtExact(next.minBuy) + '.');
         }
         lines.push('<span class="muted">Only the tables named above count. Lower tables are not part of your climb.</span>');
       }
@@ -2104,7 +2110,7 @@
       } else {
         var buyins = Math.floor(p.bankroll / t.minBuy);
         lines.push('You currently have enough for <b>' + buyins + '</b> buy-in' + (buyins === 1 ? '' : 's') +
-          ' at <b>' + esc(t.tables.join(' / ')) + '</b> (' + fmtMoney(t.minBuy) + ' minimum).');
+          ' at <b>' + esc(orList(t.tables)) + '</b> (' + fmtMoney(t.minBuy) + ' minimum).');
         var posMax = Math.min(p.bankroll, t.maxBuy);
         lines.push('Your max buy-in is <b>' + fmtExact(posMax) + '</b>' +
           (posMax < t.maxBuy
@@ -2116,11 +2122,11 @@
         } else if (p.bankroll >= p.nextTierMin) {
           var next = tiers[p.tierIdx + 1];
           var nextBuyins = Math.floor(p.bankroll / next.minBuy);
-          lines.push('Or move up to <b>' + esc(next.tables[0]) + '</b>, where you\'d have <b>' + nextBuyins +
+          lines.push('Or move up to <b>' + esc(orList(next.tables)) + '</b>, where you\'d have <b>' + nextBuyins +
             '</b> buy-in' + (nextBuyins === 1 ? '' : 's') + '.');
         } else {
           lines.push('Win ' + fmtExact(p.nextTierMin - p.bankroll) + ' more to unlock <b>' +
-            esc(tiers[p.tierIdx + 1].tables[0]) + '</b>.');
+            esc(orList(tiers[p.tierIdx + 1].tables)) + '</b>.');
         }
       }
       return '<div class="card"><h2>Current position</h2>' +
@@ -2349,8 +2355,8 @@
         var nextLine;
         if (p.paused) nextLine = 'Ladder paused. Games played now do not count.';
         else if (!p.nextTierMin) nextLine = 'All 21 tables cleared 👑';
-        else if (p.bankroll >= p.nextTierMin) nextLine = 'Next: take a seat at ' + esc(tiers[p.tierIdx + 1].tables.join(' / '));
-        else nextLine = 'Next: win ' + fmtExact(p.nextTierMin - p.bankroll) + ' more to unlock ' + esc(tiers[p.tierIdx + 1].tables[0]);
+        else if (p.bankroll >= p.nextTierMin) nextLine = 'Next: take a seat at ' + esc(orList(tiers[p.tierIdx + 1].tables));
+        else nextLine = 'Next: win ' + fmtExact(p.nextTierMin - p.bankroll) + ' more to unlock ' + esc(orList(tiers[p.tierIdx + 1].tables));
 
         var prog = '';
         if (p.nextTierMin) {
@@ -2416,19 +2422,29 @@
           var byTier = {};
           climbed.forEach(function (s) {
             var t = Number(s.tier_idx) || 0;
-            var b = byTier[t] = byTier[t] || { games: 0, net: 0, secs: 0, w: 0, l: 0 };
+            var b = byTier[t] = byTier[t] || { games: 0, net: 0, secs: 0, w: 0, l: 0, tables: {} };
             var d = Number(s.cash_out) - Number(s.buy_in);
             b.games += 1; b.net += d;
             b.secs += Math.max(0, Number(s.leave_ts) - Number(s.join_ts));
             if (d > 0) b.w++; else if (d < 0) b.l++;
+            // Track the actual table(s) sat at in this rung (base name, variant
+            // suffix stripped), so a rung with several tables names the ones
+            // the player really played instead of always the first.
+            if (s.table) b.tables[String(s.table).replace(/ (II|III|IV)$/, '')] = true;
           });
           var tierNums = Object.keys(byTier).map(Number).sort(function (a, b) { return a - b; });
           var grind = tierNums.reduce(function (m, t) { return byTier[t].secs > byTier[m].secs ? t : m; }, tierNums[0]);
           var earner = tierNums.reduce(function (m, t) { return byTier[t].net > byTier[m].net ? t : m; }, tierNums[0]);
+          // The table(s) actually played in a rung, joined; falls back to the
+          // rung's canonical name if a session had no recorded table.
+          var playedName = function (t) {
+            var names = byTier[t] ? Object.keys(byTier[t].tables) : [];
+            return names.length ? names.join(' / ') : tiers[t].tables[0];
+          };
           var rows = tierNums.map(function (t) {
             var b = byTier[t];
             var mark = t === grind ? ' 🥵' : (t === earner ? ' 💰' : '');
-            return '<tr><td>' + (t + 1) + '. ' + esc(tiers[t].tables[0]) + mark + '</td>' +
+            return '<tr><td>' + (t + 1) + '. ' + esc(playedName(t)) + mark + '</td>' +
               '<td class="num">' + b.games + '</td>' +
               '<td class="num muted">' + b.w + '-' + b.l + '</td>' +
               '<td class="num">' + fmtDur(b.secs) + '</td>' +
@@ -2447,9 +2463,9 @@
             '</div>';
 
           var callouts = '<p class="hint" style="margin:0 0 10px">' +
-            'Hardest grind 🥵: <b style="color:var(--gold)">' + esc(tiers[grind].tables[0]) + '</b> (' +
+            'Hardest grind 🥵: <b style="color:var(--gold)">' + esc(playedName(grind)) + '</b> (' +
             byTier[grind].games + ' games, ' + fmtDur(byTier[grind].secs) + ') · Best earner 💰: <b style="color:var(--gold)">' +
-            esc(tiers[earner].tables[0]) + '</b> (+' + fmtMoney(byTier[earner].net) + ')</p>';
+            esc(playedName(earner)) + '</b> (+' + fmtMoney(byTier[earner].net) + ')</p>';
 
           var chartHist = climbed.filter(function (s) { return s.remaining !== '' && s.remaining != null; })
             .map(function (s) { return { ts: Number(s.leave_ts), bankroll: Number(s.remaining) }; });
@@ -2463,7 +2479,7 @@
             (net >= 0 ? '+' : '') + fmtMoney(net) + '</span>';
           var headline = completed
             ? '🏆 Completed in <b style="color:var(--gold)">' + fmtDur(endTs - startTs) + '</b>' + netSpan
-            : 'Reached <b style="color:var(--gold)">' + esc(tiers[peakTier].tables[0]) + '</b> (table ' +
+            : 'Reached <b style="color:var(--gold)">' + esc(playedName(peakTier)) + '</b> (table ' +
               (peakTier + 1) + ' of ' + tiers.length + ') in <b style="color:var(--gold)">' +
               fmtDur(endTs - startTs) + '</b>' + netSpan;
           var subline = completed
@@ -2486,6 +2502,13 @@
           var games = list.length;
           var net = list.reduce(function (s, x) { return s + (Number(x.cash_out) - Number(x.buy_in)); }, 0);
           var hi = list.reduce(function (m, x) { return Math.max(m, Number(x.tier_idx) || 0); }, 0);
+          // Name the actual table(s) played at the highest rung reached, not
+          // just the rung's first table (rungs can hold several tables).
+          var hiNames = {};
+          list.forEach(function (x) {
+            if ((Number(x.tier_idx) || 0) === hi && x.table) hiNames[String(x.table).replace(/ (II|III|IV)$/, '')] = true;
+          });
+          var hiName = Object.keys(hiNames).join(' / ') || tiers[Math.min(hi, tiers.length - 1)].tables[0];
           var span = Number(list[0].leave_ts) - Number(list[games - 1].join_ts);
           var analysisBtn = buildAnalysis(c, list)
             ? ' <button class="btn secondary" style="font-size:12px;padding:4px 10px;vertical-align:middle" onclick="showAnalysis(' + c + ')">' +
@@ -2493,7 +2516,7 @@
             : '';
           var summary = games + (games === 1 ? ' game' : ' games') +
             ' · net <span class="' + (net < 0 ? 'neg' : 'pos') + '">' + (net >= 0 ? '+' : '') + fmtMoney(net) + '</span>' +
-            ' · reached ' + esc(tiers[Math.min(hi, tiers.length - 1)].tables[0]) +
+            ' · reached ' + esc(hiName) +
             ' · ' + fmtDur(span);
           var rows = list.slice().reverse().map(function (s) {
             var lost = Number(s.cash_out) < Number(s.buy_in);
@@ -2730,11 +2753,11 @@
           html += '<p>👑 You\'re at the top of the ladder.</p>';
         } else if (me.bankroll >= me.nextTierMin) {
           html += '<p>With a bankroll of <b>' + fmtExact(me.bankroll) + '</b> you have enough for <b>' +
-            esc(tiers[me.tierIdx + 1].tables[0]) + '</b> (minimum buy-in ' + fmtExact(me.nextTierMin) +
+            esc(orList(tiers[me.tierIdx + 1].tables)) + '</b> (minimum buy-in ' + fmtExact(me.nextTierMin) +
             '). Take a seat there whenever you\'re ready, or stay at <b>' + esc(me.tierTables[0]) +
             '</b> and grow your bankroll first.</p>';
         } else {
-          html += '<p>You don\'t have enough for <b>' + esc(tiers[me.tierIdx + 1].tables[0]) +
+          html += '<p>You don\'t have enough for <b>' + esc(orList(tiers[me.tierIdx + 1].tables)) +
             '</b> yet, so stay and play at <b>' + esc(me.tierTables[0]) + '</b> until you do. You need <b>' +
             fmtExact(me.nextTierMin - me.bankroll) + '</b> more.</p>';
         }
