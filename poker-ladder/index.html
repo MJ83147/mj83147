@@ -1035,22 +1035,29 @@
       margin-left: auto;
     }
 
-    .tacc-tbl {
-      border-bottom: 1px solid rgba(90, 110, 74, .15);
-      padding: 8px 2px;
-    }
-
-    .tacc-tbl:last-child {
-      border-bottom: 0;
-      padding-bottom: 2px;
-    }
-
-    .tacc-head {
-      display: flex;
-      align-items: center;
+    .tacc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
       gap: 12px;
-      flex-wrap: wrap;
-      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .tacc-box {
+      background: #17200f;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .tacc-box.empty {
+      opacity: .6;
+    }
+
+    .tacc-boxtitle {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 4px;
     }
 
     .tacc-name {
@@ -1060,23 +1067,30 @@
     .tacc-games {
       font-size: 12px;
       white-space: nowrap;
+      margin-left: auto;
     }
 
-    .tacc-head .tacc-games {
-      margin-right: auto;
-    }
-
-    .tacc-m {
+    .tacc-box .statrow {
+      padding: 4px 0;
       font-size: 13px;
-      white-space: nowrap;
-    }
-
-    .tacc-m b {
-      font-variant-numeric: tabular-nums;
     }
 
     .tacc-leaders {
-      padding: 2px 2px 0 18px;
+      border-top: 1px solid rgba(90, 110, 74, .25);
+      margin-top: 6px;
+      padding-top: 4px;
+    }
+
+    /* Signed money values keep their green/red inside rows whose <b> is
+       normally gold. */
+    .statrow b.pos,
+    .boardrow b.pos {
+      color: var(--green);
+    }
+
+    .statrow b.neg,
+    .boardrow b.neg {
+      color: var(--red);
     }
 
     /* Profile achievements chips */
@@ -2073,43 +2087,46 @@
     }
 
     // Per-table leaderboard: the whole section is one accordion. Open it and
-    // every table is listed (highest first) with its total won, total lost
-    // and overall P&L across all players and all eligible games, and the top
-    // three earners (by net profit at that table) underneath. Hides itself
-    // until the deployed backend sends tableStats.
+    // every table gets its own box in a grid (highest table first), showing
+    // total won, total lost and overall P&L across all players and all
+    // eligible games, with the top three earners (by net profit at that
+    // table) underneath. A sit-and-quit climb nets $0, so leaders are shown
+    // whatever their sign; a table someone merely passed through still names
+    // them. Hides itself until the deployed backend sends tableStats.
     function tableBoards(stats, tiers) {
       if (!stats) return '';
-      var money = function (label, n, cls, sign) {
-        return '<span class="tacc-m"><span class="muted">' + label + '</span> <b class="' + cls + '">' + sign + fmtMoney(n) + '</b></span>';
+      var signed = function (n) {
+        var cls = n > 0 ? 'pos' : (n < 0 ? 'neg' : '');
+        return '<b class="' + cls + '">' + (n > 0 ? '+' : '') + fmtMoney(n) + '</b>';
       };
-      var blocks = '';
+      var money = function (label, n) {
+        return '<div class="statrow"><span>' + label + '</span>' + signed(n) + '</div>';
+      };
+      var boxes = '';
       for (var i = tiers.length - 1; i >= 0; i--) {
         var st = stats[i];
-        var head = '<span class="tacc-name">' + (i + 1) + '. ' + esc(tiers[i].tables[0]) + '</span>';
+        var title = '<div class="tacc-boxtitle"><span class="tacc-name">' + (i + 1) + '. ' + esc(tiers[i].tables[0]) + '</span>' +
+          '<span class="muted tacc-games">' + (st && st.games ? st.games + (st.games === 1 ? ' game' : ' games') : 'no games yet') + '</span></div>';
         if (!st || !st.games) {
-          blocks += '<div class="tacc-tbl"><div class="tacc-head">' + head +
-            '<span class="muted tacc-games">no games yet</span></div></div>';
+          boxes += '<div class="tacc-box empty">' + title + '</div>';
           continue;
         }
-        var top = st.top.filter(function (e) { return e.net > 0; });
-        var leaders = top.map(function (e, j) {
+        var leaders = st.top.map(function (e, j) {
           var p = state.byId[e.id] || { id: e.id, name: e.name, image: '' };
           return '<div class="boardrow rowlink" data-goto="' + esc(e.id) + '">' +
             '<span class="brk">' + (j + 1) + '</span>' + avatar(p, 22) +
-            '<span class="boardname">' + esc(p.name || e.name) + '</span>' +
-            '<b class="pos">+' + fmtMoney(e.net) + '</b></div>';
-        }).join('') || '<div class="muted" style="font-size:13px;padding:2px 2px 4px">Nobody is up at this table yet.</div>';
-        blocks += '<div class="tacc-tbl"><div class="tacc-head">' + head +
-          '<span class="muted tacc-games">' + st.games + (st.games === 1 ? ' game' : ' games') + '</span>' +
-          money('Won', st.won || 0, 'pos', '+') +
-          money('Lost', st.lost || 0, 'neg', '-') +
-          money('Net', st.net, st.net < 0 ? 'neg' : 'pos', st.net >= 0 ? '+' : '') +
-          '</div><div class="tacc-leaders">' + leaders + '</div></div>';
+            '<span class="boardname">' + esc(p.name || e.name) + '</span>' + signed(e.net) + '</div>';
+        }).join('');
+        boxes += '<div class="tacc-box">' + title +
+          money('Won', st.won || 0) +
+          money('Lost', -(st.lost || 0)) +
+          money('Net', st.net) +
+          '<div class="tacc-leaders">' + leaders + '</div></div>';
       }
       return '<details class="card tacc"><summary class="tacc-sum"><h3 class="boardtitle" style="margin:0">Per-table leaderboard</h3>' +
         '<span class="muted tacc-games">open to see every table</span></summary>' +
-        '<div class="sub" style="margin-top:8px">Per table: total won, total lost and overall P&amp;L across all players and eligible games, with the top three earners by profit.</div>' +
-        blocks + '</details>';
+        '<div class="sub" style="margin-top:8px">Per table: total won, total lost and overall P&amp;L across all players and eligible games, with the top three earners by net profit.</div>' +
+        '<div class="tacc-grid">' + boxes + '</div></details>';
     }
 
     // The climbs in aggregate: how the field is spread over the 21 tables,
@@ -2233,9 +2250,12 @@
       for (var i = 0; i < tiers.length; i++) {
         var st = stats[i];
         if (!st || !st.top) continue;
-        var top = st.top.filter(function (e) { return e.net > 0; });
-        for (var j = 0; j < top.length; j++) {
-          if (String(top[j].id) === String(p.id)) medals.push({ place: j + 1, tier: i, net: top[j].net });
+        // A slot held at a loss is shown on the board but earns no medal. A
+        // $0 net does (a sit-and-quit climb through a table still counts).
+        for (var j = 0; j < st.top.length; j++) {
+          if (String(st.top[j].id) === String(p.id) && st.top[j].net >= 0) {
+            medals.push({ place: j + 1, tier: i, net: st.top[j].net });
+          }
         }
       }
       if (!medals.length) return '';
@@ -2243,7 +2263,7 @@
       var MEDAL = ['🥇', '🥈', '🥉'], PLACE = ['1st', '2nd', '3rd'];
       var chips = medals.map(function (m) {
         return '<span class="achchip">' + MEDAL[m.place - 1] + ' ' + PLACE[m.place - 1] + ' on ' +
-          esc(tiers[m.tier].tables[0]) + ' <b class="pos">+' + fmtMoney(m.net) + '</b></span>';
+          esc(tiers[m.tier].tables[0]) + ' <b class="' + (m.net > 0 ? 'pos' : '') + '">' + (m.net > 0 ? '+' : '') + fmtMoney(m.net) + '</b></span>';
       }).join('');
       return '<div class="card"><h3 class="boardtitle">Achievements</h3>' +
         '<div class="sub">Top-three earner spots held right now on the per-table leaderboard.</div>' +
