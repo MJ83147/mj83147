@@ -1070,9 +1070,29 @@
       margin-left: auto;
     }
 
-    .tacc-box .statrow {
-      padding: 4px 0;
+    .tacc-nums {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 4px 0 6px;
+    }
+
+    .tacc-num {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.3;
+    }
+
+    .tacc-num .muted {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    .tacc-num b {
       font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
     .tacc-leaders {
@@ -2099,8 +2119,8 @@
         var cls = n > 0 ? 'pos' : (n < 0 ? 'neg' : '');
         return '<b class="' + cls + '">' + (n > 0 ? '+' : '') + fmtMoney(n) + '</b>';
       };
-      var money = function (label, n) {
-        return '<div class="statrow"><span>' + label + '</span>' + signed(n) + '</div>';
+      var cell = function (label, n) {
+        return '<span class="tacc-num"><span class="muted">' + label + '</span>' + signed(n) + '</span>';
       };
       var boxes = '';
       for (var i = tiers.length - 1; i >= 0; i--) {
@@ -2118,9 +2138,11 @@
             '<span class="boardname">' + esc(p.name || e.name) + '</span>' + signed(e.net) + '</div>';
         }).join('');
         boxes += '<div class="tacc-box">' + title +
-          money('Won', st.won || 0) +
-          money('Lost', -(st.lost || 0)) +
-          money('Net', st.net) +
+          '<div class="tacc-nums">' +
+          cell('Won', st.won || 0) +
+          cell('Lost', -(st.lost || 0)) +
+          cell('Net', st.net) +
+          '</div>' +
           '<div class="tacc-leaders">' + leaders + '</div></div>';
       }
       return '<details class="card tacc"><summary class="tacc-sum"><h3 class="boardtitle" style="margin:0">Per-table leaderboard</h3>' +
