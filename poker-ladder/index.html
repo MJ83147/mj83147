@@ -1003,80 +1003,103 @@
       white-space: nowrap;
     }
 
-    /* Per-table leaderboard accordion */
-    .tacc-row {
+    /* Per-table leaderboard: one accordion for the whole section */
+    .tacc-sum {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 7px 2px;
-      font-size: 14px;
-      border-bottom: 1px solid rgba(90, 110, 74, .15);
-    }
-
-    details.tacc:last-of-type .tacc-row,
-    .tacc-row.empty:last-child {
-      border-bottom: 0;
-    }
-
-    summary.tacc-row {
       cursor: pointer;
       list-style: none;
-      border-radius: 6px;
     }
 
-    summary.tacc-row::-webkit-details-marker {
+    .tacc-sum::-webkit-details-marker {
       display: none;
     }
 
-    summary.tacc-row:hover {
-      background: #1c2616;
-    }
-
-    summary.tacc-row::before {
+    .tacc-sum::before {
       content: '';
       flex: none;
-      width: 7px;
-      height: 7px;
+      width: 8px;
+      height: 8px;
       border-right: 1.5px solid var(--dim);
       border-bottom: 1.5px solid var(--dim);
       transform: rotate(-45deg);
       transition: transform .15s;
     }
 
-    details.tacc[open]>summary.tacc-row::before {
+    details.tacc[open]>.tacc-sum::before {
       transform: rotate(45deg);
     }
 
-    .tacc-row.empty {
-      color: var(--dim);
-      padding-left: 19px;
+    .tacc-sum .tacc-games {
+      margin-left: auto;
+    }
+
+    .tacc-tbl {
+      border-bottom: 1px solid rgba(90, 110, 74, .15);
+      padding: 8px 2px;
+    }
+
+    .tacc-tbl:last-child {
+      border-bottom: 0;
+      padding-bottom: 2px;
+    }
+
+    .tacc-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 14px;
     }
 
     .tacc-name {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      font-weight: 700;
     }
 
     .tacc-games {
-      margin-left: auto;
       font-size: 12px;
       white-space: nowrap;
     }
 
-    .tacc-row.empty .tacc-games {
-      margin-left: auto;
+    .tacc-head .tacc-games {
+      margin-right: auto;
     }
 
-    .tacc-pnl {
-      font-variant-numeric: tabular-nums;
+    .tacc-m {
+      font-size: 13px;
       white-space: nowrap;
-      min-width: 72px;
-      text-align: right;
     }
 
-    .tacc-body {
-      padding: 2px 2px 8px 19px;
+    .tacc-m b {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tacc-leaders {
+      padding: 2px 2px 0 18px;
+    }
+
+    /* Profile achievements chips */
+    .achchips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .achchip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border: 1px solid rgba(90, 110, 74, .4);
+      border-radius: 999px;
+      background: #1c2616;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .achchip b {
+      font-variant-numeric: tabular-nums;
     }
 
     /* Hover mini-profile */
@@ -2049,38 +2072,44 @@
       }
     }
 
-    // Per-table leaderboard: one accordion row per table (highest first),
-    // showing the table's overall P&L across all players and all eligible
-    // games, expanding to its top three earners. Hides itself until the
-    // deployed backend sends tableStats.
+    // Per-table leaderboard: the whole section is one accordion. Open it and
+    // every table is listed (highest first) with its total won, total lost
+    // and overall P&L across all players and all eligible games, and the top
+    // three earners (by net profit at that table) underneath. Hides itself
+    // until the deployed backend sends tableStats.
     function tableBoards(stats, tiers) {
       if (!stats) return '';
-      var pnl = function (n) {
-        return '<b class="tacc-pnl ' + (n < 0 ? 'neg' : 'pos') + '">' + (n >= 0 ? '+' : '') + fmtMoney(n) + '</b>';
+      var money = function (label, n, cls, sign) {
+        return '<span class="tacc-m"><span class="muted">' + label + '</span> <b class="' + cls + '">' + sign + fmtMoney(n) + '</b></span>';
       };
-      var items = '';
+      var blocks = '';
       for (var i = tiers.length - 1; i >= 0; i--) {
         var st = stats[i];
-        var label = '<span class="tacc-name">' + (i + 1) + '. ' + esc(tiers[i].tables[0]) + '</span>';
+        var head = '<span class="tacc-name">' + (i + 1) + '. ' + esc(tiers[i].tables[0]) + '</span>';
         if (!st || !st.games) {
-          items += '<div class="tacc-row empty">' + label + '<span class="muted tacc-games">no games yet</span></div>';
+          blocks += '<div class="tacc-tbl"><div class="tacc-head">' + head +
+            '<span class="muted tacc-games">no games yet</span></div></div>';
           continue;
         }
         var top = st.top.filter(function (e) { return e.net > 0; });
-        var body = top.map(function (e, j) {
+        var leaders = top.map(function (e, j) {
           var p = state.byId[e.id] || { id: e.id, name: e.name, image: '' };
           return '<div class="boardrow rowlink" data-goto="' + esc(e.id) + '">' +
             '<span class="brk">' + (j + 1) + '</span>' + avatar(p, 22) +
             '<span class="boardname">' + esc(p.name || e.name) + '</span>' +
             '<b class="pos">+' + fmtMoney(e.net) + '</b></div>';
-        }).join('') || '<div class="muted" style="font-size:13px;padding:4px 2px">Nobody is up at this table yet.</div>';
-        items += '<details class="tacc"><summary class="tacc-row">' + label +
+        }).join('') || '<div class="muted" style="font-size:13px;padding:2px 2px 4px">Nobody is up at this table yet.</div>';
+        blocks += '<div class="tacc-tbl"><div class="tacc-head">' + head +
           '<span class="muted tacc-games">' + st.games + (st.games === 1 ? ' game' : ' games') + '</span>' +
-          pnl(st.net) + '</summary><div class="tacc-body">' + body + '</div></details>';
+          money('Won', st.won || 0, 'pos', '+') +
+          money('Lost', st.lost || 0, 'neg', '-') +
+          money('Net', st.net, st.net < 0 ? 'neg' : 'pos', st.net >= 0 ? '+' : '') +
+          '</div><div class="tacc-leaders">' + leaders + '</div></div>';
       }
-      return '<div class="card"><h3 class="boardtitle">Per-table leaderboard</h3>' +
-        '<div class="sub">Each table’s overall profit and loss across all players and eligible games. Open a table to see its top three earners.</div>' +
-        items + '</div>';
+      return '<details class="card tacc"><summary class="tacc-sum"><h3 class="boardtitle" style="margin:0">Per-table leaderboard</h3>' +
+        '<span class="muted tacc-games">open to see every table</span></summary>' +
+        '<div class="sub" style="margin-top:8px">Per table: total won, total lost and overall P&amp;L across all players and eligible games, with the top three earners by profit.</div>' +
+        blocks + '</details>';
     }
 
     // The climbs in aggregate: how the field is spread over the 21 tables,
@@ -2190,6 +2219,35 @@
         '<p>The service is provided as-is with no guarantee of accuracy or availability. Torn may change its API at any time. Use at your own discretion.</p>' +
         '<p class="muted">Reference: Torn API Terms of Service at <a class="flink" href="https://www.torn.com/api.html" target="_blank" rel="noopener">torn.com/api.html</a>.</p>' +
         '</div>';
+    }
+
+    // "Achievements": the top-three earner spots this player holds right now
+    // on the per-table leaderboard (top three by net profit at a table).
+    // Derived live from the board data, so a medal disappears the moment
+    // someone knocks them out of the spot. Hidden when they hold none, and
+    // until the deployed backend sends tableStats.
+    function achievementsCard(p, tiers) {
+      var stats = state.tableStats;
+      if (!stats) return '';
+      var medals = [];
+      for (var i = 0; i < tiers.length; i++) {
+        var st = stats[i];
+        if (!st || !st.top) continue;
+        var top = st.top.filter(function (e) { return e.net > 0; });
+        for (var j = 0; j < top.length; j++) {
+          if (String(top[j].id) === String(p.id)) medals.push({ place: j + 1, tier: i, net: top[j].net });
+        }
+      }
+      if (!medals.length) return '';
+      medals.sort(function (a, b) { return a.place - b.place || b.tier - a.tier; });
+      var MEDAL = ['🥇', '🥈', '🥉'], PLACE = ['1st', '2nd', '3rd'];
+      var chips = medals.map(function (m) {
+        return '<span class="achchip">' + MEDAL[m.place - 1] + ' ' + PLACE[m.place - 1] + ' on ' +
+          esc(tiers[m.tier].tables[0]) + ' <b class="pos">+' + fmtMoney(m.net) + '</b></span>';
+      }).join('');
+      return '<div class="card"><h3 class="boardtitle">Achievements</h3>' +
+        '<div class="sub">Top-three earner spots held right now on the per-table leaderboard.</div>' +
+        '<div class="achchips">' + chips + '</div></div>';
     }
 
     // "Current position" card: how many buy-ins the bankroll covers at the
@@ -2702,6 +2760,7 @@
           })() +
           '<div class="stat"><div class="v green">' + fmtMoney(p.peakBankroll) + '</div><div class="k">Peak bankroll</div></div>' +
           '</div>' + prog + '</div>' +
+          achievementsCard(p, tiers) +
           positionCard(p, tiers) +
           profileCharts(d.history, tiers) +
           cycleCards;
