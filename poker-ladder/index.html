@@ -1003,6 +1003,82 @@
       white-space: nowrap;
     }
 
+    /* Per-table leaderboard accordion */
+    .tacc-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 2px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(90, 110, 74, .15);
+    }
+
+    details.tacc:last-of-type .tacc-row,
+    .tacc-row.empty:last-child {
+      border-bottom: 0;
+    }
+
+    summary.tacc-row {
+      cursor: pointer;
+      list-style: none;
+      border-radius: 6px;
+    }
+
+    summary.tacc-row::-webkit-details-marker {
+      display: none;
+    }
+
+    summary.tacc-row:hover {
+      background: #1c2616;
+    }
+
+    summary.tacc-row::before {
+      content: '';
+      flex: none;
+      width: 7px;
+      height: 7px;
+      border-right: 1.5px solid var(--dim);
+      border-bottom: 1.5px solid var(--dim);
+      transform: rotate(-45deg);
+      transition: transform .15s;
+    }
+
+    details.tacc[open]>summary.tacc-row::before {
+      transform: rotate(45deg);
+    }
+
+    .tacc-row.empty {
+      color: var(--dim);
+      padding-left: 19px;
+    }
+
+    .tacc-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tacc-games {
+      margin-left: auto;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .tacc-row.empty .tacc-games {
+      margin-left: auto;
+    }
+
+    .tacc-pnl {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      min-width: 72px;
+      text-align: right;
+    }
+
+    .tacc-body {
+      padding: 2px 2px 8px 19px;
+    }
+
     /* Hover mini-profile */
     #hoverCard {
       position: fixed;
@@ -1726,12 +1802,13 @@
           var c = null;
           try { c = JSON.parse(lsGet('pl_board') || 'null'); } catch (e) { }
           if (c && c.d) { setBoard(c.d); state.staleAt = c.at || 1; return; }
-          state.players = []; state.tiers = LADDER_TIERS; state.byId = {}; state.tableGames = {};
+          state.players = []; state.tiers = LADDER_TIERS; state.byId = {}; state.tableGames = {}; state.tableStats = null;
         });
     }
     function setBoard(d) {
       state.players = d.players || []; state.tiers = d.tiers || LADDER_TIERS;
       state.tableGames = d.tableGames || {};
+      state.tableStats = d.tableStats || null; // null until the backend sends it
       state.byId = {}; state.players.forEach(function (p) { state.byId[p.id] = p; });
     }
     // Banner shown above a page rendered from the saved copy.
@@ -1956,8 +2033,9 @@
         '<div class="tscroll" id="lbScroll"><table><thead><tr><th class="rk">#</th><th>Player</th><th class="num">Table</th><th class="sm-hide">Now on</th>' +
         '<th class="num sm-hide">Bankroll</th><th class="num">Busts</th>' +
         '</tr></thead><tbody>' + rows + '</tbody></table></div></div>' +
-        distCharts(state.players, state.tiers || LADDER_TIERS) +
-        topBoards(state.players);
+        tableBoards(state.tableStats, state.tiers || LADDER_TIERS) +
+        topBoards(state.players) +
+        distCharts(state.players, state.tiers || LADDER_TIERS);
       // Top 10 in view, the rest behind a scroll. Sized off the real rows
       // (heights differ on mobile), with a sliver of row 11 showing so it's
       // obviously scrollable.
@@ -1969,6 +2047,40 @@
       } else {
         sc.style.maxHeight = 'none';
       }
+    }
+
+    // Per-table leaderboard: one accordion row per table (highest first),
+    // showing the table's overall P&L across all players and all eligible
+    // games, expanding to its top three earners. Hides itself until the
+    // deployed backend sends tableStats.
+    function tableBoards(stats, tiers) {
+      if (!stats) return '';
+      var pnl = function (n) {
+        return '<b class="tacc-pnl ' + (n < 0 ? 'neg' : 'pos') + '">' + (n >= 0 ? '+' : '') + fmtMoney(n) + '</b>';
+      };
+      var items = '';
+      for (var i = tiers.length - 1; i >= 0; i--) {
+        var st = stats[i];
+        var label = '<span class="tacc-name">' + (i + 1) + '. ' + esc(tiers[i].tables[0]) + '</span>';
+        if (!st || !st.games) {
+          items += '<div class="tacc-row empty">' + label + '<span class="muted tacc-games">no games yet</span></div>';
+          continue;
+        }
+        var top = st.top.filter(function (e) { return e.net > 0; });
+        var body = top.map(function (e, j) {
+          var p = state.byId[e.id] || { id: e.id, name: e.name, image: '' };
+          return '<div class="boardrow rowlink" data-goto="' + esc(e.id) + '">' +
+            '<span class="brk">' + (j + 1) + '</span>' + avatar(p, 22) +
+            '<span class="boardname">' + esc(p.name || e.name) + '</span>' +
+            '<b class="pos">+' + fmtMoney(e.net) + '</b></div>';
+        }).join('') || '<div class="muted" style="font-size:13px;padding:4px 2px">Nobody is up at this table yet.</div>';
+        items += '<details class="tacc"><summary class="tacc-row">' + label +
+          '<span class="muted tacc-games">' + st.games + (st.games === 1 ? ' game' : ' games') + '</span>' +
+          pnl(st.net) + '</summary><div class="tacc-body">' + body + '</div></details>';
+      }
+      return '<div class="card"><h3 class="boardtitle">Per-table leaderboard</h3>' +
+        '<div class="sub">Each table’s overall profit and loss across all players and eligible games. Open a table to see its top three earners.</div>' +
+        items + '</div>';
     }
 
     // The climbs in aggregate: how the field is spread over the 21 tables,
