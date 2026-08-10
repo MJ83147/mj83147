@@ -1091,8 +1091,18 @@
 
     .tacc-num b {
       font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
+    }
+
+    .tacc-num b.pos {
+      color: var(--green);
+    }
+
+    .tacc-num b.neg {
+      color: var(--red);
     }
 
     .tacc-leaders {
@@ -1134,6 +1144,33 @@
 
     .achchip b {
       font-variant-numeric: tabular-nums;
+    }
+
+    /* Page loading state */
+    .loadcard {
+      text-align: center;
+      padding: 56px 24px;
+    }
+
+    .spinner {
+      width: 38px;
+      height: 38px;
+      margin: 0 auto 16px;
+      border: 3px solid var(--line);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin .9s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .loadmsg {
+      color: var(--dim);
+      font-size: 14px;
     }
 
     /* Hover mini-profile */
@@ -1521,7 +1558,12 @@
 
 
 
-    <div id="view"></div>
+    <div id="view">
+      <div class="card loadcard">
+        <div class="spinner"></div>
+        <div class="loadmsg" id="loadMsg">Shuffling the deck…</div>
+      </div>
+    </div>
 
     <footer style="text-align:center; color:var(--dim); font-size:12px">
       <div>Start at Newbie Corner, climb to Oligarch, using only money won at the tables.
@@ -1878,6 +1920,35 @@
     }
 
     // ---------------------------------------------------------------------------
+    // Loading state: a spinner card with cycling messages, shown while a
+    // page-level fetch is in flight. The message ticker stops itself the
+    // moment a real render replaces the loader (loadMsg disappears).
+    // ---------------------------------------------------------------------------
+    var LOAD_MSGS = [
+      'Shuffling the deck…',
+      'Gathering the ladder…',
+      'Crunching the numbers…',
+      'Counting the chips…',
+      'Reading the poker logs…'
+    ];
+    var loadTimer = null;
+    function startLoaderMsgs() {
+      if (loadTimer) return;
+      var i = 0;
+      loadTimer = setInterval(function () {
+        var m = el('loadMsg');
+        if (!m) { clearInterval(loadTimer); loadTimer = null; return; }
+        i = (i + 1) % LOAD_MSGS.length;
+        m.textContent = LOAD_MSGS[i];
+      }, 1800);
+    }
+    function showLoader() {
+      el('view').innerHTML = '<div class="card loadcard"><div class="spinner"></div>' +
+        '<div class="loadmsg" id="loadMsg">' + LOAD_MSGS[0] + '</div></div>';
+      startLoaderMsgs();
+    }
+
+    // ---------------------------------------------------------------------------
     // Router
     // ---------------------------------------------------------------------------
     function toggleNav() { el('navmenu').classList.toggle('open'); }
@@ -1895,6 +1966,9 @@
         a.classList.toggle('active', a.getAttribute('data-route') === name);
       });
       if (name === 'terms') return renderTerms();
+      // The board fetch can take a while on a cold load: show the spinner
+      // instead of a blank page (or a stale previous page) while it runs.
+      if (!state.tiers) showLoader();
       ensureBoard().then(function () {
         if (name === 'leaderboard') return renderLeaderboard();
         if (name === 'players') return renderPlayers();
@@ -2115,12 +2189,14 @@
     // them. Hides itself until the deployed backend sends tableStats.
     function tableBoards(stats, tiers) {
       if (!stats) return '';
-      var signed = function (n) {
-        var cls = n > 0 ? 'pos' : (n < 0 ? 'neg' : '');
-        return '<b class="' + cls + '">' + (n > 0 ? '+' : '') + fmtMoney(n) + '</b>';
-      };
+      // Won/Lost read as plain figures (the label carries the meaning); only
+      // Net gets the green/red accent so the grid doesn't shout.
       var cell = function (label, n) {
-        return '<span class="tacc-num"><span class="muted">' + label + '</span>' + signed(n) + '</span>';
+        return '<span class="tacc-num"><span class="muted">' + label + '</span><b>' + fmtMoney(n) + '</b></span>';
+      };
+      var netCell = function (n) {
+        var cls = n > 0 ? 'pos' : (n < 0 ? 'neg' : '');
+        return '<span class="tacc-num"><span class="muted">Net</span><b class="' + cls + '">' + (n > 0 ? '+' : '') + fmtMoney(n) + '</b></span>';
       };
       var boxes = '';
       for (var i = tiers.length - 1; i >= 0; i--) {
@@ -2135,13 +2211,14 @@
           var p = state.byId[e.id] || { id: e.id, name: e.name, image: '' };
           return '<div class="boardrow rowlink" data-goto="' + esc(e.id) + '">' +
             '<span class="brk">' + (j + 1) + '</span>' + avatar(p, 22) +
-            '<span class="boardname">' + esc(p.name || e.name) + '</span>' + signed(e.net) + '</div>';
+            '<span class="boardname">' + esc(p.name || e.name) + '</span>' +
+            '<b>' + (e.net > 0 ? '+' : '') + fmtMoney(e.net) + '</b></div>';
         }).join('');
         boxes += '<div class="tacc-box">' + title +
           '<div class="tacc-nums">' +
           cell('Won', st.won || 0) +
-          cell('Lost', -(st.lost || 0)) +
-          cell('Net', st.net) +
+          cell('Lost', st.lost || 0) +
+          netCell(st.net) +
           '</div>' +
           '<div class="tacc-leaders">' + leaders + '</div></div>';
       }
@@ -2545,7 +2622,7 @@
       var cached = null;
       try { cached = JSON.parse(lsGet('pl_p_' + id) || 'null'); } catch (e) { }
       if (cached && cached.d) renderProfileData(cached.d, 0);
-      else el('view').innerHTML = '<div class="card muted">Loading profile…</div>';
+      else showLoader();
       apiPlayer(id).then(function (d) {
         lsSet('pl_p_' + id, JSON.stringify({ at: Date.now(), d: d }));
         // Don't clobber the page if the user has already navigated away.
@@ -3083,6 +3160,9 @@
     var cachedMe = null;
     try { cachedMe = JSON.parse(lsGet('pl_me') || 'null'); } catch (e) { }
     if (state.key && cachedMe) applyMe(cachedMe);
+    // The static loader is already on screen; cycle its message while the
+    // boot sync and first board load run.
+    startLoaderMsgs();
     (state.key
       ? apiSync(state.key).then(function (d) { applyMe(d.me); maybeCongrats(d.me, d.tiers, d.sessions); }).catch(function (e) {
         if (/not valid|Incorrect Key|access is not high/i.test(e.message || '')) {
