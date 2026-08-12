@@ -2180,13 +2180,24 @@
       }
     }
 
+    // A tier's tableStats entry as { tableName: stats }. The backend groups
+    // per base table name within a tier (so a rung holding Duel at Dawn /
+    // Fourplay / ... gets a group per table); an older deployed backend sent
+    // one flat group per tier, which folds under the tier's first table name.
+    function tierGroups(st, tier) {
+      if (!st) return {};
+      if (typeof st.games === 'number') { var o = {}; o[tier.tables[0]] = st; return o; }
+      return st;
+    }
+
     // Per-table leaderboard: the whole section is one accordion. Open it and
     // every table gets its own box in a grid (highest table first), showing
     // total won, total lost and overall P&L across all players and all
     // eligible games, with the top three earners (by net profit at that
-    // table) underneath. A sit-and-quit climb nets $0, so leaders are shown
-    // whatever their sign; a table someone merely passed through still names
-    // them. Hides itself until the deployed backend sends tableStats.
+    // table) underneath. A rung holding several distinct tables gets a box
+    // per table; II/III/IV variants fold into their base table. A
+    // sit-and-quit climb nets $0, so leaders are shown whatever their sign.
+    // Hides itself until the deployed backend sends tableStats.
     function tableBoards(stats, tiers) {
       if (!stats) return '';
       // Won/Lost read as plain figures (the label carries the meaning); only
@@ -2198,15 +2209,10 @@
         var cls = n > 0 ? 'pos' : (n < 0 ? 'neg' : '');
         return '<span class="tacc-num"><span class="muted">Net</span><b class="' + cls + '">' + (n > 0 ? '+' : '') + fmtMoney(n) + '</b></span>';
       };
-      var boxes = '';
-      for (var i = tiers.length - 1; i >= 0; i--) {
-        var st = stats[i];
-        var title = '<div class="tacc-boxtitle"><span class="tacc-name">' + (i + 1) + '. ' + esc(tiers[i].tables[0]) + '</span>' +
+      var box = function (num, name, st) {
+        var title = '<div class="tacc-boxtitle"><span class="tacc-name">' + num + '. ' + esc(name) + '</span>' +
           '<span class="muted tacc-games">' + (st && st.games ? st.games + (st.games === 1 ? ' game' : ' games') : 'no games yet') + '</span></div>';
-        if (!st || !st.games) {
-          boxes += '<div class="tacc-box empty">' + title + '</div>';
-          continue;
-        }
+        if (!st || !st.games) return '<div class="tacc-box empty">' + title + '</div>';
         var leaders = st.top.map(function (e, j) {
           var p = state.byId[e.id] || { id: e.id, name: e.name, image: '' };
           return '<div class="boardrow rowlink" data-goto="' + esc(e.id) + '">' +
@@ -2214,13 +2220,22 @@
             '<span class="boardname">' + esc(p.name || e.name) + '</span>' +
             '<b>' + (e.net > 0 ? '+' : '') + fmtMoney(e.net) + '</b></div>';
         }).join('');
-        boxes += '<div class="tacc-box">' + title +
+        return '<div class="tacc-box">' + title +
           '<div class="tacc-nums">' +
           cell('Won', st.won || 0) +
           cell('Lost', st.lost || 0) +
           netCell(st.net) +
           '</div>' +
           '<div class="tacc-leaders">' + leaders + '</div></div>';
+      };
+      var boxes = '';
+      for (var i = tiers.length - 1; i >= 0; i--) {
+        var groups = tierGroups(stats[i], tiers[i]);
+        // Every table named on the rung gets a box, then any group the data
+        // holds under a name the tier list doesn't (defensive).
+        var names = tiers[i].tables.slice();
+        Object.keys(groups).forEach(function (n) { if (names.indexOf(n) === -1) names.push(n); });
+        for (var k = 0; k < names.length; k++) boxes += box(i + 1, names[k], groups[names[k]]);
       }
       return '<details class="card tacc"><summary class="tacc-sum"><h3 class="boardtitle" style="margin:0">Per-table leaderboard</h3>' +
         '<span class="muted tacc-games">open to see every table</span></summary>' +
@@ -2347,22 +2362,24 @@
       if (!stats) return '';
       var medals = [];
       for (var i = 0; i < tiers.length; i++) {
-        var st = stats[i];
-        if (!st || !st.top) continue;
-        // A slot held at a loss is shown on the board but earns no medal. A
-        // $0 net does (a sit-and-quit climb through a table still counts).
-        for (var j = 0; j < st.top.length; j++) {
-          if (String(st.top[j].id) === String(p.id) && st.top[j].net >= 0) {
-            medals.push({ place: j + 1, tier: i, net: st.top[j].net });
+        var groups = tierGroups(stats[i], tiers[i]);
+        Object.keys(groups).forEach(function (name) {
+          var top = groups[name].top || [];
+          // A slot held at a loss is shown on the board but earns no medal. A
+          // $0 net does (a sit-and-quit climb through a table still counts).
+          for (var j = 0; j < top.length; j++) {
+            if (String(top[j].id) === String(p.id) && top[j].net >= 0) {
+              medals.push({ place: j + 1, tier: i, table: name, net: top[j].net });
+            }
           }
-        }
+        });
       }
       if (!medals.length) return '';
       medals.sort(function (a, b) { return a.place - b.place || b.tier - a.tier; });
       var MEDAL = ['🥇', '🥈', '🥉'], PLACE = ['1st', '2nd', '3rd'];
       var chips = medals.map(function (m) {
         return '<span class="achchip">' + MEDAL[m.place - 1] + ' ' + PLACE[m.place - 1] + ' on ' +
-          esc(tiers[m.tier].tables[0]) + ' <b class="' + (m.net > 0 ? 'pos' : '') + '">' + (m.net > 0 ? '+' : '') + fmtMoney(m.net) + '</b></span>';
+          esc(m.table) + ' <b class="' + (m.net > 0 ? 'pos' : '') + '">' + (m.net > 0 ? '+' : '') + fmtMoney(m.net) + '</b></span>';
       }).join('');
       return '<div class="card"><h3 class="boardtitle">Achievements</h3>' +
         '<div class="sub">Top-three earner spots held right now on the per-table leaderboard.</div>' +
