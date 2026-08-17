@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mug targets</title>
+<title>Stef's bounty hunter detective</title>
 <style>
   :root {
     --bg: #12131a;
@@ -25,13 +24,14 @@
   }
   .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
   h1 {
-    font-size: 13px;
-    letter-spacing: .18em;
+    font-size: 15px;
+    letter-spacing: .14em;
     text-transform: uppercase;
     color: var(--accent);
     font-weight: 600;
-    margin: 0 0 16px;
+    margin: 0 0 6px;
   }
+  .note { margin: 0 0 16px; font-size: 12px; color: var(--dim); }
   .bar {
     display: flex;
     flex-wrap: wrap;
@@ -64,7 +64,8 @@
   button:disabled { opacity: .45; cursor: default; }
   #status { margin: 12px 2px; font-size: 12px; color: var(--dim); min-height: 16px; font-variant-numeric: tabular-nums; }
   #status.err { color: var(--bad); }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; min-width: 640px; }
   th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
   th {
     font-size: 11px;
@@ -87,11 +88,19 @@
   .idle { color: var(--dim); }
   .online { color: var(--ok); }
   .pending { color: #3d4152; }
+  @media (max-width: 640px) {
+    .wrap { padding: 16px 10px 48px; }
+    #key { flex: 1 1 100%; }
+    #run { flex: 1 1 100%; }
+    th, td { padding: 6px 8px; }
+    input, button { font-size: 16px; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Mug targets</h1>
+  <h1>Stef's bounty hunter detective</h1>
+  <p class="note">Full access key required to read the log. The key is not stored or saved. All data stays on your PC.</p>
 
   <div class="bar">
     <input id="key" type="password" placeholder="Full access API key" autocomplete="off" spellcheck="false">
@@ -102,6 +111,7 @@
 
   <div id="status"></div>
 
+  <div class="scroll">
   <table id="tbl" hidden>
     <thead>
       <tr>
@@ -116,6 +126,7 @@
     </thead>
     <tbody></tbody>
   </table>
+  </div>
 </div>
 
 <script>
