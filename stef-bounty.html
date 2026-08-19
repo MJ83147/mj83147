@@ -62,8 +62,26 @@
     cursor: pointer;
   }
   button:disabled { opacity: .45; cursor: default; }
+  .tabs { display: flex; gap: 4px; margin: 16px 0 0; border-bottom: 1px solid var(--line); }
+  .tabs button {
+    background: none;
+    color: var(--dim);
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 8px 12px;
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+  .tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+  #progress { height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; margin: 16px 0 0; }
+  #bar { height: 100%; background: var(--accent); width: 0; transition: width .2s linear; }
+  #bar.indet { width: 35%; animation: slide 1.1s ease-in-out infinite; }
+  @keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
   #status { margin: 12px 2px; font-size: 12px; color: var(--dim); min-height: 16px; font-variant-numeric: tabular-nums; }
   #status.err { color: var(--bad); }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
   .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   table { width: 100%; border-collapse: collapse; margin-top: 8px; min-width: 640px; }
   th, td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
@@ -85,9 +103,10 @@
   tbody tr:hover { background: #191b24; }
   a { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); }
   a:hover { border-color: var(--accent); }
-  .idle { color: var(--dim); }
+  .idle { color: var(--accent); }
   .online { color: var(--ok); }
   .pending { color: #3d4152; }
+  .hit { color: var(--ok); }
   @media (max-width: 640px) {
     .wrap { padding: 16px 10px 48px; }
     #key { flex: 1 1 100%; }
@@ -104,58 +123,103 @@
 
   <div class="bar">
     <input id="key" type="password" placeholder="Full access API key" autocomplete="off" spellcheck="false">
-    <label for="pages">Log pages</label>
-    <input id="pages" type="number" min="1" max="50" value="5">
-    <button id="run">Run</button>
+    <button id="run">Update mugs</button>
   </div>
 
+  <div class="tabs" role="tablist">
+    <button id="tab-mugs" role="tab" aria-selected="true" aria-controls="panel-mugs">Mug targets</button>
+    <button id="tab-enemies" role="tab" aria-selected="false" aria-controls="panel-enemies">Enemies</button>
+  </div>
+
+  <div id="progress" hidden><div id="bar"></div></div>
   <div id="status"></div>
 
-  <div class="scroll">
-  <table id="tbl" hidden>
-    <thead>
-      <tr>
-        <th data-k="id" class="n">ID</th>
-        <th data-k="name">Name</th>
-        <th data-k="mugs" class="n">Mugs</th>
-        <th data-k="total" class="n">Mugged</th>
-        <th data-k="last" class="n">Last mug</th>
-        <th data-k="networth" class="n">Networth</th>
-        <th data-k="lastAction" class="n">Last action</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  </div>
+  <section id="panel-mugs" role="tabpanel">
+    <div class="scroll">
+      <table id="tbl-mugs" hidden>
+        <thead>
+          <tr>
+            <th data-k="id" class="n">ID</th>
+            <th data-k="name">Name</th>
+            <th data-k="mugs" class="n">Mugs</th>
+            <th data-k="total" class="n">Mugged</th>
+            <th data-k="last" class="n">Last mug</th>
+            <th data-k="networth" class="n">Networth</th>
+            <th data-k="lastAction" class="n">Last action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="panel-enemies" role="tabpanel" hidden>
+    <div class="actions">
+      <button id="check-activity">Check activity</button>
+    </div>
+    <div class="scroll">
+      <table id="tbl-enemies">
+        <thead>
+          <tr>
+            <th data-k="id" class="n">ID</th>
+            <th data-k="name">Name</th>
+            <th data-k="mugs" class="n">Mugs</th>
+            <th data-k="total" class="n">Mugged</th>
+            <th data-k="last" class="n">Last mug</th>
+            <th data-k="networth" class="n">Networth</th>
+            <th data-k="lastAction" class="n">Last action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
 </div>
 
 <script>
 const MUG_LOG = 8155;
 const GAP = 700;
+const MAX_PAGES = 200;
+const STORE = 'bhd.v1';
 
-const $ = s => document.querySelector(s);
-const keyEl = $('#key'), pagesEl = $('#pages'), runEl = $('#run');
-const statusEl = $('#status'), tbl = $('#tbl'), tbody = tbl.querySelector('tbody');
+const DEFAULT_ENEMIES = "Balder [307656], colossal [355366], Dr_doc [586333], BigMac [991528], Ludwig-Van [1154295], LadyGullveig [1297939], SergeiMolotov [1526088], gregolde [1552504], TheSteamer [1553457], silklips [1553808], TheyBShootin [1567818], Daddy109 [1568949], LightofTerror [1572462], Iced [1583170], Exile77 [1583868], Fergs23 [1597017], Kitsune_117 [1600387], TheWorldEater [1740317], blackcat11 [1790103], Boblgecha [2177418], SoumyaK4 [2361200], KKFrankie [2421315], EYe4AnEYe [2438731], MaxFaraday [2660382], EndKiri [2837508], Zero-Dark [2892734], Chesmu [3072815], -punk- [3079506], Jake_Ace [3117673], BoroBoss [3216330], DeweyCox69 [3308221], Kay5ha [3315789], iLockz [3397862], Andeeroo [3424774], Princefisherr [3529870], Brimblaim [3625101], _Beanzzzzzz420 [3656001], TeddBrogan [3658762], ZombieBait [3672582], CaptainChet [3682989], BooyaZing [3688898], WolfgangS [3714621], Bonxsky [3740297], Zyzik [3825375], AngelBlueEyes [3840137], Dali [3845031], Egg-Burr [3850847], Shekels [3878831], FrugalWhorz [3897823], Raviloli [3899426], Imrzn [3919218], PavlovDog [4320550]";
 
-let rows = [];
-let sortKey = 'networth', sortDir = 'desc';
-let running = false;
+const $ = function (s) { return document.querySelector(s); };
+const keyEl = $('#key'), runEl = $('#run');
+const statusEl = $('#status');
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-const nf = n => n == null ? '' : n.toLocaleString('en-GB');
+let mugStats = new Map();
+let profiles = {};
+let lastUpdated = 0;
+let mugRows = [];
+let enemyRows = [];
+let busy = false;
+
+const sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
 
 function money(n) {
-  if (n == null) return '';
+  if (n === null || n === undefined) return '';
   return '$' + n.toLocaleString('en-GB');
 }
 
 function ago(ts) {
   if (!ts) return '';
-  let s = Math.floor(Date.now() / 1000) - ts;
+  var s = Math.floor(Date.now() / 1000) - ts;
   if (s < 60) return s + 's';
   if (s < 3600) return Math.floor(s / 60) + 'm';
   if (s < 86400) return Math.floor(s / 3600) + 'h';
   return Math.floor(s / 86400) + 'd';
+}
+
+var progEl, barEl;
+
+function progress(mode, frac) {
+  if (!progEl) { progEl = $('#progress'); barEl = $('#bar'); }
+  if (mode === 'off') { progEl.hidden = true; barEl.classList.remove('indet'); barEl.style.width = '0'; return; }
+  progEl.hidden = false;
+  if (mode === 'indet') { barEl.classList.add('indet'); barEl.style.width = ''; return; }
+  barEl.classList.remove('indet');
+  barEl.style.width = Math.round(frac * 100) + '%';
 }
 
 function setStatus(text, isErr) {
@@ -163,38 +227,209 @@ function setStatus(text, isErr) {
   statusEl.classList.toggle('err', !!isErr);
 }
 
-class ApiError extends Error {
-  constructor(code, msg) { super(msg); this.code = code; }
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+  });
+}
+
+function ApiError(code, msg) {
+  var e = new Error(msg);
+  e.code = code;
+  return e;
 }
 
 async function api(params, id) {
-  const url = new URL('https://api.torn.com/user/' + (id ?? ''));
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== null && v !== undefined) url.searchParams.set(k, v);
-  }
+  var url = new URL('https://api.torn.com/user/' + (id === undefined || id === null ? '' : id));
+  Object.keys(params).forEach(function (k) {
+    if (params[k] !== null && params[k] !== undefined) url.searchParams.set(k, params[k]);
+  });
   url.searchParams.set('key', keyEl.value.trim());
-  url.searchParams.set('comment', 'MugTargets');
+  url.searchParams.set('comment', 'BountyDetective');
 
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const res = await fetch(url);
-    const json = await res.json();
+  for (var attempt = 0; attempt < 3; attempt++) {
+    var res = await fetch(url);
+    var json = await res.json();
     if (!json.error) return json;
     if (json.error.code === 5) { await sleep(6000); continue; }
-    throw new ApiError(json.error.code, json.error.error);
+    throw ApiError(json.error.code, json.error.error);
   }
-  throw new ApiError(5, 'Too many requests');
+  throw ApiError(5, 'Too many requests');
 }
 
-async function pullLogs(pages) {
-  const out = [];
-  let to = null;
-  for (let p = 0; p < pages; p++) {
-    setStatus('Reading log page ' + (p + 1) + ' of ' + pages);
-    const json = await api({ selections: 'log', log: MUG_LOG, to });
-    const batch = Object.values(json.log || {});
+async function fetchProfile(row) {
+  var json = await api({ selections: 'profile,personalstats', stat: 'networth' }, row.id);
+  row.name = json.name || String(row.id);
+  row.networth = json.personalstats ? (json.personalstats.networth ?? null) : null;
+  if (json.last_action) {
+    row.lastAction = json.last_action.timestamp;
+    row.state = json.last_action.status;
+  }
+  profiles[row.id] = {
+    name: row.name,
+    networth: row.networth,
+    lastAction: row.lastAction,
+    state: row.state
+  };
+}
+
+function newRow(id, name) {
+  return {
+    id: id,
+    name: name || null,
+    mugs: 0,
+    total: 0,
+    last: 0,
+    networth: null,
+    lastAction: null,
+    state: null
+  };
+}
+
+function applyMugStats(row) {
+  var s = mugStats.get(row.id);
+  row.mugs = s ? s.mugs : 0;
+  row.total = s ? s.total : 0;
+  row.last = s ? s.last : 0;
+}
+
+/* ---- storage ---- */
+
+function save() {
+  var stats = {};
+  mugStats.forEach(function (v, k) { stats[k] = v; });
+  try {
+    localStorage.setItem(STORE, JSON.stringify({
+      updated: lastUpdated,
+      stats: stats,
+      profiles: profiles
+    }));
+  } catch (e) { /* storage unavailable */ }
+}
+
+function load() {
+  var raw;
+  try { raw = localStorage.getItem(STORE); } catch (e) { return false; }
+  if (!raw) return false;
+  var data;
+  try { data = JSON.parse(raw); } catch (e) { return false; }
+  lastUpdated = data.updated || 0;
+  profiles = data.profiles || {};
+  mugStats = new Map();
+  Object.keys(data.stats || {}).forEach(function (k) {
+    mugStats.set(parseInt(k, 10), data.stats[k]);
+  });
+  return true;
+}
+
+function applyProfile(row) {
+  var p = profiles[row.id];
+  if (!p) return;
+  if (p.name) row.name = p.name;
+  if (p.networth !== undefined) row.networth = p.networth;
+  if (p.lastAction !== undefined) row.lastAction = p.lastAction;
+  if (p.state !== undefined) row.state = p.state;
+}
+
+function buildMugRows() {
+  mugRows = [];
+  mugStats.forEach(function (st, id) {
+    var r = newRow(id, null);
+    applyMugStats(r);
+    applyProfile(r);
+    mugRows.push(r);
+  });
+}
+
+/* ---- tables ---- */
+
+function Table(tableSel, getRows) {
+  this.table = $(tableSel);
+  this.tbody = this.table.querySelector('tbody');
+  this.getRows = getRows;
+  this.sortKey = 'networth';
+  this.sortDir = 'desc';
+  var self = this;
+  this.table.querySelectorAll('th').forEach(function (th) {
+    th.addEventListener('click', function () {
+      var k = th.dataset.k;
+      if (self.sortKey === k) self.sortDir = self.sortDir === 'asc' ? 'desc' : 'asc';
+      else { self.sortKey = k; self.sortDir = th.classList.contains('n') ? 'desc' : 'asc'; }
+      self.table.querySelectorAll('th').forEach(function (o) { o.removeAttribute('data-dir'); });
+      th.dataset.dir = self.sortDir;
+      self.render();
+    });
+  });
+}
+
+Table.prototype.cmp = function (a, b) {
+  var av = a[this.sortKey], bv = b[this.sortKey];
+  if (av === null || av === undefined) av = null;
+  if (bv === null || bv === undefined) bv = null;
+  if (av === null && bv === null) return 0;
+  if (av === null) return 1;
+  if (bv === null) return -1;
+  if (typeof av === 'string') return this.sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+  return this.sortDir === 'asc' ? av - bv : bv - av;
+};
+
+Table.prototype.render = function () {
+  var rows = this.getRows().slice().sort(this.cmp.bind(this));
+  var html = '';
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var cls = r.state === 'Online' ? 'online' : r.state === 'Idle' ? 'idle' : '';
+    html += '<tr>' +
+      '<td class="num">' + r.id + '</td>' +
+      '<td><a href="https://www.torn.com/profiles.php?XID=' + r.id + '" target="_blank" rel="noopener">' +
+        (r.name ? esc(r.name) : '<span class="pending">&#8230;</span>') + '</a></td>' +
+      '<td class="num' + (r.mugs ? ' hit' : '') + '">' + (r.mugs || '') + '</td>' +
+      '<td class="num' + (r.mugs ? ' hit' : '') + '">' + (r.mugs ? money(r.total) : '') + '</td>' +
+      '<td class="num">' + ago(r.last) + '</td>' +
+      '<td class="num">' + (r.networth === null ? '<span class="pending">&#8230;</span>' : money(r.networth)) + '</td>' +
+      '<td class="num ' + cls + '">' + (r.lastAction === null ? '<span class="pending">&#8230;</span>' : ago(r.lastAction)) + '</td>' +
+      '</tr>';
+  }
+  this.tbody.innerHTML = html;
+  this.table.hidden = rows.length === 0;
+};
+
+var mugTable = new Table('#tbl-mugs', function () { return mugRows; });
+var enemyTable = new Table('#tbl-enemies', function () { return enemyRows; });
+
+/* ---- enemy list ---- */
+
+function parseEnemies(text) {
+  var out = [];
+  var seen = new Set();
+  var re = /([^,\[\]]+?)\s*\[(\d+)\]/g;
+  var m;
+  while ((m = re.exec(text)) !== null) {
+    var id = parseInt(m[2], 10);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(newRow(id, m[1].trim()));
+  }
+  return out;
+}
+
+function loadEnemies() {
+  enemyRows = parseEnemies(DEFAULT_ENEMIES);
+  enemyRows.forEach(function (r) { applyMugStats(r); applyProfile(r); });
+  enemyTable.render();
+}
+
+/* ---- log ---- */
+
+async function pullLogs() {
+  var out = [];
+  var to = null;
+  for (var p = 0; p < MAX_PAGES; p++) {
+    var json = await api({ selections: 'log', log: MUG_LOG, to: to });
+    var batch = Object.keys(json.log || {}).map(function (k) { return json.log[k]; });
     if (!batch.length) break;
-    out.push(...batch);
-    const oldest = Math.min(...batch.map(e => e.timestamp));
+    out.push.apply(out, batch);
+    var oldest = Math.min.apply(null, batch.map(function (e) { return e.timestamp; }));
     to = oldest - 1;
     if (batch.length < 100) break;
     await sleep(GAP);
@@ -203,115 +438,108 @@ async function pullLogs(pages) {
 }
 
 function aggregate(entries) {
-  const map = new Map();
-  for (const e of entries) {
-    const d = e.data || {};
-    if (d.anonymous) continue;
-    const id = d.defender;
-    if (!id) continue;
-    let r = map.get(id);
-    if (!r) {
-      r = { id, name: null, mugs: 0, total: 0, last: 0, networth: null, lastAction: null, rel: null, state: null };
-      map.set(id, r);
-    }
+  var map = new Map();
+  entries.forEach(function (e) {
+    var d = e.data || {};
+    if (d.anonymous) return;
+    var id = d.defender;
+    if (!id) return;
+    var r = map.get(id);
+    if (!r) { r = { mugs: 0, total: 0, last: 0 }; map.set(id, r); }
     r.mugs++;
     r.total += d.money_mugged || 0;
     if (e.timestamp > r.last) r.last = e.timestamp;
-  }
-  return [...map.values()];
-}
-
-function cmp(a, b) {
-  const av = a[sortKey], bv = b[sortKey];
-  if (av == null && bv == null) return 0;
-  if (av == null) return 1;
-  if (bv == null) return -1;
-  if (typeof av === 'string') return sortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
-  return sortDir === 'asc' ? av - bv : bv - av;
-}
-
-function render() {
-  rows.sort(cmp);
-  tbody.innerHTML = '';
-  const frag = document.createDocumentFragment();
-  for (const r of rows) {
-    const tr = document.createElement('tr');
-    const cls = r.state === 'Online' ? 'online' : r.state === 'Idle' ? 'idle' : '';
-    tr.innerHTML =
-      '<td class="num">' + r.id + '</td>' +
-      '<td><a href="https://www.torn.com/profiles.php?XID=' + r.id + '" target="_blank" rel="noopener">' +
-        (r.name || '<span class="pending">…</span>') + '</a></td>' +
-      '<td class="num">' + r.mugs + '</td>' +
-      '<td class="num">' + money(r.total) + '</td>' +
-      '<td class="num">' + ago(r.last) + '</td>' +
-      '<td class="num">' + (r.networth == null ? '<span class="pending">…</span>' : money(r.networth)) + '</td>' +
-      '<td class="num ' + cls + '">' + (r.lastAction == null ? '<span class="pending">…</span>' : ago(r.lastAction)) + '</td>';
-    frag.appendChild(tr);
-  }
-  tbody.appendChild(frag);
-  tbl.hidden = rows.length === 0;
-}
-
-async function enrich() {
-  let done = 0;
-  for (const r of rows) {
-    try {
-      const json = await api({ selections: 'profile,personalstats', stat: 'networth' }, r.id);
-      r.name = json.name || String(r.id);
-      r.networth = json.personalstats ? (json.personalstats.networth ?? null) : null;
-      if (json.last_action) {
-        r.lastAction = json.last_action.timestamp;
-        r.state = json.last_action.status;
-      }
-    } catch (err) {
-      r.name = 'error ' + (err.code ?? '');
-    }
-    done++;
-    setStatus('Profiles ' + done + ' of ' + rows.length);
-    render();
-    if (done < rows.length) await sleep(GAP);
-  }
-}
-
-async function run() {
-  if (running) return;
-  if (!keyEl.value.trim()) { setStatus('Enter an API key', true); return; }
-
-  running = true;
-  runEl.disabled = true;
-  rows = [];
-  render();
-
-  try {
-    const pages = Math.max(1, Math.min(50, parseInt(pagesEl.value, 10) || 1));
-    const entries = await pullLogs(pages);
-    rows = aggregate(entries);
-    render();
-    if (!rows.length) { setStatus('No mug entries found'); return; }
-    await sleep(GAP);
-    await enrich();
-    setStatus(rows.length + ' targets from ' + entries.length + ' mugs');
-  } catch (err) {
-    setStatus('API error ' + (err.code ?? '') + ': ' + err.message, true);
-  } finally {
-    running = false;
-    runEl.disabled = false;
-  }
-}
-
-document.querySelectorAll('th').forEach(th => {
-  th.addEventListener('click', () => {
-    const k = th.dataset.k;
-    if (sortKey === k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
-    else { sortKey = k; sortDir = th.classList.contains('n') ? 'desc' : 'asc'; }
-    document.querySelectorAll('th').forEach(o => o.removeAttribute('data-dir'));
-    th.dataset.dir = sortDir;
-    render();
   });
-});
+  return map;
+}
 
-runEl.addEventListener('click', run);
-keyEl.addEventListener('keydown', e => { if (e.key === 'Enter') run(); });
+async function enrich(rows) {
+  for (var i = 0; i < rows.length; i++) {
+    try {
+      await fetchProfile(rows[i]);
+    } catch (err) {
+      rows[i].name = rows[i].name || ('error ' + (err.code || ''));
+    }
+    progress('det', (i + 1) / rows.length);
+    if (i < rows.length - 1) await sleep(GAP);
+  }
+  mugTable.render();
+  enemyTable.render();
+  save();
+}
+
+function guardKey() {
+  if (!keyEl.value.trim()) { setStatus('Enter an API key', true); return false; }
+  return true;
+}
+
+async function runLog() {
+  if (busy || !guardKey()) return;
+  busy = true; runEl.disabled = true; $('#check-activity').disabled = true;
+  mugRows = [];
+  mugTable.render();
+  setStatus('');
+  progress('indet');
+  try {
+    var entries = await pullLogs();
+    mugStats = aggregate(entries);
+    lastUpdated = Math.floor(Date.now() / 1000);
+    buildMugRows();
+    enemyRows.forEach(function (r) { applyMugStats(r); applyProfile(r); });
+    save();
+    mugTable.render();
+    enemyTable.render();
+    if (!mugRows.length) { setStatus('No mug entries found'); return; }
+    await sleep(GAP);
+    progress('det', 0);
+    await enrich(mugRows);
+    setStatus(mugRows.length + ' targets from ' + entries.length + ' mugs');
+  } catch (err) {
+    setStatus('API error ' + (err.code || '') + ': ' + err.message, true);
+  } finally {
+    progress('off');
+    busy = false; runEl.disabled = false; $('#check-activity').disabled = false;
+  }
+}
+
+async function checkActivity() {
+  if (busy || !guardKey()) return;
+  if (!enemyRows.length) { setStatus('Enemy list is empty', true); return; }
+  busy = true; runEl.disabled = true; $('#check-activity').disabled = true;
+  setStatus('');
+  progress('det', 0);
+  try {
+    await enrich(enemyRows);
+    var live = enemyRows.filter(function (r) { return r.state === 'Online' || r.state === 'Idle'; }).length;
+    setStatus(live + ' of ' + enemyRows.length + ' online or idle');
+  } catch (err) {
+    setStatus('API error ' + (err.code || '') + ': ' + err.message, true);
+  } finally {
+    progress('off');
+    busy = false; runEl.disabled = false; $('#check-activity').disabled = false;
+  }
+}
+
+/* ---- tabs ---- */
+
+function selectTab(which) {
+  var mugs = which === 'mugs';
+  $('#tab-mugs').setAttribute('aria-selected', String(mugs));
+  $('#tab-enemies').setAttribute('aria-selected', String(!mugs));
+  $('#panel-mugs').hidden = !mugs;
+  $('#panel-enemies').hidden = mugs;
+}
+
+$('#tab-mugs').addEventListener('click', function () { selectTab('mugs'); });
+$('#tab-enemies').addEventListener('click', function () { selectTab('enemies'); });
+$('#check-activity').addEventListener('click', checkActivity);
+runEl.addEventListener('click', runLog);
+keyEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') runLog(); });
+
+if (load()) buildMugRows();
+loadEnemies();
+mugTable.render();
+if (lastUpdated) setStatus('Mug log last updated ' + ago(lastUpdated) + ' ago');
 </script>
 </body>
 </html>
