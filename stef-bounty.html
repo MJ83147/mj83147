@@ -222,6 +222,14 @@ function progress(mode, frac) {
   barEl.style.width = Math.round(frac * 100) + '%';
 }
 
+function stamp(ts) {
+  if (!ts) return '';
+  var d = new Date(ts * 1000);
+  var pad = function (n) { return n < 10 ? '0' + n : String(n); };
+  var mon = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
+  return pad(d.getDate()) + ' ' + mon + ' ' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
 function setStatus(text, isErr) {
   statusEl.textContent = text;
   statusEl.classList.toggle('err', !!isErr);
@@ -387,7 +395,7 @@ Table.prototype.render = function () {
       '<td class="num' + (r.mugs ? ' hit' : '') + '">' + (r.mugs ? money(r.total) : '') + '</td>' +
       '<td class="num">' + ago(r.last) + '</td>' +
       '<td class="num">' + (r.networth === null ? '<span class="pending">&#8230;</span>' : money(r.networth)) + '</td>' +
-      '<td class="num ' + cls + '">' + (r.lastAction === null ? '<span class="pending">&#8230;</span>' : ago(r.lastAction)) + '</td>' +
+      '<td class="num ' + cls + '">' + (r.lastAction === null ? '<span class="pending">&#8230;</span>' : stamp(r.lastAction)) + '</td>' +
       '</tr>';
   }
   this.tbody.innerHTML = html;
@@ -510,8 +518,7 @@ async function checkActivity() {
   progress('det', 0);
   try {
     await enrich(enemyRows);
-    var live = enemyRows.filter(function (r) { return r.state === 'Online' || r.state === 'Idle'; }).length;
-    setStatus(live + ' of ' + enemyRows.length + ' online or idle');
+    setStatus(enemyRows.length + ' profiles checked ' + stamp(Math.floor(Date.now() / 1000)));
   } catch (err) {
     setStatus('API error ' + (err.code || '') + ': ' + err.message, true);
   } finally {
