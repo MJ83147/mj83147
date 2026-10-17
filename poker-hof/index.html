@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Poker Leaderboards (mockup)</title>
+  <style>
+    :root {
+      --bg: #12160f;
+      --card: #202a1e;
+      --card2: #26331f;
+      --panel: #17200f;
+      --inset: #141a11;
+      --line: #3a4a33;
+      --text: #e8eadf;
+      --dim: #9aa88f;
+      --gold: #e3b341;
+      --green: #7ccb6e;
+      --red: #e06c5c;
+      --chip: #2f4d33;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: radial-gradient(ellipse at 50% -20%, #23331f 0%, var(--bg) 60%);
+      color: var(--text);
+      font: 15px/1.5 "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: #3a4a33 transparent;
+    }
+
+    ::-webkit-scrollbar {
+      width: 9px;
+      height: 9px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #3a4a33;
+      border-radius: 999px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #55694a;
+      background-clip: content-box;
+    }
+
+    .page {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 32px 32px 24px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page > footer {
+      margin-top: auto;
+      padding-top: 24px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .muted {
+      color: var(--dim);
+    }
+
+    .pos {
+      color: var(--green);
+    }
+
+    .neg {
+      color: var(--red);
+    }
+
+    .gold-text {
+      color: var(--gold);
+    }
+
+    /* ---------------- Top navigation ---------------- */
+    .topnav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-right: 8px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .brand .suit {
+      color: var(--red);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      flex-wrap: wrap;
+    }
+
+    .nav-link {
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      color: var(--dim);
+      cursor: pointer;
+    }
+
+    .nav-link:hover {
+      color: var(--text);
+    }
+
+    .nav-link.active {
+      background: var(--chip);
+      color: var(--text);
+    }
+
+    .nav-spacer {
+      flex: 1;
+    }
+
+    .nav-account {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-profile {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px 5px 6px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .nav-profile.active {
+      border-color: var(--green);
+      background: var(--chip);
+    }
+
+    /* ---------------- Buttons ---------------- */
+    .btn {
+      background: var(--gold);
+      color: #241d07;
+      border: 0;
+      border-radius: 10px;
+      padding: 9px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-secondary {
+      background: var(--chip);
+      color: var(--text);
+      border: 1px solid var(--line);
+      font-weight: 500;
+    }
+
+    .btn-danger {
+      background: var(--red);
+      color: #2a0f0b;
+    }
+
+    .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    /* ---------------- Cards and headings ---------------- */
+    .card {
+      background: linear-gradient(180deg, var(--card2), var(--card));
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .page-title {
+      font-size: 25px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .page-subtitle {
+      font-size: 14px;
+      color: var(--dim);
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 25px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 32px 0 16px;
+    }
+
+    .card-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .card-desc {
+      font-size: 14px;
+      color: var(--dim);
+      margin-bottom: 12px;
+    }
+
+    /* ---------------- Headline stats strip ---------------- */
+    .summary {
+      display: flex;
+      align-items: center;
+      gap: 16px 28px;
+      flex-wrap: wrap;
+      background: var(--inset);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 14px;
+    }
+
+    .summary-main {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .summary-amount {
+      font-size: 24px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .summary-label {
+      font-size: 14px;
+      color: var(--dim);
+    }
+
+    .summary-meta {
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 14px;
+      color: var(--dim);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .summary-meta span {
+      white-space: nowrap;
+    }
+
+    /* ---------------- Metric tabs ---------------- */
+    .metric-tabs {
+      display: flex;
+      gap: 6px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 14px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .metric-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .metric-tab {
+      padding: 9px 12px;
+      font-size: 14px;
+      color: var(--dim);
+      cursor: pointer;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+
+    .metric-tab:hover {
+      color: var(--text);
+    }
+
+    .metric-tab.active {
+      color: var(--text);
+      border-bottom-color: var(--gold);
+    }
+
+    /* ---------------- Global board table ---------------- */
+    .board-scroll {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th {
+      text-align: left;
+      color: var(--dim);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 9px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    td {
+      padding: 9px 8px;
+      border-bottom: 1px solid #2a3524;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .rank-cell {
+      color: var(--dim);
+      width: 34px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    tr.top-rank .rank-cell {
+      color: var(--gold);
+      font-weight: 800;
+    }
+
+    tr.is-you td {
+      background: #1d2815;
+    }
+
+    tr:hover td {
+      background: #1c2616;
+    }
+
+    .player-cell {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .player-name {
+      font-weight: 700;
+    }
+
+    /* ---------------- Avatars and tags ---------------- */
+    .avatar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      width: 28px;
+      height: 28px;
+      font-size: 12px;
+      color: #10160c;
+      font-weight: 800;
+      flex: none;
+      border: 2px solid rgba(0, 0, 0, .3);
+    }
+
+    .avatar-small {
+      width: 22px;
+      height: 22px;
+      font-size: 10px;
+    }
+
+    .avatar-large {
+      width: 56px;
+      height: 56px;
+      font-size: 20px;
+    }
+
+    .avatar-me {
+      box-shadow: 0 0 0 2px var(--gold);
+    }
+
+    .avatar-ghost {
+      background: #2a3524;
+      color: var(--dim);
+    }
+
+    .you-tag {
+      font-size: 12px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: var(--gold);
+      color: #241d07;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    /* ---------------- Per-table boards ---------------- */
+    .board-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 16px;
+    }
+
+    .board {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+
+    .board-name {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .board-tabs {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 12px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .board-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .board-tab {
+      font-size: 12px;
+      padding: 6px 9px;
+      color: var(--dim);
+      cursor: pointer;
+      white-space: nowrap;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+
+    .board-tab:hover {
+      color: var(--text);
+    }
+
+    .board-tab.active {
+      color: var(--text);
+      border-bottom-color: var(--gold);
+    }
+
+    /* Column header + rows share one grid so they line up. */
+    .board-columns,
+    .board-row {
+      display: grid;
+      grid-template-columns: 24px 1fr auto;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .board-columns.has-sessions,
+    .board-row.has-sessions {
+      grid-template-columns: 24px 1fr 64px 84px;
+    }
+
+    .board-columns {
+      padding: 0 2px 9px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--dim);
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 2px;
+    }
+
+    .board-row {
+      padding: 9px 2px;
+      font-size: 14px;
+      border-bottom: 1px solid #2a3524;
+    }
+
+    .board-row:last-child {
+      border-bottom: 0;
+    }
+
+    .board-row.is-you {
+      background: #1d2815;
+      border-radius: 6px;
+      margin: 0 -6px;
+      padding: 9px 8px;
+    }
+
+    .board-row.is-you.has-sessions {
+      grid-template-columns: 24px 1fr 64px 84px;
+    }
+
+    .row-rank {
+      color: var(--dim);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .board-row.top-rank .row-rank {
+      color: var(--gold);
+      font-weight: 800;
+    }
+
+    .row-player {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .row-player .player-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .row-sessions {
+      text-align: right;
+      color: var(--dim);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .row-value {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .col-rank,
+    .col-sessions,
+    .col-value {
+      text-align: right;
+    }
+
+    .board.collapsed .board-row.extra {
+      display: none;
+    }
+
+    .board.expanded .board-rows {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .show-more {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--dim);
+      cursor: pointer;
+      border: 0;
+      background: none;
+      padding: 0;
+    }
+
+    .show-more:hover {
+      color: var(--text);
+    }
+
+    /* ---------------- Sign-up wizard ---------------- */
+    .wizard {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    .steps {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--dim);
+      padding: 6px 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+    }
+
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--chip);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .step.active {
+      color: var(--text);
+      border-color: var(--green);
+    }
+
+    .step.active .step-num {
+      background: var(--green);
+      color: #10160c;
+    }
+
+    .step.done .step-num {
+      background: var(--gold);
+      color: #241d07;
+    }
+
+    .field {
+      margin: 16px 0;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .field-note {
+      font-size: 14px;
+      color: var(--dim);
+    }
+
+    .text-input,
+    .date-input {
+      width: 100%;
+      background: var(--inset);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .date-input {
+      max-width: 220px;
+    }
+
+    .date-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    input[type=radio],
+    input[type=checkbox] {
+      accent-color: var(--green);
+      width: 16px;
+      height: 16px;
+    }
+
+    input[type=date] {
+      color-scheme: dark;
+    }
+
+    .choice {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+
+    .choice.on {
+      border-color: var(--green);
+      background: #1d2815;
+    }
+
+    .choice input {
+      margin-top: 3px;
+    }
+
+    .choice-title {
+      display: block;
+      font-weight: 600;
+    }
+
+    .choice-desc {
+      display: block;
+      font-size: 13px;
+      color: var(--dim);
+    }
+
+    .hint {
+      font-size: 13px;
+      color: var(--dim);
+      background: var(--inset);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin: 14px 0;
+    }
+
+    .hint b {
+      color: var(--gold);
+    }
+
+    .wizard-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .progress {
+      background: var(--inset);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      height: 14px;
+      overflow: hidden;
+      margin: 10px 0 6px;
+    }
+
+    .progress-bar {
+      background: linear-gradient(90deg, var(--green), var(--gold));
+      height: 100%;
+      width: 0;
+      transition: width .3s;
+    }
+
+    /* ---------------- Profile / account ---------------- */
+    .account-card {
+      padding: 14px 20px;
+    }
+
+    .account-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .account-name {
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .account-meta {
+      font-size: 13px;
+      color: var(--dim);
+    }
+
+    .account-header .btn-secondary {
+      margin-left: auto;
+    }
+
+    /* Two equal-height columns, visibility left, date + tables right. */
+    .settings {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: stretch;
+      margin-bottom: 16px;
+    }
+
+    /* Right column holds the start-date and hidden-tables cards, stacked. */
+    .settings-col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .settings-card {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-bottom: 0;
+    }
+
+    /* The left visibility card spreads its three blocks to match the column. */
+    .settings-card.spread {
+      justify-content: space-between;
+    }
+
+    /* The hidden-tables card grows to fill the bottom of the right column. */
+    .hidden-card {
+      flex: 1;
+    }
+
+    .settings-head .card-desc {
+      margin-bottom: 0;
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .vis-footer {
+      display: flex;
+      align-items: stretch;
+      gap: 12px;
+    }
+
+    .preview-box {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 16px;
+    }
+
+    .preview-box .board-row {
+      width: 100%;
+      padding: 0;
+      border: 0;
+    }
+
+    /* Hidden tables: show about four, scroll for the rest. */
+    .hidden-list {
+      max-height: 168px;
+      overflow-y: auto;
+      padding-right: 6px;
+    }
+
+    .hidden-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 2px;
+      font-size: 15px;
+      border-bottom: 1px solid rgba(90, 110, 74, .15);
+      cursor: pointer;
+    }
+
+    .hidden-row:last-child {
+      border-bottom: 0;
+    }
+
+    .card-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .danger-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      border-color: var(--red);
+    }
+
+    .danger-card .card-title {
+      color: var(--red);
+      margin-bottom: 2px;
+    }
+
+    .danger-card .card-desc {
+      margin-bottom: 0;
+    }
+
+    /* ---------------- Footer ---------------- */
+    footer {
+      text-align: center;
+      color: var(--dim);
+      font-size: 12px;
+    }
+
+    footer b {
+      color: var(--gold);
+    }
+
+    .footer-credit {
+      margin-top: 8px;
+    }
+
+    /* ---------------- Responsive ---------------- */
+    @media (max-width: 960px) {
+      .page {
+        padding: 24px 20px;
+      }
+
+      .board-grid {
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page-title,
+      .section-title {
+        font-size: 20px;
+      }
+
+      .board-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .settings {
+        grid-template-columns: 1fr;
+      }
+
+      .danger-card {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page {
+        padding: 20px 14px;
+      }
+
+      .sm-hide {
+        display: none;
+      }
+
+      th,
+      td {
+        padding: 8px 6px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <nav class="topnav">
+      <a class="brand" onclick="showView('boards')"><span class="suit">♠</span> Poker Leaderboards</a>
+      <div class="nav-links">
+        <a class="nav-link active" id="nav-boards" onclick="showView('boards')">Leaderboards</a>
+        <a class="nav-link">Tips &amp; help</a>
+        <div class="nav-spacer"></div>
+        <div class="nav-account" id="nav-account"></div>
+      </div>
+    </nav>
+
+    <!-- ===================== LEADERBOARDS ===================== -->
+    <div id="view-boards">
+      <div class="card">
+        <h2 class="page-title">Global board</h2>
+        <p class="page-subtitle">Everyone's totals across every table, with variants merged.</p>
+        <div id="global-summary"></div>
+        <div class="metric-tabs" id="global-tabs"></div>
+        <div class="board-scroll">
+          <table>
+            <thead id="global-head"></thead>
+            <tbody id="global-rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3 class="section-title">Per-table boards</h3>
+      <div class="board-grid" id="board-grid"></div>
+    </div>
+
+    <!-- ===================== SIGN-UP ===================== -->
+    <div id="view-signup" class="hidden">
+      <div class="card wizard">
+        <h2 class="page-title">Sign up</h2>
+        <p class="page-subtitle">Your data registers only when you view the page. No key is stored on the server.</p>
+
+        <div class="steps" id="steps"></div>
+
+        <div class="wizard-step" data-step="1">
+          <div class="field">
+            <span class="field-label">Create your Torn API key</span>
+            <p class="field-note">Scoped to your public profile and log 194 (poker join and leave). The key stays in
+              your browser.</p>
+          </div>
+          <a class="btn btn-secondary"
+            href="https://www.torn.com/preferences.php#tab=api?step=addNewKey&title=pokerleaderboard&user=profile,log&logIds=194"
+            target="_blank" rel="noopener">Create key on Torn ↗</a>
+          <div class="field">
+            <label class="field-label" for="key-input">Paste your key</label>
+            <input class="text-input" type="text" id="key-input" placeholder="16-character key" oninput="checkKey()">
+          </div>
+          <p class="field-note neg" id="key-error"></p>
+          <div class="wizard-actions">
+            <button class="btn" id="step1-next" onclick="authAndContinue()" disabled>Continue</button>
+          </div>
+        </div>
+
+        <div class="wizard-step hidden" data-step="2">
+          <div class="field">
+            <span class="field-label">Pick a start date</span>
+          </div>
+          <div class="options">
+            <label class="choice on" id="start-all">
+              <input type="radio" name="start" value="all" checked onchange="pickStart('all')">
+              <span>
+                <span class="choice-title">All-time</span>
+                <span class="choice-desc">Count every poker game you have ever played.</span>
+              </span>
+            </label>
+            <label class="choice" id="start-date">
+              <input type="radio" name="start" value="date" onchange="pickStart('date')">
+              <span>
+                <span class="choice-title">From a date</span>
+                <span class="choice-desc">Only count games on or after the date you choose. Faster to sync.</span>
+              </span>
+            </label>
+            <input class="date-input hidden" type="date" id="start-date-input" value="2026-01-01">
+          </div>
+          <div class="hint" id="start-hint"><b>Heads up:</b> an all-time start reads your full poker log on the first
+            sync. This can take a long time if you have played a lot of games, because Torn limits reads to 100 a
+            minute. You can change the date later on your profile.</div>
+          <div class="wizard-actions">
+            <button class="btn btn-secondary" onclick="goStep(1)">Back</button>
+            <button class="btn" onclick="goStep(3)">Continue</button>
+          </div>
+        </div>
+
+        <div class="wizard-step hidden" data-step="3">
+          <div class="field">
+            <span class="field-label">How you appear to others</span>
+            <p class="field-note">You always see your own full row. This only changes what other players see of you.</p>
+          </div>
+          <div class="options" id="signup-vis-options"></div>
+          <div class="field">
+            <span class="field-label">Others see your row as</span>
+            <div class="preview-box" id="signup-vis-preview"></div>
+          </div>
+          <div class="wizard-actions">
+            <button class="btn btn-secondary" onclick="goStep(2)">Back</button>
+            <button class="btn" onclick="goStep(4);startSync()">Start first sync</button>
+          </div>
+        </div>
+
+        <div class="wizard-step hidden" data-step="4">
+          <div id="syncing">
+            <div class="field">
+              <span class="field-label">Reading your poker log…</span>
+              <p class="field-note" id="sync-message">Pairing each join with its leave to build your sessions.</p>
+            </div>
+            <div class="progress">
+              <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <p class="field-note" id="progress-percent">0%</p>
+          </div>
+          <div id="sync-done" class="hidden">
+            <div class="field">
+              <span class="field-label pos">You're on the board</span>
+              <p class="field-note" id="done-message">Your sessions are submitted.</p>
+            </div>
+            <div class="wizard-actions">
+              <button class="btn" onclick="showView('boards')">View leaderboards</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== PROFILE ===================== -->
+    <div id="view-profile" class="hidden">
+      <div class="card account-card">
+        <div class="account-header">
+          <span id="account-avatar"></span>
+          <div>
+            <div class="account-name">Duckworth</div>
+            <div class="account-meta">Data from all-time · synced 5 minutes ago</div>
+          </div>
+          <button class="btn btn-secondary">Sync now</button>
+        </div>
+      </div>
+
+      <div class="settings">
+        <div class="card settings-card spread">
+          <div class="settings-head">
+            <h3 class="card-title">How you appear to others</h3>
+            <p class="card-desc">Changes what others see of your row. You always see yours in full. Currently set to
+              <b class="pos" id="current-visibility">Public</b>.</p>
+          </div>
+          <div class="options" id="profile-vis-options"></div>
+          <div class="vis-footer">
+            <div class="preview-box" id="profile-vis-preview"></div>
+            <button class="btn" onclick="saveVisibility(this)">Save</button>
+          </div>
+        </div>
+
+        <div class="settings-col">
+          <div class="card settings-card">
+            <div class="settings-head">
+              <h3 class="card-title">Start date</h3>
+              <p class="card-desc">Choose the date you want to track your poker games from.</p>
+            </div>
+            <div class="date-row">
+              <input class="date-input" type="date" id="profile-date" value="2026-01-01">
+              <button class="btn" onclick="saveStartDate(this)">Save and recalculate</button>
+            </div>
+          </div>
+
+          <div class="card settings-card hidden-card">
+            <div class="settings-head">
+              <h3 class="card-title">Hidden tables</h3>
+              <p class="card-desc">A hidden table drops off your boards and stops counting toward your global total.</p>
+            </div>
+            <div class="hidden-list" id="hidden-tables"></div>
+            <div class="card-actions">
+              <button class="btn" onclick="saveHidden(this)">Save and recalculate</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card danger-card">
+        <div>
+          <h3 class="card-title">Delete all data</h3>
+          <p class="card-desc">Removes every game and setting for you. Your Torn account is untouched. This cannot be
+            undone.</p>
+        </div>
+        <button class="btn btn-danger" onclick="deleteMyData(this)">Delete my data</button>
+      </div>
+    </div>
+
+    <footer>
+      <div>Opt-in rankings for Torn poker, across all tables and on each table. Data via the official Torn API.</div>
+      <div class="footer-credit">Made by <b>Systoned</b> · <span class="muted">static mockup, no live data</span></div>
+    </footer>
+  </div>
+
+  <script src="/poker-hof/app.js"></script>
+</body>
+
+</html>

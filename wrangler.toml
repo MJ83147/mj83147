@@ -1,0 +1,13 @@
+# Cloudflare Pages config for the systoned.cc site.
+# The site is plain static files at the repo root (no build step); the only
+# server code is the poker-hof API under functions/poker-hof/api/.
+name = "systoned"
+pages_build_output_dir = "."
+compatibility_date = "2025-10-01"
+
+# D1 database powering /poker-hof. SESSION_SECRET is set as an encrypted
+# environment variable in the Pages project (not committed).
+[[d1_databases]]
+binding = "DB"
+database_name = "poker-hof"
+database_id = "da677e8d-de33-44c7-a1bd-ab4363a836d7"
