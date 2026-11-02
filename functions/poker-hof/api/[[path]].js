@@ -137,6 +137,9 @@ async function submitSittings(request, env) {
     skipped += batch.length - stored;
   }
 
+  // Refresh this player's pre-aggregated totals so the board never scans sittings.
+  if (stored) await recomputePlayer(env, who.id);
+
   if (body.start_mode === 'all' || body.start_mode === 'date') {
     await env.DB.prepare(`UPDATE players SET start_mode = ?2, start_date = ?3, last_sync = ?4 WHERE torn_id = ?1`)
       .bind(who.id, body.start_mode, body.start_mode === 'date' ? Math.floor(Number(body.start_date) || 0) : null, now).run();
@@ -161,6 +164,7 @@ async function saveSettings(request, env) {
       .bind(who.id, body.start_mode, newDate).run();
     if (newDate) {
       await env.DB.prepare(`DELETE FROM sittings WHERE player_id = ?1 AND join_time < ?2`).bind(who.id, newDate).run();
+      await recomputePlayer(env, who.id); // trimming games changes the totals
     }
   }
   if (Array.isArray(body.hidden_tables)) {
@@ -183,10 +187,24 @@ async function deleteData(request, env) {
   if (who.error) return json({ error: who.error }, 400);
   await env.DB.batch([
     env.DB.prepare(`DELETE FROM sittings WHERE player_id = ?1`).bind(who.id),
+    env.DB.prepare(`DELETE FROM totals WHERE player_id = ?1`).bind(who.id),
     env.DB.prepare(`DELETE FROM hidden_tables WHERE player_id = ?1`).bind(who.id),
     env.DB.prepare(`DELETE FROM players WHERE torn_id = ?1`).bind(who.id)
   ]);
   return json({ deleted: true });
+}
+
+// Rebuild one player's totals from their sittings. Cheap: scans only that
+// player's rows (a few hundred), runs only when their data changes.
+async function recomputePlayer(env, pid) {
+  await env.DB.batch([
+    env.DB.prepare(`DELETE FROM totals WHERE player_id = ?1`).bind(pid),
+    env.DB.prepare(
+      `INSERT INTO totals (player_id, table_group, net, sittings, secs)
+       SELECT player_id, table_group, SUM(net), COUNT(*), SUM(leave_time - join_time)
+       FROM sittings WHERE player_id = ?1 GROUP BY table_group`
+    ).bind(pid)
+  ]);
 }
 
 /* ============================ board ============================ */
@@ -197,12 +215,13 @@ async function board(request, env, url) {
   const pmap = {};
   players.results.forEach(p => { pmap[p.torn_id] = p; });
 
+  // Read pre-aggregated totals (one row per player per table group), not the raw
+  // sittings, so a board load scans a handful of rows per player, not the lot.
   const agg = await env.DB.prepare(
-    `SELECT s.player_id AS pid, s.table_group AS grp,
-            SUM(s.net) AS net, COUNT(*) AS sessions, SUM(s.leave_time - s.join_time) AS seconds
-     FROM sittings s
-     WHERE NOT EXISTS (SELECT 1 FROM hidden_tables h WHERE h.player_id = s.player_id AND h.table_group = s.table_group)
-     GROUP BY s.player_id, s.table_group`
+    `SELECT t.player_id AS pid, t.table_group AS grp,
+            t.net AS net, t.sittings AS sessions, t.secs AS seconds
+     FROM totals t
+     WHERE NOT EXISTS (SELECT 1 FROM hidden_tables h WHERE h.player_id = t.player_id AND h.table_group = t.table_group)`
   ).all();
 
   const scopes = { global: {} };

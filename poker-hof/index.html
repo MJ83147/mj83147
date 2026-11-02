@@ -1000,6 +1000,23 @@
       <div class="board-grid" id="board-grid"></div>
     </div>
 
+    <!-- ===================== LOG IN ===================== -->
+    <div id="view-login" class="hidden">
+      <div class="card wizard">
+        <h2 class="page-title">Log in</h2>
+        <p class="page-subtitle">Paste your Torn API key to get back into your account on this device. No key is stored on the server.</p>
+        <div class="field">
+          <label class="field-label" for="login-key-input">Paste your key</label>
+          <input class="text-input" type="text" id="login-key-input" placeholder="16-character key" oninput="checkLoginKey()">
+        </div>
+        <p class="field-note neg" id="login-error"></p>
+        <div class="wizard-actions">
+          <button class="btn" id="login-btn" onclick="doLogin()" disabled>Log in</button>
+        </div>
+        <p class="field-note">No account yet? <a onclick="startSignup()" style="cursor:pointer;text-decoration:underline">Sign up instead</a>.</p>
+      </div>
+    </div>
+
     <!-- ===================== SIGN-UP ===================== -->
     <div id="view-signup" class="hidden">
       <div class="card wizard">

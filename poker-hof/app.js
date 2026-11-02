@@ -217,8 +217,46 @@
           '<button class="btn btn-secondary" onclick="resync()">Sync</button>' +
           '<button class="btn btn-secondary" onclick="logout()">Log out</button>';
       } else {
-        el('nav-account').innerHTML = '<button class="btn" onclick="showView(\'signup\')">Sign up</button>';
+        el('nav-account').innerHTML =
+          '<button class="btn btn-secondary" onclick="startLogin()">Log in</button>' +
+          '<button class="btn" onclick="startSignup()">Sign up</button>';
       }
+    }
+    // Log in = paste your key to restore an existing account. No wizard.
+    function startLogin() {
+      el('login-key-input').value = '';
+      el('login-error').textContent = '';
+      el('login-btn').disabled = true; el('login-btn').textContent = 'Log in';
+      showView('login');
+    }
+    function checkLoginKey() { el('login-btn').disabled = el('login-key-input').value.trim().length < 10; }
+    function doLogin() {
+      var key = el('login-key-input').value.trim();
+      var btn = el('login-btn'); btn.disabled = true; btn.textContent = 'Checking…';
+      el('login-error').textContent = '';
+      fetch(API + '/auth', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: key })
+      }).then(function (r) { return r.json(); }).then(function (r) {
+        btn.textContent = 'Log in';
+        if (r.error) { el('login-error').textContent = r.error; btn.disabled = false; return; }
+        if (!r.player || !r.player.last_sync) {
+          el('login-error').textContent = 'No account yet for this key. Sign up first.';
+          btn.disabled = false; return;
+        }
+        state.me = r.player; state.token = r.token; state.key = key;
+        sessionStorage.setItem('phof_key', key); persistMe();
+        renderAccount(); loadBoard(); showView('boards');
+      }).catch(function () {
+        btn.textContent = 'Log in'; btn.disabled = false;
+        el('login-error').textContent = 'Network error, try again.';
+      });
+    }
+    // Sign up = the one-time wizard. Always start clean at step 1.
+    function startSignup() {
+      el('key-input').value = ''; el('key-error').textContent = '';
+      el('step1-next').disabled = true; el('step1-next').textContent = 'Continue';
+      el('syncing').classList.remove('hidden'); el('sync-done').classList.add('hidden');
+      goStep(1); showView('signup');
     }
     function logout() {
       state.me = null; state.token = null; state.key = null;
@@ -228,6 +266,7 @@
     }
     function showView(view) {
       el('view-boards').classList.toggle('hidden', view !== 'boards');
+      el('view-login').classList.toggle('hidden', view !== 'login');
       el('view-signup').classList.toggle('hidden', view !== 'signup');
       el('view-profile').classList.toggle('hidden', view !== 'profile');
       el('nav-boards').classList.toggle('active', view === 'boards');

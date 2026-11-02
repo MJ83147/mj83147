@@ -35,3 +35,15 @@ CREATE TABLE IF NOT EXISTS hidden_tables (
   table_group  TEXT    NOT NULL,
   PRIMARY KEY (player_id, table_group)
 );
+
+-- Pre-aggregated per player per table group, rebuilt when a player syncs.
+-- The board reads this instead of scanning sittings, so reads stay cheap
+-- no matter how large the sittings history grows.
+CREATE TABLE IF NOT EXISTS totals (
+  player_id    INTEGER NOT NULL,
+  table_group  TEXT    NOT NULL,
+  net          INTEGER NOT NULL,
+  sittings     INTEGER NOT NULL,
+  secs         INTEGER NOT NULL,
+  PRIMARY KEY (player_id, table_group)
+);
