@@ -2,5 +2,25 @@
   "project": "Mystery Bounty",
   "state": "In progress",
   "color": "#6A8E3A",
-  "objectives": []
+  "objectives": [
+    {
+      "id": "tweaks-and-design",
+      "name": "Tweaks and design changes",
+      "description": "The Mystery Bounty pages are ready and look right for the coming tournament.",
+      "state": "Idea",
+      "plan": "Get the list of tweaks and design changes from Jordie, add each as a task, make them, then test every page before the tournament.",
+      "plan_approved": false,
+      "tasks": [
+        { "id": "t1", "name": "List the tweaks and design changes with Jordie", "state": "To do" },
+        { "id": "t2", "name": "Make the changes", "state": "To do" },
+        { "id": "t3", "name": "Test every page end to end before the tournament", "state": "To do" }
+      ],
+      "questions": [
+        { "id": "q1", "text": "Which pages need tweaks or design changes, and what should change?", "answer": null },
+        { "id": "q2", "text": "When is the tournament?", "answer": null }
+      ],
+      "notes": [],
+      "feedback": []
+    }
+  ]
 }

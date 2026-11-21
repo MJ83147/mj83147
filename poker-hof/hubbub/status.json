@@ -2,5 +2,24 @@
   "project": "Poker HOF",
   "state": "In progress",
   "color": "#9C5B3F",
-  "objectives": []
+  "objectives": [
+    {
+      "id": "finish-poker-hof",
+      "name": "Finish Poker HOF",
+      "description": "Players get a complete opt-in poker leaderboard at systoned.cc/poker-hof.",
+      "state": "Idea",
+      "plan": "Get the list of remaining work from Jordie, add each item as a task, then build and test them.",
+      "plan_approved": false,
+      "tasks": [
+        { "id": "t1", "name": "List the remaining work with Jordie", "state": "To do" },
+        { "id": "t2", "name": "Build the remaining work", "state": "To do" },
+        { "id": "t3", "name": "Test sign up, sync and the boards on the live site", "state": "To do" }
+      ],
+      "questions": [
+        { "id": "q1", "text": "What is left to do on Poker HOF?", "answer": null }
+      ],
+      "notes": [],
+      "feedback": []
+    }
+  ]
 }
