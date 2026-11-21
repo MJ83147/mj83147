@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Mystery Bounty — Steward Console</title>
+  <style>
+    :root {
+      --bg: #12160f;
+      --card: #202a1e;
+      --card2: #26331f;
+      --line: #3a4a33;
+      --text: #e8eadf;
+      --dim: #9aa88f;
+      --gold: #e3b341;
+      --green: #7ccb6e;
+      --red: #e06c5c;
+      --chip: #2f4d33;
+      --greenbg: #1d3328;
+      --goldbg: #3a2f14;
+      --redbg: #3a2424;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: radial-gradient(ellipse at 50% -20%, #23331f 0%, var(--bg) 60%);
+      color: var(--text);
+      font: 15px/1.5 "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    a { color: inherit; text-decoration: none; }
+    * { scrollbar-width: thin; scrollbar-color: #3a4a33 transparent; }
+    ::-webkit-scrollbar { width: 9px; height: 9px; }
+    ::-webkit-scrollbar-thumb { background: #3a4a33; border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 20px 48px; }
+
+    /* nav */
+    .nav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .brand { font-size: 20px; font-weight: 800; letter-spacing: 1px; color: var(--gold); text-transform: uppercase; }
+    .brand .suit { color: var(--red); }
+    .brand small { display: block; font-size: 10px; letter-spacing: 2px; color: var(--dim); font-weight: 600; }
+    .nav .sp { flex: 1; }
+    .whoami { font-size: 13px; color: var(--dim); }
+    .whoami b { color: var(--text); }
+    .navlink {
+      padding: 7px 14px; border-radius: 999px; font-size: 14px; color: var(--dim);
+      border: 1px solid transparent; cursor: pointer; background: transparent;
+    }
+    .navlink:hover { color: var(--text); }
+    .navlink.btn { background: var(--chip); color: var(--text); border-color: var(--line); }
+
+    /* generic panel */
+    .panel { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--line); border-radius: 14px; margin-top: 16px; overflow: hidden; }
+    .panel > h2 { font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: var(--text); padding: 14px 18px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+    .panel > h2 .count { color: var(--dim); font-weight: 400; font-size: 12px; margin-left: auto; }
+    .panel > h2 .chev { transition: transform .2s; color: var(--dim); }
+    .panel.closed > h2 .chev { transform: rotate(-90deg); }
+    .panel .body { padding: 0 18px 18px; }
+    .panel.closed .body { display: none; }
+    .panel .body.pt { padding-top: 16px; }
+
+    .placeholder { color: var(--dim); font-size: 13px; padding: 8px 0; }
+    .muted { color: var(--dim); }
+    .sub { font-size: 12px; color: var(--dim); margin: -2px 0 12px; }
+
+    /* inputs + buttons */
+    .input, select.input, textarea.input {
+      width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+      background: #0f1410; color: var(--text); font-size: 14px; font-family: inherit;
+    }
+    .input:focus { outline: none; border-color: var(--green); }
+    label.fld { display: block; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--dim); margin-bottom: 4px; }
+    .btn {
+      background: var(--gold); color: #241d07; border: 0; font-weight: 700; font-size: 14px;
+      padding: 9px 18px; border-radius: 999px; cursor: pointer; transition: opacity .2s ease;
+    }
+    .btn:hover { opacity: .9; }
+    .btn:disabled { opacity: .4; cursor: default; }
+    .btn.ghost { background: var(--chip); color: var(--text); border: 1px solid var(--line); }
+    .btn.sm { padding: 6px 12px; font-size: 13px; }
+    .btn.red { background: var(--redbg); color: var(--red); border: 1px solid #5a3030; }
+
+    .pill { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+    .pill.active { background: var(--greenbg); color: var(--green); }
+    .pill.eliminated { background: var(--redbg); color: var(--red); }
+    .pill.champion { background: var(--goldbg); color: var(--gold); }
+    .pill.na { background: var(--chip); color: var(--dim); }
+
+    /* roster */
+    .roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .rcard { background: #15200f; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .rcard .rn { font-weight: 700; }
+    .rcard .rid { font-size: 12px; color: var(--dim); }
+
+    /* availability grid */
+    .avrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+    .slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+    .slot {
+      background: #15200f; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px;
+      cursor: pointer; user-select: none; transition: background .15s, border-color .15s;
+    }
+    .slot .st { font-weight: 700; font-size: 14px; }
+    .slot .sl { font-size: 11px; color: var(--dim); }
+    .slot.on { background: var(--greenbg); border-color: var(--green); }
+    .slot.on .st { color: var(--green); }
+    .slot.ro { cursor: default; opacity: .8; }
+    .savestate { font-size: 12px; color: var(--dim); }
+    .savestate.ok { color: var(--green); }
+
+    /* tables */
+    .tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+    .tcard { background: #15200f; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+    .tcard .th { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 8px; }
+    .tcard .tt { font-weight: 700; font-size: 15px; }
+    .tcard .ts { font-size: 11px; color: var(--dim); }
+    .stagebadge { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--dim); white-space: nowrap; }
+    .stagebadge.live { color: var(--green); background: var(--greenbg); }
+    .stagebadge.complete { color: var(--gold); background: var(--goldbg); }
+    .tsec { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+    .tsec h4 { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--dim); margin-bottom: 6px; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .cchip { background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 13px; }
+    .cchip.out { background: transparent; color: var(--dim); text-decoration: line-through; }
+
+    /* pick order (results) */
+    .picklist { display: flex; flex-direction: column; gap: 5px; }
+    .pickrow {
+      display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px;
+      background: #0f1410; border: 1px solid var(--line); cursor: pointer; font-size: 14px;
+    }
+    .pickrow:hover { border-color: var(--green); }
+    .pickrow.picked { cursor: default; }
+    .pickrow .rk { width: 28px; height: 24px; border-radius: 6px; background: var(--chip); color: var(--dim); font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+    .pickrow.picked .rk { background: var(--gold); color: #241d07; }
+    .pickrow.picked.p1 .rk { background: var(--gold); }
+    .pickrow .nm { flex: 1; }
+    .pickrow.picked .nm { color: var(--dim); }
+    .rowbtns { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+    .placedlist { display: flex; flex-direction: column; gap: 3px; }
+    .placedrow { display: flex; gap: 8px; font-size: 13px; }
+    .placedrow .pl { width: 34px; color: var(--dim); }
+    .placedrow.p1 .pl { color: var(--gold); font-weight: 700; }
+
+    /* knockouts */
+    .kolist { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+    .korow { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 3px 0; }
+    .korow .kseq { width: 20px; color: var(--dim); font-weight: 700; }
+    .korow .kout { color: var(--red); }
+    .korow .kby { color: var(--text); }
+    .korow .kamt { margin-left: auto; color: var(--gold); font-weight: 700; }
+    .koform { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+    @media (max-width: 520px) { .koform { grid-template-columns: 1fr; } }
+
+    /* sample messages */
+    .tmpl { background: #15200f; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+    .tmpl .thd { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .tmpl .tnm { font-weight: 700; font-size: 14px; }
+    .tmpl pre { white-space: pre-wrap; word-break: break-word; font: 13px/1.5 "Avenir Next", system-ui, sans-serif; color: var(--text); background: #0f1410; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+
+    /* login overlay */
+    .login { position: fixed; inset: 0; background: radial-gradient(ellipse at 50% -20%, #23331f 0%, var(--bg) 60%); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 300; }
+    .login.hidden { display: none; }
+    .logincard { background: var(--card); border: 1px solid var(--line); border-radius: 16px; max-width: 420px; width: 100%; padding: 26px 26px 24px; }
+    .logincard .brand { margin-bottom: 4px; }
+    .logincard p { color: var(--dim); font-size: 13px; margin: 8px 0 16px; }
+    .logincard .input { margin-bottom: 12px; }
+    .loginerr { color: var(--red); font-size: 13px; min-height: 18px; margin-top: 6px; }
+
+    /* how-to-steward modal */
+    .modal { position: fixed; inset: 0; background: rgba(8,11,7,.72); display: flex; align-items: flex-start; justify-content: center; padding: 24px 16px; z-index: 320; overflow-y: auto; }
+    .modal.hidden { display: none; }
+    .modalcard { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--line); border-radius: 16px; max-width: 620px; width: 100%; margin: auto; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+    .modalhd { display: flex; align-items: center; gap: 10px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+    .modalhd h2 { font-size: 16px; font-weight: 800; letter-spacing: .5px; color: var(--gold); }
+    .modalhd .x { margin-left: auto; background: var(--chip); color: var(--text); border: 1px solid var(--line); border-radius: 999px; width: 30px; height: 30px; font-size: 18px; line-height: 1; cursor: pointer; }
+    .modalhd .x:hover { color: var(--gold); }
+    .modalbd { padding: 18px 22px 24px; }
+    .modalbd h3 { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--dim); margin: 18px 0 8px; }
+    .modalbd h3:first-child { margin-top: 0; }
+    .modalbd p { font-size: 14px; color: var(--text); margin-bottom: 10px; }
+    .modalbd ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .modalbd li { font-size: 14px; line-height: 1.5; padding-left: 18px; position: relative; }
+    .modalbd li::before { content: '♠'; position: absolute; left: 0; color: var(--green); font-size: 12px; top: 2px; }
+    .modalbd li b { color: var(--gold); }
+    .modalbd li .d { display: block; color: var(--dim); font-size: 13px; margin-top: 4px; line-height: 1.5; }
+    .modalbd .stageline { display: flex; gap: 10px; align-items: baseline; }
+    .modalbd .stageline .sn { flex: 0 0 96px; font-weight: 700; color: var(--text); }
+    .modalbd .stageline .sd { color: var(--dim); font-size: 13px; }
+
+    /* toast */
+    .toasts { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 400; display: flex; flex-direction: column; gap: 8px; width: calc(100% - 32px); max-width: 460px; }
+    .toast {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px;
+      font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.45); animation: tin .25s ease;
+    }
+    .toast.err { border-color: #5a3030; background: #241617; color: var(--red); }
+    .toast.win { border-color: var(--gold); background: #2a2310; }
+    .toast.win b { color: var(--gold); }
+    @keyframes tin { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+    footer { margin-top: 36px; color: var(--dim); font-size: 12px; text-align: center; }
+    .app.hidden { display: none; }
+  </style>
+</head>
+
+<body>
+  <!-- toast area -->
+  <div class="toasts" id="toasts"></div>
+
+  <!-- login overlay -->
+  <div class="login" id="login">
+    <div class="logincard">
+      <a class="brand" href="index.html">Mystery <span class="suit">&spades;</span> Bounty<small>Steward Console</small></a>
+      <p>Enter your Torn API key to sign in. Only stewards and admins can access this console. Your key is sent once to verify you and is never stored.</p>
+      <input class="input" id="loginKey" type="password" placeholder="Torn API key" autocomplete="off">
+      <button class="btn" id="loginBtn" style="width:100%">Sign in</button>
+      <div class="loginerr" id="loginErr"></div>
+    </div>
+  </div>
+
+  <!-- app -->
+  <div class="wrap app hidden" id="app">
+    <div class="nav">
+      <a class="brand" href="index.html">Mystery <span class="suit">&spades;</span> Bounty<small>Steward Console</small></a>
+      <span class="sp"></span>
+      <span class="whoami">Signed in as <b id="whoName">—</b> <span id="whoRole" class="pill na"></span></span>
+      <button class="navlink btn" id="howtoBtn">How to steward</button>
+      <a class="navlink btn" href="index.html">Public board</a>
+      <button class="navlink" id="signout">Sign out</button>
+    </div>
+
+    <!-- how-to-steward modal -->
+    <div class="modal hidden" id="howtoModal">
+      <div class="modalcard">
+        <div class="modalhd">
+          <h2>How to steward</h2>
+          <button class="x" id="howtoClose" aria-label="Close">&times;</button>
+        </div>
+        <div class="modalbd">
+          <h3>What a steward is</h3>
+          <p>Stewards run the Mystery Bounty tables. You host a poker table in Torn, seat the players assigned to your table, keep play moving, and record what happens so the public board stays accurate. Everything players see on the board comes from what stewards report here.</p>
+
+          <h3>Your job, start to finish</h3>
+          <ul>
+            <li><b>Set your availability.</b> Mark the hourly slots (Torn City Time) you can cover. Admins assign tables from these, so keep them current.</li>
+            <li><b>Host your assigned tables.</b> When you agree to host a table, you'll find the list of players for that table on this page.
+              <span class="d">Each table has a <b>Copy Torn IDs</b> button. Click it to copy the IDs to your clipboard, then paste them into the poker tournament settings. Make the table name exactly match the table name shown here so players can easily find the right table to join. Also set the start time and the max number of players correctly.</span>
+            </li>
+            <li><b>Keep track of what happens.</b> Note who leaves and when.
+              <span class="d">During a knockout it is important to record <b>who</b> knocked out <b>who</b>. You can record results here as they happen, which is better than waiting until the table finishes.</span>
+            </li>
+            <li><b>Message players.</b> There's a <b>Sample messages</b> section on this page with pre-written messages you can send to players on your table.
+              <span class="d">For example, to tell a player they've advanced, who to send rebuy money to, or that they've been paid.</span>
+            </li>
+          </ul>
+
+          <h3>The stages</h3>
+          <ul>
+            <li class="stageline"><span class="sn">Day 1</span><span class="sd">6-max tables, no bounties. One winner advances to Day 2.</span></li>
+            <li class="stageline"><span class="sn">Rebuy</span><span class="sd">Second chance for eliminated players. One winner advances.</span></li>
+            <li class="stageline"><span class="sn">Day 2</span><span class="sd">Bounties live. Top 3 per table reach the Final.</span></li>
+            <li class="stageline"><span class="sn">Final Table</span><span class="sd">Bounties live. Plays to one champion.</span></li>
+            <li class="stageline"><span class="sn">Money Table</span><span class="sd">Settles the remaining money places.</span></li>
+          </ul>
+
+          <h3>Reporting a result</h3>
+          <ul>
+            <li><b>Day 1 / Rebuy:</b> tap the winner (the one player who advances), then Submit.</li>
+            <li><b>Day 2 / Final (bounty tables):</b> for each player, set who knocked them out. Only the table winner is left <b>blank</b>; everyone else was knocked out by someone. Then Submit. This records every knockout and the finishing order at once.
+              <span class="d">Position auto-fills from the bottom up as you set "knocked out by": the first player you mark out gets last place, the next gets second-from-last, and so on in the order you fill them in. So for two fast knockouts you just set "knocked out by" on both and they land in the right positions automatically. If the auto order is wrong (two busted at once and you entered them the wrong way, or you want a tie), type over the position. Anything you type by hand is kept and never overwritten by the auto-fill.</span>
+            </li>
+            <li><b>Money Table:</b> set the full finishing order, then Submit.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- roster -->
+    <div class="panel" id="rosterPanel">
+      <h2 onclick="togglePanel('rosterPanel')">Steward roster <span class="count" id="rosterCount"></span><span class="chev">▾</span></h2>
+      <div class="body pt"><div class="roster" id="roster"></div></div>
+    </div>
+
+    <!-- availability -->
+    <div class="panel" id="availPanel">
+      <h2 onclick="togglePanel('availPanel')">My availability <span class="count" id="availSaved"></span><span class="chev">▾</span></h2>
+      <div class="body pt">
+        <div class="sub">Hourly slots are Torn City Time (TCT). Your local time is shown under each. Tap to toggle; changes save automatically.</div>
+        <div class="avrow" id="availAdminRow" style="display:none">
+          <label class="fld" style="margin:0">Editing availability for</label>
+          <select class="input" id="availSteward" style="width:auto; min-width:180px"></select>
+        </div>
+        <div class="slots" id="slots"></div>
+      </div>
+    </div>
+
+    <!-- tables / stages -->
+    <div id="stages"></div>
+
+    <!-- sample messages -->
+    <div class="panel closed" id="msgPanel">
+      <h2 onclick="togglePanel('msgPanel')">Sample messages <span class="chev">▾</span></h2>
+      <div class="body pt"><div id="messages"></div></div>
+    </div>
+
+    <footer>Mystery Bounty · steward console · systoned.cc</footer>
+  </div>
+
+  <script>
+    var API = '/mystery-bounty/api';
+    var state = null;
+    var auth = {
+      token: localStorage.getItem('mb_token') || '',
+      role: localStorage.getItem('mb_role') || '',
+      name: localStorage.getItem('mb_name') || '',
+      id: Number(localStorage.getItem('mb_id')) || 0
+    };
+    var availLocal = null;   // Set of slotIds currently toggled (local working copy)
+    var availEditing = 0;    // stewardId whose availability is being edited
+    var availSaveT = null;
+
+    /* ---------- helpers ---------- */
+    function money(m) {
+      m = Number(m) || 0;
+      if (Math.abs(m) >= 1e9) return '$' + (m / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
+      if (Math.abs(m) >= 1e6) return '$' + Math.round(m / 1e6) + 'M';
+      if (Math.abs(m) >= 1e3) return '$' + Math.round(m / 1e3) + 'K';
+      return '$' + m;
+    }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+    function ordinal(n) { var s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+    function num(s, k, d) { var v = Number(s && s[k]); return isFinite(v) ? v : d; }
+    function nameOf(id) { var p = (state && state.players || []).find(function (x) { return x.tornId === id; }); return p ? p.name : ('#' + id); }
+
+    /* TCT (UTC) hour -> local time label like "3:00 PM" */
+    function localLabelFor(utcHour) {
+      var d = new Date();
+      d.setUTCHours(utcHour, 0, 0, 0);
+      return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+
+    /* ---------- toasts ---------- */
+    function toast(html, kind, ms) {
+      var el = document.createElement('div');
+      el.className = 'toast' + (kind ? ' ' + kind : '');
+      el.innerHTML = html;
+      document.getElementById('toasts').appendChild(el);
+      setTimeout(function () { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 300); }, ms || 4200);
+    }
+    function toastErr(msg) { toast(esc(msg || 'Something went wrong.'), 'err'); }
+
+    /* ---------- API ---------- */
+    function apiGet(path) {
+      return fetch(API + path, { headers: { 'Accept': 'application/json' } }).then(function (r) {
+        return r.json().then(function (d) { if (!r.ok || (d && d.error)) throw new Error(d && d.error ? d.error : ('HTTP ' + r.status)); return d; });
+      });
+    }
+    function apiPost(path, body) {
+      return fetch(API + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + auth.token },
+        body: JSON.stringify(body || {})
+      }).then(function (r) {
+        return r.json().then(function (d) { if (!r.ok || (d && d.error)) throw new Error(d && d.error ? d.error : ('HTTP ' + r.status)); return d; });
+      });
+    }
+
+    /* ---------- auth / login ---------- */
+    function showLogin() { document.getElementById('login').classList.remove('hidden'); document.getElementById('app').classList.add('hidden'); }
+    function showApp() {
+      document.getElementById('login').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      document.getElementById('whoName').textContent = auth.name || '—';
+      var rp = document.getElementById('whoRole');
+      rp.textContent = (auth.role || '').toUpperCase();
+      rp.className = 'pill ' + (auth.role === 'admin' ? 'champion' : 'active');
+    }
+    function isSteward() { return auth.role === 'steward' || auth.role === 'admin'; }
+
+    function doLogin() {
+      var key = document.getElementById('loginKey').value.trim();
+      var err = document.getElementById('loginErr');
+      var btn = document.getElementById('loginBtn');
+      err.textContent = '';
+      if (!key) { err.textContent = 'Enter your Torn API key.'; return; }
+      btn.disabled = true; btn.textContent = 'Signing in…';
+      fetch(API + '/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: key }) })
+        .then(function (r) { return r.json().then(function (d) { if (!r.ok || (d && d.error)) throw new Error(d && d.error ? d.error : ('HTTP ' + r.status)); return d; }); })
+        .then(function (d) {
+          if (d.role !== 'steward' && d.role !== 'admin') { err.textContent = 'Not a steward. This account cannot access the console.'; return; }
+          auth = { token: d.token, role: d.role, name: d.name, id: d.id };
+          localStorage.setItem('mb_token', d.token);
+          localStorage.setItem('mb_role', d.role);
+          localStorage.setItem('mb_name', d.name);
+          localStorage.setItem('mb_id', String(d.id));
+          document.getElementById('loginKey').value = '';
+          showApp();
+          load();
+        })
+        .catch(function (e) { err.textContent = e.message || 'Sign in failed.'; })
+        .finally(function () { btn.disabled = false; btn.textContent = 'Sign in'; });
+    }
+    document.getElementById('loginBtn').addEventListener('click', doLogin);
+    document.getElementById('loginKey').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+    document.getElementById('signout').addEventListener('click', function () {
+      localStorage.removeItem('mb_token'); localStorage.removeItem('mb_role');
+      localStorage.removeItem('mb_name'); localStorage.removeItem('mb_id');
+      location.reload();
+    });
+
+    /* ---------- how-to-steward modal ---------- */
+    (function () {
+      var modal = document.getElementById('howtoModal');
+      function open() { modal.classList.remove('hidden'); }
+      function close() { modal.classList.add('hidden'); }
+      document.getElementById('howtoBtn').addEventListener('click', open);
+      document.getElementById('howtoClose').addEventListener('click', close);
+      modal.addEventListener('click', function (e) { if (e.target === modal) close(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.classList.contains('hidden')) close(); });
+    })();
+
+    /* ---------- load + render ---------- */
+    function load() {
+      apiGet('/state').then(function (d) {
+        state = d;
+        if (availEditing === 0) availEditing = auth.id;
+        rebuildAvailLocal();
+        render();
+      }).catch(function (e) { toastErr(e.message); });
+    }
+
+    function render() {
+      renderRoster();
+      renderAvailability();
+      renderStages();
+      renderMessages();
+    }
+
+    /* ---------- roster ---------- */
+    function renderRoster() {
+      var sts = state.stewards || [];
+      document.getElementById('rosterCount').textContent = sts.length + ' steward' + (sts.length === 1 ? '' : 's');
+      document.getElementById('roster').innerHTML = sts.length ? sts.map(function (s) {
+        return '<div class="rcard"><div><div class="rn">' +
+          '<a href="https://www.torn.com/profiles.php?XID=' + s.tornId + '" target="_blank">' + esc(s.name) + '</a></div>' +
+          '<div class="rid">#' + s.tornId + '</div></div>' +
+          '<span class="pill ' + (s.active ? 'active' : 'na') + '">' + (s.active ? 'Active' : 'Inactive') + '</span></div>';
+      }).join('') : '<div class="placeholder">No stewards listed.</div>';
+    }
+
+    /* ---------- availability ---------- */
+    function availabilityFor(stewardId) {
+      return (state.stewardAvailability || []).filter(function (a) { return a.stewardId === stewardId; }).map(function (a) { return a.slotId; });
+    }
+    function rebuildAvailLocal() {
+      availLocal = new Set(availabilityFor(availEditing));
+    }
+    function renderAvailability() {
+      var isAdmin = auth.role === 'admin';
+      var adminRow = document.getElementById('availAdminRow');
+      if (isAdmin) {
+        adminRow.style.display = '';
+        var sel = document.getElementById('availSteward');
+        var sts = state.stewards || [];
+        sel.innerHTML = sts.map(function (s) {
+          return '<option value="' + s.tornId + '"' + (s.tornId === availEditing ? ' selected' : '') + '>' + esc(s.name) + '</option>';
+        }).join('');
+        sel.onchange = function () { availEditing = Number(this.value); rebuildAvailLocal(); renderAvailability(); };
+      } else {
+        adminRow.style.display = 'none';
+      }
+      // read-only if signed-in steward is editing someone else and is not that steward (admins always can edit the selected one)
+      var readOnly = false;
+      document.getElementById('availSaved').textContent = availLocal.size + ' slot' + (availLocal.size === 1 ? '' : 's') + ' set';
+      var host = document.getElementById('slots');
+      var html = '';
+      for (var h = 0; h < 24; h++) {
+        var id = 't' + h;
+        var tct = (h < 10 ? '0' + h : h) + ':00';
+        var on = availLocal.has(id);
+        html += '<div class="slot' + (on ? ' on' : '') + (readOnly ? ' ro' : '') + '" data-slot="' + id + '">' +
+          '<div class="st">' + tct + '</div><div class="sl">' + esc(localLabelFor(h)) + ' local</div></div>';
+      }
+      host.innerHTML = html;
+      if (!readOnly) {
+        Array.prototype.forEach.call(host.querySelectorAll('.slot'), function (el) {
+          el.addEventListener('click', function () {
+            var id = this.getAttribute('data-slot');
+            if (availLocal.has(id)) availLocal.delete(id); else availLocal.add(id);
+            this.classList.toggle('on');
+            document.getElementById('availSaved').textContent = availLocal.size + ' slot' + (availLocal.size === 1 ? '' : 's') + ' set';
+            scheduleAvailSave();
+          });
+        });
+      }
+    }
+    function scheduleAvailSave() {
+      clearTimeout(availSaveT);
+      var saved = document.getElementById('availSaved');
+      saved.className = 'count savestate'; saved.textContent = 'saving…';
+      availSaveT = setTimeout(function () {
+        var body = { slotIds: Array.from(availLocal) };
+        if (availEditing && availEditing !== auth.id) body.stewardId = availEditing;
+        apiPost('/steward/availability', body).then(function () {
+          saved.className = 'count savestate ok'; saved.textContent = 'saved ✓';
+          setTimeout(function () { saved.className = 'count'; saved.textContent = availLocal.size + ' slot' + (availLocal.size === 1 ? '' : 's') + ' set'; }, 1600);
+          // refresh underlying state quietly
+          apiGet('/state').then(function (d) { state = d; }).catch(function () {});
+        }).catch(function (e) {
+          saved.className = 'count savestate'; saved.textContent = 'save failed';
+          toastErr(e.message);
+        });
+      }, 700);
+    }
+
+    /* ---------- stages / tables ---------- */
+    var STAGES = [
+      { key: 'day1', label: 'Day 1', sub: '6-max tables · one winner advances · no bounties' },
+      { key: 'rebuy', label: 'Rebuy', sub: 'Second chance · one winner advances · no bounties' },
+      { key: 'day2', label: 'Day 2', sub: 'Bounties live · top 3 per table reach the final' },
+      { key: 'final', label: 'Final Table', sub: 'Bounties live · plays to one winner' },
+      { key: 'money', label: 'Money Table', sub: 'Settles the money places' }
+    ];
+
+    function renderStages() {
+      var host = document.getElementById('stages');
+      var byStage = {};
+      (state.tables || []).forEach(function (t) { (byStage[t.stage] = byStage[t.stage] || []).push(t); });
+      host.innerHTML = STAGES.map(function (st) {
+        var tabs = byStage[st.key] || [];
+        var done = tabs.filter(function (t) { return t.status === 'complete'; }).length;
+        var live = tabs.filter(function (t) { return t.status === 'live'; }).length;
+        var count = tabs.length ? (done + '/' + tabs.length + ' complete' + (live ? ' · ' + live + ' live' : '')) : 'no tables';
+        var allComplete = tabs.length > 0 && done === tabs.length;
+        // collapse finished stages; keep in-progress ones (and the current empty stage) open
+        var open = tabs.length ? !allComplete : (st.key === (state.settings && state.settings.tournament_status));
+        var inner = tabs.length ? '<div class="tables">' + tabs.map(tableCard).join('') + '</div>'
+          : '<div class="placeholder">' + st.sub + '</div>';
+        return '<div class="panel' + (open ? '' : ' closed') + '" id="panel-' + st.key + '">' +
+          '<h2 onclick="togglePanel(\'panel-' + st.key + '\')">' + st.label +
+          '<span class="count">' + count + '</span><span class="chev">▾</span></h2>' +
+          '<div class="body pt">' + inner + '</div></div>';
+      }).join('');
+      wireTables();
+    }
+
+    function stewardName(id) {
+      if (id == null) return null;
+      var s = (state.stewards || []).find(function (x) { return x.tornId === id; });
+      return s ? s.name : ('#' + id);
+    }
+
+    function tableCard(t) {
+      var statusCls = t.status === 'live' ? 'live' : (t.status === 'complete' ? 'complete' : '');
+      var seats = (t.seats || []).slice().sort(function (a, b) { return (a.seatNo || 0) - (b.seatNo || 0); });
+      var h = '<div class="tcard" data-table="' + esc(t.id) + '">';
+      h += '<div class="th"><div class="tt">' + esc(t.label || t.id) + '</div>' +
+        '<span class="stagebadge ' + statusCls + '">' + esc(t.status || '') + '</span></div>';
+      h += '<div class="ts">' + esc((t.timeslot ? t.timeslot + ' TCT · ' : '')) + (t.seatSize ? t.seatSize + '-max' : '') +
+        (t.bountiesLive ? ' · bounties live' : '') + '</div>';
+
+      // assign steward
+      h += '<div class="tsec"><h4>Steward</h4>';
+      var activeStewards = (state.stewards || []).filter(function (s) { return s.active; });
+      h += '<select class="input assign-sel" data-table="' + esc(t.id) + '"><option value="">— unassigned —</option>' +
+        activeStewards.map(function (s) {
+          return '<option value="' + s.tornId + '"' + (t.stewardId === s.tornId ? ' selected' : '') + '>' + esc(s.name) + '</option>';
+        }).join('') + '</select>';
+      h += '<div class="rowbtns"><button class="btn ghost sm copyids" data-table="' + esc(t.id) + '">Copy Torn IDs</button></div>';
+      h += '</div>';
+
+      // results
+      if (t.status === 'complete' && t.places && t.places.length) {
+        h += '<div class="tsec"><h4>Recorded result</h4><div class="placedlist">' +
+          t.places.slice().sort(function (a, b) { return a.place - b.place; }).map(function (pl) {
+            return '<div class="placedrow p' + pl.place + '"><span class="pl">' + ordinal(pl.place) + '</span><span>' + esc(nameOf(pl.tornId)) +
+              (pl.advancedTo ? ' <span class="muted">→ ' + esc(pl.advancedTo) + '</span>' : '') + '</span></div>';
+          }).join('') + '</div></div>';
+      } else if (t.status === 'live' && seats.length && !t.bountiesLive) {
+        // Day 1 / Rebuy pick the single winner who advances. The Money table is the
+        // only non-bounty table that needs a full finishing order.
+        var fullOrder = t.stage === 'money';
+        h += '<div class="tsec result-sec" data-table="' + esc(t.id) + '" data-full="' + (fullOrder ? 1 : 0) + '">' +
+          '<h4>Report result ' + (fullOrder ? '(full finishing order)' : '(pick the winner)') + '</h4>' +
+          '<div class="picklist">' +
+          seats.map(function (s) {
+            return '<div class="pickrow" data-id="' + s.tornId + '"><span class="rk"></span><span class="nm">' + esc(nameOf(s.tornId)) + '</span></div>';
+          }).join('') +
+          '</div>' +
+          '<div class="rowbtns">' +
+          '<button class="btn sm result-submit" data-table="' + esc(t.id) + '" disabled>Submit result</button>' +
+          '<button class="btn ghost sm result-reset" data-table="' + esc(t.id) + '">Reset</button>' +
+          '</div></div>';
+      }
+
+      // Bounty tables (Day 2, Final): one grid for the whole result. Each player row
+      // has "knocked out by" (blank = survived/advanced) and a finishing position.
+      // One submit records every knockout AND the finishing order at once. Envelope
+      // amounts stay sealed; the replay animation reveals them at the end. Two
+      // players can share a position — nothing forces a strict order on the losers.
+      if (t.bountiesLive && t.status === 'live' && seats.length) {
+        var advN = t.stage === 'final' ? 1 : num(state.settings, 'day2_advance', 3);
+        var rowStyle = 'display:grid;grid-template-columns:1fr 1.1fr 64px;gap:8px;align-items:center;margin-bottom:6px';
+        h += '<div class="tsec grid-sec" data-table="' + esc(t.id) + '"><h4>Result &amp; knockouts</h4>' +
+          '<div class="ts" style="margin-bottom:8px">Mark who knocked out each player. The table plays to one winner — leave only the winner’s “knocked out by” blank; everyone else is a knockout. ' +
+          (t.stage === 'final' ? 'The winner is the champion.' : ('Top ' + advN + ' finishers advance; ' + ordinal(advN + 1) + ' takes the money table.')) +
+          '</div>' +
+          '<div style="' + rowStyle + '" class="muted"><span>Player</span><span>Knocked out by</span><span>Pos</span></div>' +
+          seats.map(function (s) {
+            var opts = seats.filter(function (o) { return o.tornId !== s.tornId; })
+              .map(function (o) { return '<option value="' + o.tornId + '">' + esc(nameOf(o.tornId)) + '</option>'; }).join('');
+            return '<div class="gridrow" data-id="' + s.tornId + '" style="' + rowStyle + '">' +
+              '<span class="nm">' + esc(nameOf(s.tornId)) + '</span>' +
+              '<select class="input g-by"><option value=""></option>' + opts + '<option value="dnp">— did not play —</option></select>' +
+              '<input class="input g-pos" type="number" min="1" max="' + seats.length + '" inputmode="numeric">' +
+              '</div>';
+          }).join('') +
+          '<div class="rowbtns"><button class="btn sm grid-submit" data-table="' + esc(t.id) + '">Submit result</button></div>' +
+          '</div>';
+      }
+
+      h += '</div>';
+      return h;
+    }
+
+    function wireTables() {
+      // assign steward
+      Array.prototype.forEach.call(document.querySelectorAll('.assign-sel'), function (sel) {
+        sel.addEventListener('change', function () {
+          var tableId = this.getAttribute('data-table');
+          var v = this.value;
+          apiPost('/steward/assign', { tableId: tableId, stewardId: v === '' ? null : Number(v) })
+            .then(function () { toast('Steward assignment updated.'); load(); })
+            .catch(function (e) { toastErr(e.message); });
+        });
+      });
+      // copy ids
+      Array.prototype.forEach.call(document.querySelectorAll('.copyids'), function (btn) {
+        btn.addEventListener('click', function () {
+          var tableId = this.getAttribute('data-table');
+          var t = (state.tables || []).find(function (x) { return x.id === tableId; });
+          var ids = ((t && t.seats) || []).slice().sort(function (a, b) { return (a.seatNo || 0) - (b.seatNo || 0); }).map(function (s) { return s.tornId; }).join(',');
+          copyText(ids, this);
+        });
+      });
+      // result pick order (Day 1 / Rebuy / Money)
+      Array.prototype.forEach.call(document.querySelectorAll('.result-sec'), function (sec) { wireResult(sec); });
+      // bounty-table result grid (Day 2 / Final)
+      Array.prototype.forEach.call(document.querySelectorAll('.grid-sec'), function (sec) { wireGrid(sec); });
+    }
+
+    function wireResult(sec) {
+      var tableId = sec.getAttribute('data-table');
+      var full = sec.getAttribute('data-full') === '1';
+      var rows = Array.prototype.slice.call(sec.querySelectorAll('.pickrow'));
+      var submit = sec.querySelector('.result-submit');
+      var reset = sec.querySelector('.result-reset');
+      var order = [];
+      function refresh() {
+        rows.forEach(function (r) {
+          var id = Number(r.getAttribute('data-id'));
+          var pos = order.indexOf(id);
+          r.classList.toggle('picked', pos >= 0);
+          r.classList.toggle('p1', pos === 0);
+          r.querySelector('.rk').textContent = pos >= 0 ? (pos + 1) : '';
+        });
+        var ready = full ? (order.length === rows.length) : (order.length >= 1);
+        submit.disabled = !ready;
+        submit.textContent = full ? ('Submit order (' + order.length + '/' + rows.length + ')') : (order.length ? 'Submit winner' : 'Pick the winner');
+      }
+      rows.forEach(function (r) {
+        r.addEventListener('click', function () {
+          var id = Number(r.getAttribute('data-id'));
+          if (order.indexOf(id) >= 0) return;
+          order.push(id);
+          refresh();
+        });
+      });
+      reset.addEventListener('click', function () { order = []; refresh(); });
+      submit.addEventListener('click', function () {
+        if (submit.disabled) return;
+        if (full && order.length !== rows.length) { toastErr('Assign every player a place before submitting.'); return; }
+        submit.disabled = true;
+        apiPost('/result', { tableId: tableId, places: order })
+          .then(function () { toast('Result recorded for this table.'); load(); })
+          .catch(function (e) { submit.disabled = false; toastErr(e.message); });
+      });
+      refresh();
+    }
+
+    function wireGrid(sec) {
+      var tableId = sec.getAttribute('data-table');
+      var submit = sec.querySelector('.grid-submit');
+      var rows = Array.prototype.slice.call(sec.querySelectorAll('.gridrow'));
+      var N = rows.length;
+      var koOrder = [];   // tornIds in the order they were marked out (= bust order)
+
+      // Auto-fill positions from the bottom up: the first player knocked out takes
+      // last place (N), the next takes N-1, and so on. Survivors are left blank and
+      // slot into the top places on submit. Any position the steward types by hand
+      // is respected and never overwritten.
+      function recompute() {
+        var vals = rows.map(function (r) { return r.querySelector('.g-by').value; });
+        var D = vals.filter(function (v) { return v === 'dnp'; }).length;      // no-shows
+        var blanks = vals.filter(function (v) { return v === ''; }).length;    // winner candidates
+        var dnpSeen = 0;
+        rows.forEach(function (r) {
+          if (r.dataset.manual === '1') return;
+          var by = r.querySelector('.g-by').value;
+          var pos = r.querySelector('.g-pos');
+          // no-shows take the very last places; knockouts fill above them bottom-up
+          // (first marked out = worst real finish); the lone blank is the winner (1st)
+          if (by === 'dnp') { pos.value = (N - D + 1) + dnpSeen; dnpSeen++; return; }
+          if (by === '') { pos.value = blanks === 1 ? 1 : ''; return; }
+          var i = koOrder.indexOf(Number(r.getAttribute('data-id')));
+          pos.value = i >= 0 ? ((N - D) - i) : '';
+        });
+      }
+      // Flag impossible knockout chains: a player who is themselves knocked out
+      // can't then knock anyone out. koOrder is the bust order (first marked =
+      // busts first), so if knocker K busted before victim V, that's a mistake.
+      var lastWarnKey = '';
+      function checkKoConsistency() {
+        var idx = {};
+        koOrder.forEach(function (pid, i) { idx[pid] = i; });
+        var bad = [];
+        rows.forEach(function (r) {
+          var vId = Number(r.getAttribute('data-id'));
+          var k = Number(r.querySelector('.g-by').value) || 0;
+          if (!k) return;
+          if (idx[k] != null && idx[vId] != null && idx[k] < idx[vId]) bad.push({ out: vId, by: k });
+        });
+        var key = bad.map(function (b) { return b.by + '>' + b.out; }).sort().join(',');
+        if (bad.length && key !== lastWarnKey) {
+          var b0 = bad[0];
+          toast('⚠ <b>' + esc(nameOf(b0.by)) + '</b> is marked knocked out but is also set as knocking out <b>' + esc(nameOf(b0.out)) +
+            '</b> afterwards. A knocked-out player can’t eliminate anyone — likely a mistake. Fix the "knocked out by" entries or set the positions manually.', 'err', 8000);
+        }
+        lastWarnKey = key;
+      }
+
+      rows.forEach(function (r) {
+        var id = Number(r.getAttribute('data-id'));
+        r.querySelector('.g-by').addEventListener('change', function () {
+          var at = koOrder.indexOf(id);
+          var isKO = this.value && this.value !== 'dnp';   // a real eliminator, not blank or "did not play"
+          if (isKO && at < 0) koOrder.push(id);
+          else if (!isKO && at >= 0) koOrder.splice(at, 1);
+          recompute();
+          checkKoConsistency();
+        });
+        r.querySelector('.g-pos').addEventListener('input', function () { r.dataset.manual = this.value ? '1' : ''; });
+      });
+
+      submit.addEventListener('click', function () {
+        var entries = rows.map(function (r) {
+          var by = r.querySelector('.g-by').value;
+          return {
+            tornId: Number(r.getAttribute('data-id')),
+            by: by === '' ? null : (by === 'dnp' ? 'dnp' : Number(by)),
+            position: Number(r.querySelector('.g-pos').value) || 0
+          };
+        });
+        var self = entries.filter(function (e) { return typeof e.by === 'number' && e.by === e.tornId; });
+        if (self.length) { toastErr('A player can’t knock themselves out.'); return; }
+        var survivors = entries.filter(function (e) { return e.by === null; });
+        if (survivors.length !== 1) { toastErr('Exactly one player wins the table — mark who knocked out everyone else, or “did not play” for no-shows (' + survivors.length + ' left blank).'); return; }
+        var elimNoPos = entries.filter(function (e) { return typeof e.by === 'number' && !e.position; });
+        if (elimNoPos.length) { toastErr('Every knocked-out player needs a position (' + elimNoPos.length + ' missing).'); return; }
+        if (!window.confirm('Submit the result for this table? This records the finishing order and every knockout.')) return;
+        submit.disabled = true; submit.textContent = 'Submitting…';
+        apiPost('/table/finish', { tableId: tableId, entries: entries })
+          .then(function () { toast('Table finished.'); load(); })
+          .catch(function (e) { submit.disabled = false; submit.textContent = 'Submit result'; toastErr(e.message); });
+      });
+    }
+
+    function copyText(text, btn) {
+      var done = function () { var o = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(function () { btn.textContent = o; }, 1400); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text); done(); });
+      } else { fallbackCopy(text); done(); }
+    }
+    function fallbackCopy(text) {
+      var ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      ta.remove();
+    }
+
+    /* ---------- sample messages ---------- */
+    function fillTmpl(tpl) {
+      var s = state.settings || {};
+      var vals = {
+        '{pay_to}': s.pay_to || 'the organiser',
+        '{entry_total}': money(num(s, 'entry_total', 50e6)),
+        '{rebuy_total}': money(num(s, 'rebuy_total', 75e6))
+      };
+      return tpl.replace(/\{[a-z_]+\}/g, function (m) { return vals[m] != null ? vals[m] : m; });
+    }
+    var TEMPLATES = [
+      { name: 'Day 1 — winner advances', body: "Nice win! You've taken your Day 1 table and advanced to Day 2, where bounties go live. Watch the board for your Day 2 table and timeslot. See you there." },
+      { name: 'Day 1 eliminated + rebuy offer', body: "You've been knocked out of Day 1. You can rebuy once for {rebuy_total}: send it to {pay_to} with the message \"Mystery Bounty rebuy\" and you'll be seated on a qualifier table. Win it to reach Day 2." },
+      { name: 'Day 2 — bounty win', body: "Knockout confirmed. You opened a sealed envelope and won the bounty inside. It's been added to your bounty total on the board. Keep hunting." },
+      { name: 'Day 2 — advance to final', body: "You've finished top 3 on your Day 2 table and booked your seat at the Final Table. Fresh stacks, bounties still live. Watch the board for the start time." },
+      { name: 'Final — champion', body: "Champion! You've won the Mystery Bounty Final Table. Your prize plus every bounty you collected will be paid out from {pay_to}. Congratulations." },
+      { name: 'Money table — paid', body: "The money table is settled and your finish is locked in. Your payout will be sent from {pay_to}. Thanks for playing the Mystery Bounty." }
+    ];
+    function renderMessages() {
+      document.getElementById('messages').innerHTML = TEMPLATES.map(function (t, i) {
+        var body = fillTmpl(t.body);
+        return '<div class="tmpl"><div class="thd"><span class="tnm">' + esc(t.name) + '</span>' +
+          '<button class="btn ghost sm msg-copy" data-i="' + i + '">Copy</button></div>' +
+          '<pre id="tmpl-' + i + '">' + esc(body) + '</pre></div>';
+      }).join('');
+      Array.prototype.forEach.call(document.querySelectorAll('.msg-copy'), function (btn) {
+        btn.addEventListener('click', function () {
+          var i = this.getAttribute('data-i');
+          copyText(document.getElementById('tmpl-' + i).textContent, this);
+        });
+      });
+    }
+
+    /* ---------- misc ---------- */
+    function togglePanel(id) { var el = document.getElementById(id); if (el) el.classList.toggle('closed'); }
+
+    /* ---------- boot ---------- */
+    if (auth.token && isSteward()) { showApp(); load(); }
+    else { showLogin(); }
+  </script>
+</body>
+
+</html>

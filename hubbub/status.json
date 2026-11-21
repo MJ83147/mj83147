@@ -1,0 +1,41 @@
+{
+  "project": "Systoned",
+  "state": "In progress",
+  "color": "#B85C8B",
+  "objectives": [
+    {
+      "id": "request-a-tool",
+      "name": "Request a Tool page",
+      "description": "Visitors can ask for a new tool from the home page.",
+      "state": "Idea",
+      "plan": "Agree with Jordie how requests are sent and stored, then build the /request page that the home page already links to.",
+      "plan_approved": false,
+      "tasks": [
+        { "id": "t1", "name": "Decide how requests are sent and stored", "state": "To do" },
+        { "id": "t2", "name": "Build the /request page", "state": "To do" }
+      ],
+      "questions": [
+        { "id": "q1", "text": "How should tool requests reach you?", "answer": null }
+      ],
+      "notes": [],
+      "feedback": []
+    },
+    {
+      "id": "recent-work",
+      "name": "Recent Work list",
+      "description": "Visitors see what was built recently.",
+      "state": "Idea",
+      "plan": "Agree with Jordie what the list shows, then replace the \"Coming soon\" text in the home page popup with that list.",
+      "plan_approved": false,
+      "tasks": [
+        { "id": "t1", "name": "Decide what goes in the list", "state": "To do" },
+        { "id": "t2", "name": "Fill in the Recent Work popup", "state": "To do" }
+      ],
+      "questions": [
+        { "id": "q1", "text": "What should the Recent Work list show?", "answer": null }
+      ],
+      "notes": [],
+      "feedback": []
+    }
+  ]
+}

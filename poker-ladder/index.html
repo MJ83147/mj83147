@@ -818,6 +818,11 @@
       margin-bottom: 0;
     }
 
+    /* An odd card count leaves no hole: the last card takes the full row. */
+    .charts .card:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+    }
+
     .chartwrap {
       position: relative;
     }
@@ -1535,6 +1540,43 @@
         margin: 0 auto;
       }
     }
+    /* Custom ladders page */
+    .soon { text-align: center; padding: 48px 20px; }
+    .soon .big { font-size: 30px; font-weight: 800; color: var(--gold); margin-bottom: 10px; }
+    .locklink { color: var(--dim); font-size: 12px; cursor: pointer; text-decoration: underline; }
+    .ladform label { display: block; font-size: 13px; color: var(--dim); margin: 16px 0 6px; }
+    .ladform input[type=text],
+    .ladform input[type=number],
+    .ladform input[type=date],
+    .ladform select,
+    .ladform textarea {
+      width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+      background: #141a11; color: var(--text); font-size: 14px; font-family: inherit;
+    }
+    .ladform textarea { min-height: 64px; resize: vertical; }
+    .ladform .wq { font-size: 15px; color: var(--text); margin: 0 0 6px; }
+    .ladtables {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 6px 16px; margin-top: 8px;
+    }
+    .ladtables label { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--text); cursor: pointer; }
+    .ladtables input { width: auto; margin: 0; }
+    .ladrow { display: flex; gap: 16px; flex-wrap: wrap; }
+    .ladrow > div { flex: 1 1 200px; }
+    .ladcard { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; background: var(--card); }
+    .ladcard h3 { margin: 0 0 4px; font-size: 16px; }
+    .ladcard .laddesc { font-size: 13px; color: var(--text); line-height: 1.45; margin: 2px 0 6px; }
+    .ladcard .meta { font-size: 12px; color: var(--dim); }
+    .ladbadge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); margin-left: 8px; vertical-align: middle; }
+    .ladwiz { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+    .ladwiz > .ladform { flex: 2 1 420px; }
+    .ladwiz > .ladprev { flex: 1 1 260px; position: sticky; top: 16px; }
+    .ladprev-name { font-size: 18px; font-weight: 700; color: var(--gold); margin-bottom: 8px; }
+    .ladprev-desc { font-size: 13px; color: var(--text); line-height: 1.45; margin-bottom: 12px; }
+    .ladprev-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+    .ladprev-row:last-child { border-bottom: 0; }
+    .ladprev-k { color: var(--dim); white-space: nowrap; }
+    .ladprev-v { color: var(--text); text-align: right; }
   </style>
 </head>
 
@@ -1547,6 +1589,7 @@
         <a class="navlink" data-route="ladder" href="#ladder">Ladder</a>
         <a class="navlink" data-route="leaderboard" href="#leaderboard">Leaderboard</a>
         <a class="navlink" data-route="players" href="#players">Players</a>
+        <a class="navlink" data-route="ladders" href="#ladders">Custom ladders</a>
         <a class="navlink" onclick="openTipsHelp()">Tips &amp; help</a>
         <div class="spacer"></div>
         <a id="youLink" class="navlink" style="display:none">Your profile</a>
@@ -1754,9 +1797,9 @@
     // CONFIG: after deploying the Apps Script web app (Deploy > New deployment >
     // Web app > access "Anyone"), paste its URL here.
     // ---------------------------------------------------------------------------
-    
-var LADDER_API_URL = 'https://poker-api.systoned.cc';
-var CONFIGURED = /^https:\/\//.test(LADDER_API_URL);
+    var LADDER_API_URL = 'https://poker-api.systoned.cc';
+    var CONFIGURED = /^https:\/\//.test(LADDER_API_URL);
+
     // ---------------------------------------------------------------------------
     // API
     // ---------------------------------------------------------------------------
@@ -1966,6 +2009,7 @@ var CONFIGURED = /^https:\/\//.test(LADDER_API_URL);
         a.classList.toggle('active', a.getAttribute('data-route') === name);
       });
       if (name === 'terms') return renderTerms();
+      if (name === 'ladders') return renderLadders();
       // The board fetch can take a while on a cold load: show the spinner
       // instead of a blank page (or a stale previous page) while it runs.
       if (!state.tiers) showLoader();
@@ -2352,6 +2396,394 @@ var CONFIGURED = /^https:\/\//.test(LADDER_API_URL);
         '</div>';
     }
 
+    // ---------------------------------------------------------------------------
+    // Custom ladders (preview). Password-gated: you unlock the real interface,
+    // everyone else sees "coming soon". The password check is client-side only,
+    // so it hides an in-progress page, it is not real security. Change the
+    // password on the next line.
+    // ---------------------------------------------------------------------------
+    var LADDERS_PASSWORD = 'poker2026';
+
+    function laddersUnlocked() { return lsGet('pl_ladders_ok') === '1'; }
+
+    function renderLadders() {
+      if (laddersUnlocked()) return renderLaddersAdmin();
+      return renderLaddersSoon();
+    }
+
+    function renderLaddersSoon() {
+      el('view').innerHTML =
+        '<div class="card soon">' +
+        '<div class="big">Custom ladders</div>' +
+        '<div class="sub" style="font-size:15px;margin:0">Coming soon. Watch this space.</div>' +
+        '<div style="margin-top:26px"><span class="locklink" onclick="showLadderUnlock()">unlock</span></div>' +
+        '<div id="ladUnlock" style="display:none;max-width:280px;margin:14px auto 0">' +
+        '<input id="ladPass" type="password" placeholder="Password" onkeydown="if(event.key===\'Enter\')tryUnlockLadders()">' +
+        '<button class="btn" style="width:100%" onclick="tryUnlockLadders()">Unlock</button>' +
+        '<div class="error" id="ladPassErr"></div>' +
+        '</div></div>';
+    }
+
+    function showLadderUnlock() { el('ladUnlock').style.display = 'block'; el('ladPass').focus(); }
+
+    function tryUnlockLadders() {
+      if (el('ladPass').value === LADDERS_PASSWORD) { lsSet('pl_ladders_ok', '1'); renderLaddersAdmin(); }
+      else { el('ladPassErr').textContent = 'Wrong password.'; }
+    }
+
+    function lockLadders() { lsDel('pl_ladders_ok'); renderLaddersSoon(); }
+
+    // Preview-only storage: created ladders live in this browser so the layout
+    // can be seen. Nothing is sent to the server yet.
+    function lsLadders() { try { return JSON.parse(lsGet('pl_ladders') || '[]'); } catch (e) { return []; } }
+    function saveLadders(a) { lsSet('pl_ladders', JSON.stringify(a)); }
+
+    // Tables are referred to by their real Torn names, never as "tiers".
+    function tableName(i) { var t = LADDER_TIERS[i]; return t ? t.tables[0] : ''; }
+
+    // The measures that can decide a winner. A ladder can tick any combination;
+    // there is no fixed priority, the creator just picks whatever counts.
+    var WIN_MEASURES = [
+      { k: 'bankroll', label: 'Highest bankroll' },
+      { k: 'biggest',  label: 'Biggest single win' },
+      { k: 'table',    label: 'Highest table' },
+      { k: 'games',    label: 'Most games played' },
+      { k: 'quickest', label: 'Quickest player' },
+      { k: 'target',   label: 'First to a target bankroll' }
+    ];
+    function winLabel(k) { for (var i = 0; i < WIN_MEASURES.length; i++) if (WIN_MEASURES[i].k === k) return WIN_MEASURES[i].label; return k; }
+    function winList(win) { return win && win.length ? win.map(winLabel).join(', ') : 'Not set yet'; }
+    // Format a raw number-input value as money, or '' if it isn't a positive number.
+    function ladAmt(v) { v = Number(v); return isFinite(v) && v > 0 ? fmtMoney(v) : ''; }
+
+    // Admin landing: the list of ladders plus a button to start the wizard.
+    function renderLaddersAdmin() {
+      var list = lsLadders();
+      var cards = list.length ? list.map(ladderCard).join('') : '<div class="muted">No ladders yet.</div>';
+      el('view').innerHTML =
+        '<div class="card" style="border-color:var(--gold);padding:14px 18px">' +
+        '<div class="sub" style="margin:0;color:var(--gold)">Admin preview, only you can see this. ' +
+        'Everyone else sees "coming soon". <span class="locklink" onclick="lockLadders()">lock again</span></div></div>' +
+        '<div class="card"><div class="head-flex"><h2 style="margin:0">Your custom ladders</h2>' +
+        '<div class="spacer"></div><button class="btn" onclick="startWizard()">Create a ladder</button></div>' +
+        '<div id="ladList" style="margin-top:14px">' + cards + '</div></div>';
+    }
+
+    function ladderCard(l) {
+      return '<div class="ladcard"><h3>' + esc(l.name || 'Untitled ladder') +
+        '<span class="ladbadge">' + (l.vis === 'private' ? 'Private' : 'Public') + '</span></h3>' +
+        '<div class="laddesc">' + esc(ladderSentence(l)) + '</div>' +
+        '<div class="meta">' + (l.members ? l.members.length : 0) + ' invited · ' + esc(whenText(l)) + '</div>' +
+        '<div style="margin-top:8px">' +
+          '<span class="locklink" onclick="viewLadder(\'' + l.id + '\')">view</span> · ' +
+          '<span class="locklink" onclick="editLadder(\'' + l.id + '\')">edit</span> · ' +
+          '<span class="locklink" onclick="removeLadder(\'' + l.id + '\')">remove</span></div></div>';
+    }
+
+    function removeLadder(id) {
+      saveLadders(lsLadders().filter(function (l) { return l.id !== id; }));
+      renderLaddersAdmin();
+    }
+
+    function findLadder(id) { return lsLadders().filter(function (l) { return l.id === id; })[0]; }
+
+    // Read-only page for a saved ladder: the full description and its settings.
+    // The standings table will live here once the scoring backend exists.
+    function viewLadder(id) {
+      var l = findLadder(id);
+      if (!l) return renderLaddersAdmin();
+      el('view').innerHTML =
+        '<span class="backlink" onclick="renderLaddersAdmin()">← all ladders</span>' +
+        '<div class="card ladprev" style="position:static;max-width:460px">' +
+        '<h3 class="boardtitle">Ladder</h3>' + ladderPreview(l) +
+        '<div style="margin-top:12px"><span class="locklink" onclick="editLadder(\'' + l.id + '\')">edit</span></div>' +
+        '<p class="muted" style="margin-top:14px;font-size:12px">These are the settings. The standings will appear here once the scoring backend is built.</p>' +
+        '</div>';
+    }
+
+    // Reopen the wizard on an existing ladder. Keeps its id so saving updates
+    // it in place instead of making a copy.
+    function editLadder(id) {
+      var l = findLadder(id);
+      if (!l) return renderLaddersAdmin();
+      ladDraft = {
+        id: l.id,
+        win: (l.win || []).slice(), targetBank: l.targetBank || '',
+        startTable: l.startTable || '', endTable: l.endTable || '',
+        bankrollMode: l.bankrollMode || '', bankrollAmount: l.bankrollAmount || '',
+        busts: l.busts || '', bustLimit: l.bustLimit || '',
+        buyins: l.buyins || '', buyinLimit: l.buyinLimit || '',
+        from: l.from || '', to: l.to || '',
+        name: l.name || '', membersText: (l.members || []).join('\n'), vis: l.vis || ''
+      };
+      ladStep = 0; renderWizard();
+    }
+
+    // ---- Create wizard: how you win first, then the rest of the parameters.
+    // A live preview on the right rebuilds from the draft after every change,
+    // so you can see the ladder taking shape as you tick things. ----
+    var ladDraft = null, ladStep = 0;
+    var LAD_STEPS = ['win', 'params'];
+
+    function newDraft() {
+      return {
+        win: [], targetBank: '',
+        startTable: '', endTable: '',
+        bankrollMode: '', bankrollAmount: '',
+        busts: '', bustLimit: '',
+        buyins: '', buyinLimit: '',
+        from: '', to: '',
+        // The creator is a member by default: prefill their own Torn ID.
+        name: '', membersText: (state && state.meId) ? String(state.meId) : '', vis: ''
+      };
+    }
+
+    function startWizard() { ladDraft = newDraft(); ladStep = 0; renderWizard(); }
+    function cancelWizard() { ladDraft = null; renderLaddersAdmin(); }
+
+    // Read every input that happens to be on the current screen back into the
+    // draft. Safe to call any time: it only touches fields that exist.
+    function readWizard() {
+      var d = ladDraft;
+      if (el('wTarget')) d.targetBank = el('wTarget').value;
+      if (el('wStart')) d.startTable = el('wStart').value;
+      if (el('wEnd')) d.endTable = el('wEnd').value;
+      if (el('wBankMode')) d.bankrollMode = el('wBankMode').value;
+      if (el('wBankAmt')) d.bankrollAmount = el('wBankAmt').value;
+      if (el('wBusts')) d.busts = el('wBusts').value;
+      if (el('wBustLimit')) d.bustLimit = el('wBustLimit').value;
+      if (el('wBuyins')) d.buyins = el('wBuyins').value;
+      if (el('wBuyinLimit')) d.buyinLimit = el('wBuyinLimit').value;
+      if (el('wFrom')) d.from = el('wFrom').value;
+      if (el('wTo')) d.to = el('wTo').value;
+      if (el('wName')) d.name = el('wName').value;
+      if (el('wMembers')) d.membersText = el('wMembers').value;
+      if (el('wVis')) d.vis = el('wVis').value;
+    }
+
+    // Show or hide the fields that only matter once a related choice is made,
+    // without a full re-render (so text inputs keep focus while typing).
+    function refreshConditional() {
+      var d = ladDraft;
+      if (el('wBankAmtWrap')) el('wBankAmtWrap').style.display = d.bankrollMode === 'amount' ? 'block' : 'none';
+      if (el('wBustLimitWrap')) el('wBustLimitWrap').style.display = d.busts === 'limit' ? 'block' : 'none';
+      if (el('wBuyinLimitWrap')) el('wBuyinLimitWrap').style.display = d.buyins === 'limit' ? 'block' : 'none';
+    }
+
+    // Any input on the params screen calls this: pull values in, update the
+    // conditional fields, repaint the preview.
+    function wizChanged() {
+      readWizard(); refreshConditional();
+      if (el('ladPreview')) el('ladPreview').innerHTML = ladderPreview(ladDraft);
+    }
+
+    // Ticking a win measure. A full re-render is fine here (checkboxes keep
+    // their state from the draft) and lets the target-amount field appear.
+    function toggleWin(k, on) {
+      ladDraft.win = ladDraft.win.filter(function (x) { return x !== k; });
+      if (on) ladDraft.win.push(k);
+      renderWizard();
+    }
+
+    // A table <select> with a blank first option.
+    function tableSelect(id, val, blankLabel) {
+      return '<select id="' + id + '" onchange="wizChanged()"><option value="">' + esc(blankLabel) + '</option>' +
+        LADDER_TIERS.map(function (t) {
+          return '<option value="' + t.idx + '"' + (String(t.idx) === String(val) ? ' selected' : '') + '>' + esc(t.tables[0]) + '</option>';
+        }).join('') + '</select>';
+    }
+
+    function winBody(d) {
+      var boxes = WIN_MEASURES.map(function (m) {
+        var on = d.win.indexOf(m.k) >= 0;
+        return '<label><input type="checkbox"' + (on ? ' checked' : '') +
+          ' onchange="toggleWin(\'' + m.k + '\',this.checked)"> ' + esc(m.label) + '</label>';
+      }).join('');
+      var target = d.win.indexOf('target') >= 0 ?
+        '<label>Target bankroll to win</label>' +
+        '<input type="number" id="wTarget" value="' + esc(d.targetBank) + '" placeholder="e.g. 1000000000" oninput="wizChanged()">' : '';
+      return '<p class="wq">How is the winner decided? Pick anything that counts.</p>' +
+        '<div class="ladtables">' + boxes + '</div>' + target;
+    }
+
+    function paramsBody(d) {
+      return '<div class="ladrow">' +
+          '<div><label>Starting ladder table (optional)</label>' + tableSelect('wStart', d.startTable, 'Any table') + '</div>' +
+          '<div><label>End ladder table (optional)</label>' + tableSelect('wEnd', d.endTable, 'Any table') + '</div>' +
+        '</div>' +
+        '<label>Starting bankroll (optional)</label>' +
+        '<select id="wBankMode" onchange="wizChanged()">' +
+          '<option value=""' + (d.bankrollMode === '' ? ' selected' : '') + '>Choose...</option>' +
+          '<option value="amount"' + (d.bankrollMode === 'amount' ? ' selected' : '') + '>A fixed amount</option>' +
+          '<option value="startMin"' + (d.bankrollMode === 'startMin' ? ' selected' : '') + '>Starting table minimum buy-in</option>' +
+          '<option value="startMax"' + (d.bankrollMode === 'startMax' ? ' selected' : '') + '>Starting table maximum buy-in</option>' +
+        '</select>' +
+        '<div id="wBankAmtWrap"><label>Amount</label>' +
+          '<input type="number" id="wBankAmt" value="' + esc(d.bankrollAmount) + '" placeholder="e.g. 10000000" oninput="wizChanged()"></div>' +
+        '<div class="ladrow">' +
+          '<div><label>Busts</label><select id="wBusts" onchange="wizChanged()">' +
+            '<option value=""' + (d.busts === '' ? ' selected' : '') + '>Choose...</option>' +
+            '<option value="none"' + (d.busts === 'none' ? ' selected' : '') + '>Not allowed</option>' +
+            '<option value="unlimited"' + (d.busts === 'unlimited' ? ' selected' : '') + '>Unlimited</option>' +
+            '<option value="limit"' + (d.busts === 'limit' ? ' selected' : '') + '>A set number</option>' +
+          '</select>' +
+          '<div id="wBustLimitWrap"><label>How many</label><input type="number" id="wBustLimit" value="' + esc(d.bustLimit) + '" oninput="wizChanged()"></div></div>' +
+          '<div><label>Buy-ins</label><select id="wBuyins" onchange="wizChanged()">' +
+            '<option value=""' + (d.buyins === '' ? ' selected' : '') + '>Choose...</option>' +
+            '<option value="unlimited"' + (d.buyins === 'unlimited' ? ' selected' : '') + '>Unlimited</option>' +
+            '<option value="limit"' + (d.buyins === 'limit' ? ' selected' : '') + '>A set number</option>' +
+          '</select>' +
+          '<div id="wBuyinLimitWrap"><label>How many</label><input type="number" id="wBuyinLimit" value="' + esc(d.buyinLimit) + '" oninput="wizChanged()"></div></div>' +
+        '</div>' +
+        '<div class="ladrow"><div><label>Starts on (optional)</label><input type="date" id="wFrom" value="' + esc(d.from) + '" onchange="wizChanged()"></div>' +
+          '<div><label>Ends on (optional)</label><input type="date" id="wTo" value="' + esc(d.to) + '" onchange="wizChanged()"></div></div>' +
+        '<div class="hint">Leave the end date blank to run until there\'s a winner.</div>' +
+        '<label>Name</label><input type="text" id="wName" value="' + esc(d.name) + '" placeholder="e.g. Faction Faceoff" oninput="wizChanged()">' +
+        '<label>Invite players, one Torn ID per line</label><textarea id="wMembers" placeholder="123456&#10;789012" oninput="wizChanged()">' + esc(d.membersText) + '</textarea>' +
+        '<label>Who can see it</label><select id="wVis" onchange="wizChanged()">' +
+          '<option value=""' + (d.vis === '' ? ' selected' : '') + '>Choose...</option>' +
+          '<option value="public"' + (d.vis === 'public' ? ' selected' : '') + '>Anyone with the link</option>' +
+          '<option value="private"' + (d.vis === 'private' ? ' selected' : '') + '>Invited players only</option></select>';
+    }
+
+    // ---- Wording shared by the live preview and the saved ladder cards ----
+
+    // Returns the member list whether the object holds a saved array (members)
+    // or the wizard's raw textarea string (membersText).
+    function ladMembers(d) {
+      if (d.members) return d.members;
+      return (d.membersText || '').split(/\s+/).filter(Boolean);
+    }
+
+    function andJoin(a) {
+      if (a.length <= 1) return a.join('');
+      return a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
+    }
+
+    // "Newbie Corner to Slow Cooker", "Newbie Corner to any table", etc.
+    function climbText(start, end) {
+      var s = start !== '' && start != null, e = end !== '' && end != null;
+      if (s && e) return tableName(Number(start)) + ' to ' + tableName(Number(end));
+      if (s) return tableName(Number(start)) + ' to any table';
+      if (e) return 'any table up to ' + tableName(Number(end));
+      return 'the full ladder';
+    }
+
+    function whenText(d) {
+      if (d.from && d.to) return d.from + ' to ' + d.to;
+      if (d.from) return 'from ' + d.from + ', until a winner';
+      if (d.to) return 'until ' + d.to;
+      return 'until a winner';
+    }
+
+    function bankrollText(d) {
+      var startSet = d.startTable !== '' && d.startTable != null;
+      if (d.bankrollMode === 'amount') return (ladAmt(d.bankrollAmount) || 'a fixed amount') + ' to start';
+      if (d.bankrollMode === 'startMin') return (startSet ? tableName(Number(d.startTable)) + ' ' : 'starting table ') + 'minimum buy-in';
+      if (d.bankrollMode === 'startMax') return (startSet ? tableName(Number(d.startTable)) + ' ' : 'starting table ') + 'maximum buy-in';
+      return 'not set';
+    }
+
+    // The full one-line description, e.g. "The first player to reach $1b,
+    // playing from Newbie Corner to Slow Cooker, wins." Built from whatever is
+    // ticked; there is no priority, the clauses just read in a fixed order.
+    function ladderSentence(d) {
+      var win = d.win || [];
+      if (!win.length) return 'No win condition set yet.';
+      var NOUN = { bankroll: 'the highest bankroll', biggest: 'the biggest single win', table: 'the highest table', games: 'the most games played' };
+      var ranks = win.filter(function (k) { return NOUN[k]; }).map(function (k) { return NOUN[k]; });
+      var subj;
+      if (win.indexOf('target') >= 0) subj = 'The first player to reach ' + (ladAmt(d.targetBank) || 'the target bankroll');
+      else if (win.indexOf('quickest') >= 0) subj = 'The quickest player';
+      else subj = 'The player';
+      var parts = [subj];
+      if (ranks.length) parts.push('with ' + andJoin(ranks));
+      // climb
+      var s = d.startTable !== '' && d.startTable != null, e = d.endTable !== '' && d.endTable != null;
+      if (s && e) parts.push('playing from ' + tableName(Number(d.startTable)) + ' to ' + tableName(Number(d.endTable)));
+      else if (s) parts.push('playing from ' + tableName(Number(d.startTable)) + ' up');
+      else if (e) parts.push('playing up to ' + tableName(Number(d.endTable)));
+      // bankroll
+      if (d.bankrollMode === 'amount' && ladAmt(d.bankrollAmount)) parts.push('starting with ' + ladAmt(d.bankrollAmount));
+      else if (d.bankrollMode === 'startMin') parts.push('starting on the ' + bankrollText(d));
+      else if (d.bankrollMode === 'startMax') parts.push('starting on the ' + bankrollText(d));
+      // time
+      if (d.from && d.to) parts.push('between ' + d.from + ' and ' + d.to);
+      else if (d.to) parts.push('by ' + d.to);
+      else if (d.from) parts.push('from ' + d.from);
+      return parts.join(', ').replace(/,( with| playing)/, '$1') + ' wins.';
+    }
+
+    // The live preview panel: the full sentence, then the choices grouped.
+    function ladderPreview(d) {
+      var rows = [];
+      function row(k, v) { rows.push('<div class="ladprev-row"><span class="ladprev-k">' + esc(k) + '</span><span class="ladprev-v">' + esc(v) + '</span></div>'); }
+
+      var winTxt = winList(d.win);
+      if (d.win.indexOf('target') >= 0) winTxt = winTxt.replace('First to a target bankroll', 'First to ' + (ladAmt(d.targetBank) || 'a target bankroll'));
+      row('Wins', winTxt);
+      row('Climb', climbText(d.startTable, d.endTable));
+      row('Starting bankroll', bankrollText(d));
+      row('Busts', d.busts === 'none' ? 'not allowed' : d.busts === 'unlimited' ? 'unlimited' : d.busts === 'limit' ? ((d.bustLimit || '?') + ' allowed') : 'not set');
+      row('Buy-ins', d.buyins === 'unlimited' ? 'unlimited' : d.buyins === 'limit' ? ((d.buyinLimit || '?') + ' allowed') : 'not set');
+      row('When', whenText(d));
+      var members = ladMembers(d);
+      var visTxt = d.vis === 'private' ? ', private' : d.vis === 'public' ? ', public' : '';
+      row('Invited', members.length + ' player' + (members.length === 1 ? '' : 's') + visTxt);
+
+      return '<div class="ladprev-name">' + esc(d.name || 'Untitled ladder') + '</div>' +
+        '<div class="ladprev-desc">' + esc(ladderSentence(d)) + '</div>' + rows.join('');
+    }
+
+    function renderWizard() {
+      var last = LAD_STEPS.length - 1;
+      if (ladStep < 0) ladStep = 0;
+      if (ladStep > last) ladStep = last;
+      var key = LAD_STEPS[ladStep];
+      var title = key === 'win' ? 'How you win' : 'The rest of the ladder';
+      var body = key === 'win' ? winBody(ladDraft) : paramsBody(ladDraft);
+      var nav = '<div style="display:flex;gap:10px;margin-top:22px;align-items:center">' +
+        (ladStep > 0 ? '<button class="btn secondary" onclick="wizBack()">Back</button>' : '') +
+        '<div class="spacer" style="flex:1"></div>' +
+        '<span class="muted" style="font-size:12px">Step ' + (ladStep + 1) + ' of ' + LAD_STEPS.length + '</span>' +
+        (ladStep === last ? '<button class="btn" onclick="finishWizard()">Create ladder</button>'
+          : '<button class="btn" onclick="wizNext()">Next</button>') + '</div>';
+      el('view').innerHTML =
+        '<span class="backlink" onclick="cancelWizard()">← all ladders</span>' +
+        '<div class="ladwiz">' +
+          '<div class="card ladform"><h2>' + esc(title) + '</h2>' + body + nav + '</div>' +
+          '<div class="card ladprev"><h3 class="boardtitle">Your ladder</h3><div id="ladPreview">' + ladderPreview(ladDraft) + '</div></div>' +
+        '</div>';
+      refreshConditional();
+    }
+
+    function wizNext() { readWizard(); ladStep++; renderWizard(); }
+    function wizBack() { readWizard(); ladStep--; renderWizard(); }
+
+    function finishWizard() {
+      readWizard();
+      var d = ladDraft;
+      var members = d.membersText.split(/\s+/).map(function (s) { return s.trim(); }).filter(Boolean);
+      // The creator is always a member: make sure their own id is on the list.
+      if (state && state.meId && members.indexOf(String(state.meId)) < 0) members.unshift(String(state.meId));
+      var l = {
+        id: d.id || ('L' + Date.now()),
+        win: d.win.slice(), targetBank: d.targetBank,
+        startTable: d.startTable, endTable: d.endTable,
+        bankrollMode: d.bankrollMode, bankrollAmount: d.bankrollAmount,
+        busts: d.busts, bustLimit: d.bustLimit,
+        buyins: d.buyins, buyinLimit: d.buyinLimit,
+        from: d.from, to: d.to,
+        name: d.name, members: members, vis: d.vis
+      };
+      // Editing updates the ladder in place; creating adds a new one on top.
+      var a = lsLadders();
+      if (d.id) a = a.map(function (x) { return x.id === d.id ? l : x; });
+      else a.unshift(l);
+      saveLadders(a);
+      ladDraft = null; renderLaddersAdmin();
+    }
+
     // "Achievements": the top-three earner spots this player holds right now
     // on the per-table leaderboard (top three by net profit at a table).
     // Derived live from the board data, so a medal disappears the moment
@@ -2530,36 +2962,106 @@ var CONFIGURED = /^https:\/\//.test(LADDER_API_URL);
         '</svg><div class="charttip" id="' + cfg.id + '-tip"></div></div></div>';
     }
 
-    // The two profile charts, or '' when there isn't enough history yet (or
-    // the deployed backend predates the history field).
+    // One bar-chart card, one slot per table (all 21, so the empty top of the
+    // ladder stays visible). cfg: { id, title, sub, color, vals (sparse array
+    // indexed by rung; missing = never played there), y(v) -> 0..1 of plot
+    // height, yTicks: [{v, label}] (empty label = gridline only), tip(i) }.
+    function barChartCard(cfg) {
+      var W = 640, H = 220, L = 52, R = 14, T = 14, B = 26;
+      var n = cfg.vals.length;
+      var slot = (W - L - R) / n, gap = Math.min(4, slot / 4);
+      var yy = function (v) { return H - B - (H - T - B) * Math.max(0, Math.min(1, cfg.y(v))); };
+
+      var grid = cfg.yTicks.map(function (tk) {
+        var y = yy(tk.v).toFixed(1);
+        return '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y + '" y2="' + y +
+          '" stroke="rgba(90,110,74,' + (tk.label ? '.3' : '.12') + ')" stroke-width="1"/>' +
+          (tk.label ? '<text x="' + (L - 8) + '" y="' + y + '" dy="3.5" text-anchor="end" font-size="11" fill="#9aa88f">' + esc(tk.label) + '</text>' : '');
+      }).join('');
+
+      var bars = '', pts = [], xticks = '';
+      for (var i = 0; i < n; i++) {
+        var cx = L + slot * (i + 0.5);
+        if (i % 4 === 0)
+          xticks += '<text x="' + cx.toFixed(1) + '" y="' + (H - 7) + '" text-anchor="middle" font-size="11" fill="#9aa88f">' + (i + 1) + '</text>';
+        if (cfg.vals[i] == null) continue;
+        // A bar at the axis floor still gets a sliver, so "played here" is
+        // never invisible.
+        var top = Math.min(yy(cfg.vals[i]), H - B - 2);
+        bars += '<rect x="' + (L + slot * i + gap / 2).toFixed(1) + '" y="' + top.toFixed(1) +
+          '" width="' + (slot - gap).toFixed(1) + '" height="' + (H - B - top).toFixed(1) +
+          '" rx="1.5" fill="' + cfg.color + '" opacity=".85"/>';
+        pts.push({ x: cx, y: top, tip: cfg.tip(i) });
+      }
+
+      CHARTS[cfg.id] = { pts: pts, W: W, H: H };
+      return '<div class="card"><h2>' + cfg.title + '</h2><div class="sub">' + cfg.sub + '</div>' +
+        '<div class="chartwrap" data-chart="' + cfg.id + '">' +
+        '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">' +
+        grid + xticks + bars +
+        '<line id="' + cfg.id + '-cx" y1="' + T + '" y2="' + (H - B) + '" stroke="rgba(232,234,223,.35)" stroke-width="1" style="display:none"/>' +
+        '<circle id="' + cfg.id + '-dot" r="4.5" fill="' + cfg.color + '" stroke="#202a1e" stroke-width="2" style="display:none"/>' +
+        '</svg><div class="charttip" id="' + cfg.id + '-tip"></div></div></div>';
+    }
+
+    // The profile charts, or '' when there isn't enough history yet (or the
+    // deployed backend predates the history field).
     function profileCharts(hist, tiers) {
       hist = (hist || []).filter(function (h) { return Number(h.ts) > 0; });
       if (hist.length < 2) return '';
       var tname = function (r) { return tiers[Math.max(0, Math.min(tiers.length - 1, r))].tables[0]; };
+      var tlabel = function (r) { return '<b>Table ' + (r + 1) + ' · ' + esc(tname(r)) + '</b>'; };
 
-      // Table position: a step chart (the rung only changes at a sit-down or a
-      // drop). Y runs from table 1 to just above the peak, ticked on integers.
-      var maxR = hist.reduce(function (m, h) { return Math.max(m, Number(h.rung) || 0); }, 0);
-      var rTop = Math.max(3, Math.min(21, maxR + 2));
-      var rStep = Math.ceil((rTop - 1) / 5);
-      var rTicks = [];
-      for (var v = 1; v <= rTop; v += rStep) rTicks.push({ v: v, label: String(v) });
-      var lastR = Number(hist[hist.length - 1].rung) || 0;
-      var rungChart = chartCard(hist, {
-        id: 'ch-rung', title: 'The climb', color: '#e3b341', stepLine: true,
-        sub: 'Table (1&ndash;21) after each counted game.',
-        yMin: 1, yMax: rTop, yTicks: rTicks,
-        val: function (h) { return (Number(h.rung) || 0) + 1; },
-        tip: function (h) {
-          var r = Number(h.rung) || 0;
-          return '<b>Table ' + (r + 1) + '</b> · ' + esc(tname(r)) + '<br>' + esc(fmtWhen(h.ts));
-        },
-        endLabel: 'Table ' + (lastR + 1)
+      // Per-table aggregates. History is chronological, so the last write per
+      // rung is the bankroll they left that table with (or, for the current
+      // table, the bankroll now).
+      var games = [], lastBank = [];
+      hist.forEach(function (h) {
+        var r = Math.max(0, Math.min(tiers.length - 1, Number(h.rung) || 0));
+        games[r] = (games[r] || 0) + 1;
+        lastBank[r] = Number(h.bankroll) || 0;
+      });
+      games.length = lastBank.length = tiers.length;
+
+      var maxG = games.reduce(function (m, g) { return Math.max(m, g || 0); }, 0);
+      var gStep = Math.max(1, Math.round(niceCeil(maxG / 4)));
+      var gTop = gStep * Math.max(1, Math.ceil(maxG / gStep));
+      var gTicks = [];
+      for (var g = 0; g <= gTop; g += gStep) gTicks.push({ v: g, label: String(g) });
+      var gamesChart = barChartCard({
+        id: 'ch-games', title: 'Games per table', color: '#e3b341',
+        sub: 'Counted games at each of the ' + tiers.length + ' tables.',
+        vals: games, yTicks: gTicks,
+        y: function (v) { return v / gTop; },
+        tip: function (i) { return tlabel(i) + '<br>' + games[i] + ' game' + (games[i] === 1 ? '' : 's'); }
+      });
+
+      // Ladder progress: bankroll after the last game at each table, on an
+      // axis where the tables' min buy-ins sit at even spacing (plus headroom
+      // to the top table's max buy). A bar touching the gridline above it
+      // means that bankroll unlocked the next table.
+      var bp = tiers.map(function (t) { return t.minBuy; });
+      bp.push(tiers[tiers.length - 1].maxBuy);
+      var yLadder = function (v) {
+        if (v <= bp[0]) return 0;
+        var i = 0;
+        while (i < bp.length - 2 && v >= bp[i + 1]) i++;
+        var f = Math.min(1, Math.log(v / bp[i]) / Math.log(bp[i + 1] / bp[i]));
+        return (i + f) / (bp.length - 1);
+      };
+      var bTicks = bp.map(function (v, i) {
+        return { v: v, label: i % 4 === 0 ? fmtMoney(v) : '' };
+      });
+      var ladderChart = barChartCard({
+        id: 'ch-ladder', title: 'Ladder progress', color: '#7ccb6e',
+        sub: 'Bankroll after the last game at each table. Each line is a table’s min buy-in: reach the next line up and that table is unlocked.',
+        vals: lastBank, yTicks: bTicks, y: yLadder,
+        tip: function (i) { return tlabel(i) + '<br>$' + lastBank[i].toLocaleString() + ' after the last game here'; }
       });
 
       var bankChart = bankChartCard(hist, 'ch-bank', 'Bankroll', 'Ladder bankroll after each counted game.');
 
-      return '<div class="charts">' + rungChart + bankChart + '</div>';
+      return '<div class="charts">' + gamesChart + ladderChart + bankChart + '</div>';
     }
 
     // A bankroll line chart card, shared by the profile page and the climb

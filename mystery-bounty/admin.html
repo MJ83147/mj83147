@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Mystery Bounty — Admin</title>
+  <style>
+    :root {
+      --bg: #12160f;
+      --card: #202a1e;
+      --card2: #26331f;
+      --line: #3a4a33;
+      --text: #e8eadf;
+      --dim: #9aa88f;
+      --gold: #e3b341;
+      --green: #7ccb6e;
+      --red: #e06c5c;
+      --chip: #2f4d33;
+      --greenbg: #1d3328;
+      --goldbg: #3a2f14;
+      --field: #0f1410;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: radial-gradient(ellipse at 50% -20%, #23331f 0%, var(--bg) 60%);
+      color: var(--text);
+      font: 15px/1.5 "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    a { color: inherit; text-decoration: none; }
+    * { scrollbar-width: thin; scrollbar-color: #3a4a33 transparent; }
+    ::-webkit-scrollbar { width: 9px; height: 9px; }
+    ::-webkit-scrollbar-thumb { background: #3a4a33; border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 20px 60px; }
+
+    /* nav */
+    .nav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+    .brand { font-size: 20px; font-weight: 800; letter-spacing: 1px; color: var(--gold); text-transform: uppercase; }
+    .brand .suit { color: var(--red); }
+    .brand .adm { color: var(--dim); font-size: 13px; letter-spacing: 1px; font-weight: 600; }
+    .nav .sp { flex: 1; }
+    .navlink {
+      padding: 7px 14px; border-radius: 999px; font-size: 13px; color: var(--dim);
+      border: 1px solid var(--line); cursor: pointer; background: var(--chip);
+      white-space: nowrap;
+    }
+    .navlink:hover { color: var(--text); }
+    .navlink.ghost { background: transparent; border-color: transparent; }
+    .navlink.ghost:hover { color: var(--text); }
+    /* status indicator — deliberately NOT a pill/button */
+    .statusbadge { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; color: var(--dim); background: none; border: 0; padding: 0; }
+    .statusbadge::before { content: "● "; }
+    .statusbadge.setup { color: var(--dim); }
+    .statusbadge.day1, .statusbadge.rebuy, .statusbadge.day2 { color: var(--green); }
+    .statusbadge.final, .statusbadge.money, .statusbadge.complete { color: var(--gold); }
+
+    /* panels */
+    .panel { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--line); border-radius: 14px; margin-top: 16px; overflow: hidden; }
+    .panel > h2 { font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: var(--text); padding: 14px 18px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+    .panel > h2 .count { color: var(--dim); font-weight: 400; font-size: 12px; margin-left: auto; }
+    .panel > h2 .chev { transition: transform .2s; color: var(--dim); margin-left: 8px; }
+    .panel.closed > h2 .chev { transform: rotate(-90deg); }
+    .panel .body { padding: 0 18px 18px; }
+    .panel.closed .body { display: none; }
+    /* section group heading (a label, not a control) */
+    .grouphead { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); font-weight: 800; margin: 30px 2px 4px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+
+    .blurb { color: var(--dim); font-size: 13px; margin: 2px 0 14px; }
+    .placeholder { color: var(--dim); font-size: 13px; padding: 8px 0; }
+    .notice { color: var(--gold); font-size: 13px; background: var(--goldbg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; margin: 10px 0; }
+
+    /* forms */
+    label.fl { display: block; font-size: 11px; letter-spacing: .5px; text-transform: uppercase; color: var(--dim); margin-bottom: 4px; }
+    input[type=text], input[type=number], input[type=datetime-local], input[type=date], input[type=time], select {
+      width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+      background: var(--field); color: var(--text); font-size: 14px; font-family: inherit;
+    }
+    /* make the native date/time pickers dark instead of white */
+    input[type=datetime-local], input[type=date], input[type=time] { color-scheme: dark; }
+    input:focus, select:focus { outline: none; border-color: var(--green); }
+    input:disabled { opacity: .5; cursor: not-allowed; }
+    .addrow { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+    @media (max-width: 560px) { .addrow { grid-template-columns: 1fr; } }
+
+    .btn { font-family: inherit; font-size: 14px; font-weight: 700; padding: 10px 18px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; white-space: nowrap; }
+    .btn.gold { background: var(--gold); color: #241d07; }
+    .btn.gold:hover { filter: brightness(1.05); }
+    .btn.ghost { background: var(--chip); color: var(--text); border-color: var(--line); }
+    .btn.ghost:hover { background: #395a3d; }
+    .btn.danger { background: transparent; color: var(--red); border-color: #5a3330; }
+    .btn.danger:hover { background: #2a1917; }
+    .btn.sm { padding: 6px 12px; font-size: 13px; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* list items (players / donations / stewards) */
+    .list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+    .list.scroll { max-height: 300px; overflow-y: auto; padding-right: 4px; }
+    .li { display: flex; align-items: center; gap: 10px; background: #15200f; border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
+    .li .nm { font-weight: 600; }
+    .li .meta { color: var(--dim); font-size: 12px; }
+    .li .sp { flex: 1; }
+    .li .amt { color: var(--gold); font-weight: 700; }
+    .btn-x { background: transparent; border: 1px solid var(--line); color: var(--dim); width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 15px; line-height: 1; }
+    .btn-x:hover { color: var(--red); border-color: #5a3330; }
+    .listcount { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; color: var(--dim); }
+    .listcount .amt { color: var(--gold); font-weight: 700; font-size: 15px; }
+
+    /* pools readout */
+    .pools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    @media (max-width: 680px) { .pools { grid-template-columns: repeat(2, 1fr); } }
+    .pool { background: var(--card); padding: 12px 14px; }
+    .pool .l { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--dim); }
+    .pool .v { font-size: 20px; font-weight: 800; margin-top: 2px; color: var(--gold); }
+    .pool.main .v { color: var(--text); }
+
+    /* settings grid */
+    .sgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 4px; }
+    @media (max-width: 760px) { .sgrid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 460px) { .sgrid { grid-template-columns: 1fr; } }
+    .sfield.wide { grid-column: 1 / -1; }
+    .toggle { display: flex; align-items: center; gap: 8px; padding: 10px 0; }
+    .toggle input { width: auto; }
+    /* settings sub-section heading (breaks the big block into labelled groups) */
+    .ssub { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--gold); font-weight: 700; margin: 22px 2px 0; }
+    .ssub:first-child { margin-top: 4px; }
+    .sgrid + .ssub { margin-top: 24px; }
+    /* live "= $50M" readout under a money field */
+    .moneyhint { font-size: 12px; color: var(--green); margin-top: 4px; min-height: 15px; }
+
+    /* status stepper */
+    .steps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .step { padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--chip); color: var(--dim); cursor: pointer; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .step:hover { color: var(--text); }
+    .step.on { background: var(--gold); color: #241d07; border-color: transparent; }
+
+    /* stage cards */
+    .tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }
+    .tcard { background: #15200f; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+    .tcard .th { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .tcard .tt { font-weight: 700; font-size: 14px; }
+    .tcard .sub { font-size: 11px; color: var(--dim); }
+    .sbadge { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--dim); white-space: nowrap; }
+    .sbadge.live { color: var(--green); background: var(--greenbg); }
+    .sbadge.complete { color: var(--gold); background: var(--goldbg); }
+    .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+    .chip { background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; font-size: 12px; }
+    .stageactions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; align-items: center; }
+    .methodbox { background: #15200f; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
+    .methodbox select { max-width: 320px; }
+    .methodhint { color: var(--dim); font-size: 12px; margin-top: 6px; }
+    .modepick { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--dim); }
+    .modepick select { width: auto; padding: 7px 10px; }
+    .drafthdr { font-size: 12px; color: var(--gold); text-transform: uppercase; letter-spacing: 1px; margin: 14px 0 2px; }
+
+    /* rebuy */
+    .rebuygrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 640px) { .rebuygrid { grid-template-columns: 1fr; } }
+    .rcol { background: #15200f; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+    .rcol h3 { font-size: 12px; letter-spacing: .5px; text-transform: uppercase; color: var(--dim); margin-bottom: 10px; }
+    .rrow { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line); }
+    .rrow:first-of-type { border-top: 0; }
+    .rrow .sp { flex: 1; }
+    .paidtag { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--green); }
+
+    /* toast + confirm */
+    .toasts { position: fixed; top: 16px; right: 16px; z-index: 400; display: flex; flex-direction: column; gap: 8px; max-width: 90vw; }
+    .toast { padding: 11px 16px; border-radius: 10px; font-size: 14px; border: 1px solid var(--line); box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+    .toast.success { background: var(--greenbg); color: var(--green); border-color: #2e5a3a; }
+    .toast.error { background: #2a1917; color: var(--red); border-color: #5a3330; }
+
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.72); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 300; }
+    .overlay.open { display: flex; }
+    .confirm { background: var(--card); border: 1px solid var(--line); border-radius: 16px; max-width: 420px; width: 100%; padding: 22px 24px; }
+    .confirm p { margin-bottom: 18px; }
+    .confirm .row { display: flex; justify-content: flex-end; gap: 10px; }
+
+    /* login */
+    .login { position: fixed; inset: 0; background: radial-gradient(ellipse at 50% -20%, #23331f 0%, var(--bg) 60%); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 500; }
+    .login.hidden { display: none; }
+    .logincard { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--line); border-radius: 16px; max-width: 420px; width: 100%; padding: 28px 26px; }
+    .logincard .brand { font-size: 22px; margin-bottom: 4px; }
+    .logincard p { color: var(--dim); font-size: 13px; margin: 8px 0 18px; }
+    .logincard input { margin-bottom: 12px; }
+    .loginerr { color: var(--red); font-size: 13px; margin-top: 10px; min-height: 18px; }
+    .app.hidden { display: none; }
+  </style>
+</head>
+
+<body>
+  <!-- login overlay -->
+  <div class="login" id="login">
+    <div class="logincard">
+      <a class="brand" href="index.html">Mystery <span class="suit">&spades;</span> Bounty <span class="adm">// ADMIN</span></a>
+      <p>Sign in with your Torn API key. The key is used once to verify who you are and is never stored.</p>
+      <input type="text" id="keyInput" placeholder="Torn API key" autocomplete="off" spellcheck="false">
+      <button class="btn gold" id="loginBtn" style="width:100%">Sign in</button>
+      <div class="loginerr" id="loginErr"></div>
+    </div>
+  </div>
+
+  <!-- app -->
+  <div class="wrap app hidden" id="app">
+    <div class="nav">
+      <a class="brand" href="index.html">Mystery <span class="suit">&spades;</span> Bounty <span class="adm">// ADMIN</span></a>
+      <span class="sp"></span>
+      <a class="navlink" href="stewards.html">Stewards</a>
+      <a class="navlink" href="availability-admin.html">Availability</a>
+      <button class="navlink ghost" id="signout">Sign out</button>
+    </div>
+    <div class="blurb" id="eventLine"></div>
+
+    <!-- POOLS readout strip -->
+    <div class="pools" id="pools"></div>
+
+    <!-- ===== GROUP: SETUP ===== -->
+    <div class="grouphead">Setup</div>
+
+    <div class="panel closed" id="p-status">
+      <h2 onclick="togglePanel('p-status')">Schedule <span class="count" id="statusCount"></span><span class="chev">&#9662;</span></h2>
+      <div class="body">
+        <div id="schedule"></div>
+        <button class="btn gold" id="saveSchedule" style="margin-top:12px">Save schedule</button>
+      </div>
+    </div>
+
+    <div class="panel closed" id="p-settings">
+      <h2 onclick="togglePanel('p-settings')">Settings <span class="chev">&#9662;</span></h2>
+      <div class="body">
+        <div id="settingsGrid"></div>
+        <div class="stageactions"><button class="btn gold" id="saveSettings">Save settings</button><span class="blurb" style="margin:0" id="settingsHint"></span></div>
+      </div>
+    </div>
+
+    <div class="panel closed" id="p-stewards">
+      <h2 onclick="togglePanel('p-stewards')">Stewards <span class="count" id="stewardCount"></span><span class="chev">&#9662;</span></h2>
+      <div class="body">
+        <div class="addrow">
+          <div><label class="fl">Name</label><input type="text" id="stName" placeholder="Steward name"></div>
+          <div><label class="fl">Torn ID</label><input type="text" id="stId" placeholder="Torn ID"></div>
+          <button class="btn gold" id="addSteward">Add steward</button>
+        </div>
+        <div class="list" id="stewardList"></div>
+      </div>
+    </div>
+
+    <!-- ===== GROUP: PLAYERS & DONATIONS ===== -->
+    <div class="grouphead">Players &amp; donations</div>
+
+    <div class="panel closed" id="p-players">
+      <h2 onclick="togglePanel('p-players')">Players <span class="count" id="playerCount"></span><span class="chev">&#9662;</span></h2>
+      <div class="body">
+        <div class="notice" id="playerLock" style="display:none">Roster is locked.</div>
+        <div class="addrow">
+          <div><label class="fl">Name</label><input type="text" id="plName" placeholder="Player name"></div>
+          <div><label class="fl">Torn ID</label><input type="text" id="plId" placeholder="e.g. 2763892"></div>
+          <button class="btn gold" id="addPlayer">Add player</button>
+        </div>
+        <div class="list scroll" id="playerList"></div>
+        <div class="listcount"><span id="playerCountLine">0 players</span><span class="amt" id="buyInTotal">$0</span></div>
+      </div>
+    </div>
+
+    <div class="panel closed" id="p-donations">
+      <h2 onclick="togglePanel('p-donations')">Donations <span class="count" id="donationCount"></span><span class="chev">&#9662;</span></h2>
+      <div class="body">
+        <div class="addrow">
+          <div><label class="fl">Donor name</label><input type="text" id="dnName" placeholder="Donor name"></div>
+          <div><label class="fl">Amount</label><input type="text" id="dnAmt" placeholder="e.g. 5m or 50000000"></div>
+          <button class="btn gold" id="addDonation">Add donation</button>
+        </div>
+        <div class="list" id="donationList"></div>
+        <div class="listcount"><span>Total donated</span><span class="amt" id="donationTotal">$0</span></div>
+      </div>
+    </div>
+
+    <!-- ===== GROUP: TABLES ===== -->
+    <div class="grouphead">Tables</div>
+
+    <div id="stages"></div>
+
+    <div class="panel closed" id="p-rebuy">
+      <h2 onclick="togglePanel('p-rebuy')">Rebuys <span class="count" id="rebuyCount"></span><span class="chev">&#9662;</span></h2>
+      <div class="body">
+        <div class="rebuygrid" id="rebuyGrid"></div>
+      </div>
+    </div>
+
+    <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:36px;justify-content:center">
+      <button class="btn danger" id="resetKeep">Reset results (keep players)</button>
+      <button class="btn danger" id="resetAll">Reset everything</button>
+    </div>
+  </div>
+
+  <!-- confirm -->
+  <div class="overlay" id="confirm">
+    <div class="confirm">
+      <p id="confirmMsg">Are you sure?</p>
+      <div class="row">
+        <button class="btn ghost" id="confirmCancel">Cancel</button>
+        <button class="btn gold" id="confirmOk">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script>
+    var API = '/mystery-bounty/api';
+    var token = localStorage.getItem('mb_token') || '';
+    var state = null;
+    var draft = {};            // stage -> { plan:[], mode:'assigned'|'claim', poolCount }
+    var settingsBuilt = false;
+
+    /* ---------------- helpers ---------------- */
+    function num(s, k, d) { var v = Number(s && s[k]); return isFinite(v) ? v : d; }
+    function money(m) {
+      m = Number(m) || 0;
+      if (Math.abs(m) >= 1e9) return '$' + (m / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
+      if (Math.abs(m) >= 1e6) return '$' + Math.round(m / 1e6) + 'M';
+      if (Math.abs(m) >= 1e3) return '$' + Math.round(m / 1e3) + 'K';
+      return '$' + m;
+    }
+    // group a plain number with thousands separators: 50000000 -> "50,000,000"
+    function fmtGrouped(n) { n = Math.round(Number(n) || 0); return n.toLocaleString('en-US'); }
+    function parseAmount(raw) {
+      var s = String(raw).trim().toLowerCase().replace(/[$,\s]/g, '');
+      if (!s) return NaN;
+      var mult = 1, last = s.charAt(s.length - 1);
+      if (last === 'k') { mult = 1e3; s = s.slice(0, -1); }
+      else if (last === 'm') { mult = 1e6; s = s.slice(0, -1); }
+      else if (last === 'b') { mult = 1e9; s = s.slice(0, -1); }
+      var n = parseFloat(s);
+      return isNaN(n) ? NaN : Math.round(n * mult);
+    }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+    function ordinal(n) { var s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+    function nameOf(id) { var p = (state.players || []).find(function (x) { return x.tornId === id; }); return p ? p.name : ('#' + id); }
+
+    function toast(msg, type) {
+      var el = document.createElement('div');
+      el.className = 'toast ' + (type || 'success');
+      el.textContent = msg;
+      document.getElementById('toasts').appendChild(el);
+      setTimeout(function () { el.remove(); }, 3500);
+    }
+
+    var confirmCb = null;
+    function showConfirm(msg, cb) {
+      confirmCb = cb;
+      document.getElementById('confirmMsg').textContent = msg;
+      document.getElementById('confirm').classList.add('open');
+    }
+    document.getElementById('confirmCancel').onclick = function () { document.getElementById('confirm').classList.remove('open'); confirmCb = null; };
+    document.getElementById('confirmOk').onclick = function () { var cb = confirmCb; document.getElementById('confirm').classList.remove('open'); confirmCb = null; if (cb) cb(); };
+    document.getElementById('confirm').addEventListener('click', function (e) { if (e.target === this) { this.classList.remove('open'); confirmCb = null; } });
+
+    var adminOpen = {};  // remembers which collapsible panels are open across refreshes
+    function togglePanel(id) { var closed = document.getElementById(id).classList.toggle('closed'); adminOpen[id] = !closed; }
+
+    /* ---------------- API ---------------- */
+    function getState() {
+      return fetch(API + '/state').then(function (r) { return r.json(); });
+    }
+    // POST with bearer admin token. Returns promise of {ok, data}.
+    function post(path, body) {
+      return fetch(API + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(body || {})
+      }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, data: d }; }); });
+    }
+    // Run a write, toast its error, and re-fetch+render on success.
+    function write(path, body, okMsg, after) {
+      return post(path, body).then(function (res) {
+        if (!res.ok || res.data.error) { toast(res.data.error || 'Request failed', 'error'); return false; }
+        if (okMsg) toast(okMsg, 'success');
+        return refresh().then(function () { if (after) after(res.data); return true; });
+      }).catch(function (e) { toast('Request failed: ' + e.message, 'error'); return false; });
+    }
+
+    function refresh() {
+      return getState().then(function (d) { state = d; renderAll(); });
+    }
+
+    /* ---------------- auth ---------------- */
+    function showLogin(err) {
+      document.getElementById('login').classList.remove('hidden');
+      document.getElementById('app').classList.add('hidden');
+      document.getElementById('loginErr').textContent = err || '';
+    }
+    function showApp() {
+      document.getElementById('login').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+    }
+    function doLogin() {
+      var key = document.getElementById('keyInput').value.trim();
+      if (!key) { document.getElementById('loginErr').textContent = 'Enter your Torn API key.'; return; }
+      document.getElementById('loginErr').textContent = 'Checking...';
+      fetch(API + '/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: key }) })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.error) { document.getElementById('loginErr').textContent = d.error; return; }
+          if (d.role !== 'admin') { document.getElementById('loginErr').textContent = 'Not an admin.'; return; }
+          token = d.token;
+          localStorage.setItem('mb_token', d.token);
+          localStorage.setItem('mb_role', d.role);
+          localStorage.setItem('mb_name', d.name || '');
+          localStorage.setItem('mb_id', String(d.id || ''));
+          document.getElementById('keyInput').value = '';
+          boot();
+        })
+        .catch(function (e) { document.getElementById('loginErr').textContent = 'Could not reach the server: ' + e.message; });
+    }
+    document.getElementById('loginBtn').onclick = doLogin;
+    document.getElementById('keyInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+    document.getElementById('signout').onclick = function () {
+      localStorage.removeItem('mb_token'); localStorage.removeItem('mb_role');
+      localStorage.removeItem('mb_name'); localStorage.removeItem('mb_id');
+      location.reload();
+    };
+
+    /* ---------------- render ---------------- */
+    function renderAll() {
+      renderHeader(); renderPools(); renderStatus(); renderPlayers();
+      renderDonations(); renderSettings(); renderStages(); renderRebuy(); renderStewards();
+    }
+
+    function statusOf() { return (state.settings && state.settings.tournament_status) || 'setup'; }
+    function isLocked() { return state.settings.roster_locked === '1' || statusOf() !== 'setup'; }
+
+    function renderHeader() {
+      document.getElementById('eventLine').textContent = state.settings.event_name || 'Mystery Bounty';
+    }
+
+    function renderPools() {
+      var p = state.pool || {};
+      var items = [
+        ['Main pool', money(p.mainTotal), 'main'],
+        ['Bounty pool', money(p.bountyTotal), ''],
+        ['Day 2 envelopes', money(p.day2EnvPool), ''],
+        ['Final envelopes', money(p.finalEnvPool), '']
+      ];
+      document.getElementById('pools').innerHTML = items.map(function (it) {
+        return '<div class="pool ' + it[2] + '"><div class="l">' + it[0] + '</div><div class="v">' + it[1] + '</div></div>';
+      }).join('');
+    }
+
+    var STAGE_TIMES = [['day1', 'Day 1'], ['rebuy', 'Rebuy'], ['day2', 'Day 2'], ['final', 'Final Table'], ['money', 'Money Table']];
+    // settings store epoch seconds in TCT (=UTC). Stage days are a DATE only (the
+    // individual table times are set per table); the sign-up deadline is a moment.
+    function epochToInput(ep) { if (!ep) return ''; var d = new Date(Number(ep) * 1000); return isFinite(d.getTime()) ? d.toISOString().slice(0, 16) : ''; }
+    function inputToEpoch(v) { if (!v) return ''; var ms = Date.parse(v + ':00Z'); return isFinite(ms) ? String(Math.floor(ms / 1000)) : ''; }
+    function epochToDate(ep) { if (!ep) return ''; var d = new Date(Number(ep) * 1000); return isFinite(d.getTime()) ? d.toISOString().slice(0, 10) : ''; }
+    function dateToEpoch(v) { if (!v) return ''; var ms = Date.parse(v + 'T00:00:00Z'); return isFinite(ms) ? String(Math.floor(ms / 1000)) : ''; }
+    function renderStatus() {
+      var cur = statusOf();
+      document.getElementById('statusCount').textContent = 'NOW: ' + cur.toUpperCase();
+      var s = state.settings || {};
+      function schedRow(label, key, hi, isDate) {
+        var val = isDate ? epochToDate(s[key]) : epochToInput(s[key]);
+        return '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">' +
+          '<label class="fl" style="flex:0 0 160px;margin:0;' + (hi ? 'color:var(--green);font-weight:700' : '') + '">' + label + '</label>' +
+          '<input type="' + (isDate ? 'date' : 'datetime-local') + '" data-key="' + key + '" data-date="' + (isDate ? '1' : '') + '" value="' + val + '" style="flex:1;min-width:200px"></div>';
+      }
+      var rows = schedRow('Sign-ups close', 'signup_at', false, false) +
+        '<div style="height:1px;background:var(--line);margin:4px 0 10px"></div>' +
+        STAGE_TIMES.map(function (it) { return schedRow(it[1] + (it[0] === cur ? ' · live now' : ''), it[0] + '_at', it[0] === cur, true); }).join('');
+      document.getElementById('schedule').innerHTML = rows;
+      document.getElementById('saveSchedule').onclick = function () {
+        var payload = {};
+        document.querySelectorAll('#schedule input').forEach(function (inp) {
+          payload[inp.getAttribute('data-key')] = inp.getAttribute('data-date') ? dateToEpoch(inp.value) : inputToEpoch(inp.value);
+        });
+        write('/settings', payload, 'Schedule saved');
+      };
+    }
+
+    function renderPlayers() {
+      var locked = isLocked();
+      document.getElementById('playerLock').style.display = locked ? '' : 'none';
+      document.getElementById('plName').disabled = locked;
+      document.getElementById('plId').disabled = locked;
+      document.getElementById('addPlayer').disabled = locked;
+
+      var players = state.players || [];
+      var entryTotal = Number(state.settings.entry_total) || 0;
+      document.getElementById('playerCount').textContent = players.length + ' registered';
+      document.getElementById('playerCountLine').textContent = players.length + ' player' + (players.length === 1 ? '' : 's');
+      document.getElementById('buyInTotal').textContent = money(players.length * entryTotal);
+
+      var list = document.getElementById('playerList');
+      if (!players.length) { list.innerHTML = '<div class="placeholder">No players yet.</div>'; return; }
+      list.innerHTML = players.map(function (p) {
+        var statusTag = p.status && p.status !== 'active' ? '<span class="paidtag" style="color:var(--dim)">' + esc(p.status) + '</span>' : '';
+        return '<div class="li"><span class="nm">' + esc(p.name) + '</span>' +
+          '<span class="meta"><a href="https://www.torn.com/profiles.php?XID=' + p.tornId + '" target="_blank" rel="noopener">#' + p.tornId + '</a></span>' +
+          statusTag + '<span class="sp"></span>' +
+          (locked ? '' : '<button class="btn-x" data-id="' + p.tornId + '">&times;</button>') + '</div>';
+      }).join('');
+      list.querySelectorAll('.btn-x').forEach(function (b) {
+        b.onclick = function () {
+          var id = Number(b.getAttribute('data-id'));
+          showConfirm('Remove ' + nameOf(id) + ' from the tournament?', function () {
+            write('/players/remove', { tornId: id }, 'Player removed');
+          });
+        };
+      });
+    }
+    document.getElementById('addPlayer').onclick = function () {
+      var name = document.getElementById('plName').value.trim();
+      var id = document.getElementById('plId').value.trim();
+      if (!name || !id) { toast('Name and Torn ID required', 'error'); return; }
+      write('/players/add', { name: name, tornId: Number(id) }, 'Player added', function () {
+        document.getElementById('plName').value = ''; document.getElementById('plId').value = '';
+        document.getElementById('plName').focus();
+      });
+    };
+    document.getElementById('plName').addEventListener('keydown', function (e) { if (e.key === 'Enter') document.getElementById('plId').focus(); });
+    document.getElementById('plId').addEventListener('keydown', function (e) { if (e.key === 'Enter') document.getElementById('addPlayer').click(); });
+
+    function renderDonations() {
+      var ds = state.donations || [];
+      var total = ds.reduce(function (a, d) { return a + (Number(d.amount) || 0); }, 0);
+      document.getElementById('donationCount').textContent = ds.length ? ds.length + ' · ' + money(total) : '';
+      document.getElementById('donationTotal').textContent = money(total);
+      var list = document.getElementById('donationList');
+      if (!ds.length) { list.innerHTML = '<div class="placeholder">No donations yet.</div>'; return; }
+      list.innerHTML = ds.map(function (d) {
+        // /state donation rows carry no id, so removal is only offered when one is present.
+        var rm = d.id != null ? '<button class="btn-x" data-id="' + d.id + '">&times;</button>' : '';
+        return '<div class="li"><span class="nm">' + esc(d.donorName) + '</span><span class="sp"></span>' +
+          '<span class="amt">' + money(d.amount) + '</span>' + rm + '</div>';
+      }).join('');
+      list.querySelectorAll('.btn-x').forEach(function (b) {
+        b.onclick = function () {
+          showConfirm('Remove this donation?', function () { write('/donations/remove', { id: Number(b.getAttribute('data-id')) }, 'Donation removed'); });
+        };
+      });
+    }
+    document.getElementById('addDonation').onclick = function () {
+      var btn = this;
+      if (btn.disabled) return;                 // ignore repeat clicks while in flight
+      var name = document.getElementById('dnName').value.trim();
+      var amt = parseAmount(document.getElementById('dnAmt').value);
+      if (!name) { toast('Donor name required', 'error'); return; }
+      if (!amt || amt <= 0) { toast('Enter a valid amount', 'error'); return; }
+      // donations INSERT unconditionally server-side, so block double-submit here
+      btn.disabled = true;
+      write('/donations/add', { donorName: name, amount: amt }, 'Donation added', function () {
+        document.getElementById('dnName').value = ''; document.getElementById('dnAmt').value = '';
+        document.getElementById('dnName').focus();
+      }).then(function () { btn.disabled = false; });
+    };
+    document.getElementById('dnName').addEventListener('keydown', function (e) { if (e.key === 'Enter') document.getElementById('dnAmt').focus(); });
+    document.getElementById('dnAmt').addEventListener('keydown', function (e) { if (e.key === 'Enter') document.getElementById('addDonation').click(); });
+
+    /* ------- settings ------- */
+    // {key, label, type, group, wide}  type: num | money | text | toggle | payout
+    // Grouped into labelled sections so the panel isn't one overwhelming block.
+    var SETTINGS_GROUPS = ['Event', 'Buy-ins & pools', 'Day 1 tables', 'Rebuy tables', 'Day 2 tables', 'Final & money table', 'Payouts'];
+    var SETTINGS_FIELDS = [
+      { key: 'event_name', label: 'Event name', type: 'text', group: 'Event', wide: true },
+      { key: 'pay_to', label: 'Buy-ins paid to', type: 'text', group: 'Event' },
+      { key: 'entry_total', label: 'Buy-in ($)', type: 'money', group: 'Buy-ins & pools' },
+      { key: 'rebuy_total', label: 'Rebuy ($)', type: 'money', group: 'Buy-ins & pools' },
+      { key: 'main_pct', label: 'Main pot (%)', type: 'num', group: 'Buy-ins & pools' },
+      { key: 'bounty_pct', label: 'Bounty (%)', type: 'num', group: 'Buy-ins & pools' },
+      { key: 'day1_table_min', label: 'Day 1 min / table', type: 'num', group: 'Day 1 tables' },
+      { key: 'day1_table_max', label: 'Day 1 max / table', type: 'num', group: 'Day 1 tables' },
+      { key: 'rebuy_table_min', label: 'Rebuy min / table', type: 'num', group: 'Rebuy tables' },
+      { key: 'rebuy_table_max', label: 'Rebuy max / table', type: 'num', group: 'Rebuy tables' },
+      { key: 'day2_table_min', label: 'Day 2 min / table', type: 'num', group: 'Day 2 tables' },
+      { key: 'day2_table_max', label: 'Day 2 max / table', type: 'num', group: 'Day 2 tables' },
+      { key: 'day2_table_count', label: 'Day 2 table count', type: 'num', group: 'Day 2 tables' },
+      { key: 'day2_advance', label: 'Day 2 advance / table', type: 'num', group: 'Day 2 tables' },
+      { key: 'day2_to_money', label: 'Day 2 → money table / table', type: 'num', group: 'Day 2 tables' },
+      { key: 'final_table_size', label: 'Final table seats', type: 'num', group: 'Final & money table' },
+      { key: 'final_share_pct', label: 'Final bounty share (%)', type: 'num', group: 'Final & money table' },
+      { key: 'money_table_enabled', label: 'Money table enabled', type: 'toggle', group: 'Final & money table' },
+      { key: 'payout_structure', label: 'Payout: % for 1st, 2nd, 3rd… (comma separated)', type: 'payout', group: 'Payouts', wide: true }
+    ];
+    function settingFieldHtml(f, s) {
+      var key = f.key, label = f.label, type = f.type;
+      var v = s[key] != null ? s[key] : '';
+      var cls = 'sfield' + (f.wide ? ' wide' : '');
+      if (type === 'toggle') {
+        var checked = v === '1' ? ' checked' : '';
+        return '<div class="' + cls + '"><label class="toggle"><input type="checkbox" data-key="' + key + '" data-type="toggle"' + checked + '> ' + label + '</label></div>';
+      }
+      if (type === 'payout') {
+        var disp = v; try { var a = JSON.parse(v || '[]'); if (Array.isArray(a)) disp = a.join(', '); } catch (e) { }
+        return '<div class="' + cls + '"><label class="fl">' + label + '</label>' +
+          '<input type="text" data-key="' + key + '" data-type="payout" value="' + esc(disp) + '" placeholder="30, 20, 14, 10, 8, 6, 5, 4, 3"></div>';
+      }
+      if (type === 'money') {
+        // text (not number) so "50m" / commas are allowed; shows a grouped value + an M/B readout
+        var mv = v !== '' && isFinite(Number(v)) ? fmtGrouped(v) : '';
+        var hint = mv !== '' ? '= ' + money(v) : '';
+        return '<div class="' + cls + '"><label class="fl">' + label + '</label>' +
+          '<input type="text" inputmode="numeric" data-key="' + key + '" data-type="money" value="' + esc(mv) + '" placeholder="e.g. 50m or 50,000,000">' +
+          '<div class="moneyhint" data-hint="' + key + '">' + hint + '</div></div>';
+      }
+      var inputType = type === 'num' ? 'number' : 'text';
+      return '<div class="' + cls + '"><label class="fl">' + label + '</label>' +
+        '<input type="' + inputType + '" data-key="' + key + '" data-type="' + type + '" value="' + esc(v) + '"></div>';
+    }
+    function renderSettings() {
+      if (settingsBuilt) return; // don't clobber unsaved edits on refresh
+      var s = state.settings || {};
+      document.getElementById('settingsGrid').innerHTML = SETTINGS_GROUPS.map(function (g) {
+        var fields = SETTINGS_FIELDS.filter(function (f) { return f.group === g; });
+        if (!fields.length) return '';
+        return '<div class="ssub">' + g + '</div><div class="sgrid">' +
+          fields.map(function (f) { return settingFieldHtml(f, s); }).join('') + '</div>';
+      }).join('');
+      // wire money fields: live "= $50M" readout + normalise to commas on blur
+      document.querySelectorAll('#settingsGrid input[data-type="money"]').forEach(function (inp) {
+        var hint = document.querySelector('#settingsGrid [data-hint="' + inp.getAttribute('data-key') + '"]');
+        function upd() { var n = parseAmount(inp.value); if (hint) hint.textContent = (inp.value.trim() === '' || isNaN(n)) ? '' : '= ' + money(n); }
+        inp.addEventListener('input', upd);
+        inp.addEventListener('blur', function () { var n = parseAmount(inp.value); if (inp.value.trim() !== '' && !isNaN(n)) inp.value = fmtGrouped(n); upd(); });
+      });
+      settingsBuilt = true;
+    }
+    document.getElementById('saveSettings').onclick = function () {
+      var s = state.settings || {};
+      var changed = {};
+      document.querySelectorAll('#settingsGrid [data-key]').forEach(function (el) {
+        var key = el.getAttribute('data-key'), type = el.getAttribute('data-type');
+        var val = type === 'toggle' ? (el.checked ? '1' : '0') : String(el.value);
+        if (type === 'num' && val !== '') val = String(Number(val));
+        if (type === 'money') { var mn = parseAmount(el.value); val = el.value.trim() === '' ? '' : (isNaN(mn) ? '' : String(mn)); }
+        if (type === 'payout') {
+          var arr = String(el.value).split(',').map(function (x) { return parseFloat(x.trim()); }).filter(function (n) { return !isNaN(n); });
+          val = JSON.stringify(arr);
+        }
+        if (val !== (s[key] != null ? String(s[key]) : '')) changed[key] = val;
+      });
+      var keys = Object.keys(changed);
+      if (!keys.length) { toast('No changes to save', 'error'); return; }
+      post('/settings', changed).then(function (res) {
+        if (!res.ok || res.data.error) { toast(res.data.error || 'Save failed', 'error'); return; }
+        toast('Saved ' + keys.length + ' setting' + (keys.length === 1 ? '' : 's'), 'success');
+        settingsBuilt = false; // rebuild from saved values
+        refresh();
+      }).catch(function (e) { toast('Save failed: ' + e.message, 'error'); });
+    };
+
+    /* ------- stages ------- */
+    var STAGES = [
+      { key: 'day1', label: 'Day 1', sub: 'All players. One winner per table advances. No bounties.', claimable: true },
+      { key: 'rebuy', label: 'Rebuy', sub: 'Paid rebuys only. One winner per table advances. No bounties.', claimable: true },
+      { key: 'day2', label: 'Day 2', sub: 'Winners of Day 1 + Rebuy. Bounties live. Top N advance to the final.', claimable: true },
+      { key: 'final', label: 'Final Table', sub: 'Day 2 finalists. Bounties live. Plays to one winner.', claimable: false },
+      { key: 'money', label: 'Money Table', sub: 'Day 2 bubble players. Settles the lower money places.', claimable: false }
+    ];
+    function tablesForStage(key) { return (state.tables || []).filter(function (t) { return t.stage === key; }); }
+    function stageComplete(key) { var tt = tablesForStage(key); return tt.length > 0 && tt.every(function (t) { return t.status === 'complete'; }); }
+    // a stage can only be created once its prerequisite stage has finished
+    function rebuyInUse() {
+      // "in use" only once rebuy tables actually exist — a scheduled date alone
+      // must not block Day 2 (matches the backend, which only requires Day 1 done)
+      return tablesForStage('rebuy').length > 0;
+    }
+    function stageReady(key) {
+      if (key === 'day1') return true;
+      if (key === 'rebuy') return stageComplete('day1');
+      if (key === 'day2') return stageComplete('day1') && (!rebuyInUse() || stageComplete('rebuy'));
+      return true;
+    }
+    function stagePrereqMsg(key) {
+      if (key === 'rebuy') return 'Finish Day 1 first.';
+      if (key === 'day2') return (!stageComplete('day1')) ? 'Finish Day 1 first.' : 'Finish the Rebuy stage first.';
+      return 'Not ready yet.';
+    }
+
+    function renderStages() {
+      var host = document.getElementById('stages');
+      host.innerHTML = STAGES.map(function (st) {
+        var tabs = tablesForStage(st.key);
+        var done = tabs.filter(function (t) { return t.status === 'complete'; }).length;
+        var count = tabs.length ? (done + '/' + tabs.length + ' tables') : 'not started';
+        var id = 'p-stage-' + st.key;
+        if (!(id in adminOpen)) adminOpen[id] = false;  // collapsed by default
+        return '<div class="panel' + (adminOpen[id] ? '' : ' closed') + '" id="' + id + '">' +
+          '<h2 onclick="togglePanel(\'' + id + '\')">' + st.label + ' <span class="count">' + count + '</span><span class="chev">&#9662;</span></h2>' +
+          '<div class="body" id="stagebody-' + st.key + '"></div></div>';
+      }).join('');
+      STAGES.forEach(function (st) { renderStageBody(st); });
+    }
+
+    function methodOf(k) { return (state.settings || {})[k + '_method'] || 'availability'; }
+    var METHOD_OPTS = [['availability', 'By availability'], ['fcfs', 'First come, first served']];
+    var METHOD_HINT = {
+      availability: 'Assigns players automatically to their chosen or closest time slot.',
+      fcfs: 'Players pick their own table and time when selection opens.'
+    };
+
+    function renderStageBody(st) {
+      var host = document.getElementById('stagebody-' + st.key);
+      var tabs = tablesForStage(st.key);
+      var s = state.settings || {};
+      var html = '';
+
+      var ready = stageReady(st.key);
+      var isClaim = tabs.length && tabs.every(function (t) { return t.seatingMode === 'claim'; });
+      var filled = tabs.some(function (t) { return (t.seats || []).length; });
+      var started = tabs.some(function (t) { return t.status === 'complete'; });
+      var confirmed = !!Number((state.settings || {})[st.key + '_select_at']);
+      // a stage goes live by its date; its table structure (incl. seating method)
+      // is only editable before then
+      var live = !!((state.stageState || {})[st.key] || {}).live;
+
+      // how many players are heading into this stage (advancers from the stage before)
+      var inbound = (state.players || []).filter(function (p) { return p.loc === st.key; }).length;
+      if (st.key === 'day2') {
+        var cap = num(s, 'day2_table_count', 3) * num(s, 'day2_table_max', 9);
+        if (inbound) html += '<div class="blurb" style="color:var(--green);margin:0 0 10px">' + inbound + ' / ' + cap + ' seats filled as Day 1 finishes</div>';
+      }
+
+      // seating method is chosen BEFORE the tables are created (hidden once they exist)
+      if (st.claimable && ready && !tabs.length) {
+        var m = methodOf(st.key);
+        html += '<div class="methodbox"><label class="fl" style="margin:0 0 6px">Seating method</label>' +
+          '<select id="method-' + st.key + '">' + METHOD_OPTS.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === m ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
+          '<div class="methodhint">' + (METHOD_HINT[m] || '') + '</div></div>';
+      }
+
+      // final / money: single table seated from Day 2 — admin can set its time ahead.
+      // Hidden once the stage is complete; its time is done being useful.
+      if (!st.claimable && !stageComplete(st.key)) {
+        html += '<div class="methodbox"><label class="fl" style="margin:0 0 6px">Table time (TCT)</label>' +
+          '<input type="time" id="stime-' + st.key + '" value="' + esc((state.settings || {})[st.key + '_time'] || '') + '" style="max-width:200px"></div>';
+      }
+
+      if (tabs.length) {
+        html += '<div class="tables">' + tabs.map(stageTableCard).join('') + '</div>';
+      } else if (st.claimable) {
+        html += '<div class="placeholder">No tables yet.</div>';
+      } else {
+        html += '<div class="placeholder">Fills from the Day 2 results.</div>';
+      }
+
+      // actions
+      html += '<div class="stageactions">';
+      if (st.claimable) {
+        if (!ready) {
+          html += '<span class="blurb" style="margin:0">' + stagePrereqMsg(st.key) + '</span>';
+        } else if (!tabs.length) {
+          var s_m = methodOf(st.key);
+          html += '<button class="btn gold sm" data-act="create" data-stage="' + st.key + '">Create tables</button>';
+        } else if (!started) {
+          var m2 = methodOf(st.key);
+          if (live && filled) {
+            // live and players are already seated — nothing to configure here;
+            // results are reported on the steward page, not this screen
+            html += '<span class="blurb" style="margin:0">Stage is live. Results are reported on the steward page.</span>';
+          } else {
+            // method/structure is only changeable before the stage goes live
+            if (!live) {
+              html += '<label class="fl" style="margin:0 6px 0 0;align-self:center">Seating</label>' +
+                '<select id="method-' + st.key + '" style="width:auto;align-self:center">' +
+                METHOD_OPTS.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === m2 ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>';
+            }
+            if (m2 === 'availability') {
+              // availability seating needs NO "selection opens" time — just timed tables + the poll
+              html += '<button class="btn gold sm" data-act="fillavail" data-stage="' + st.key + '">' + (filled ? 'Re-seat by availability' : 'Seat players by availability') + '</button>';
+              html += '<a class="btn ghost sm" href="seating-editor.html?stage=' + encodeURIComponent(st.key) + '" style="align-self:center;text-decoration:none">Edit seating</a>';
+            } else {
+              html += '<label class="fl" style="margin:0 8px 0 6px;align-self:center">Selection opens (TCT)</label>' +
+                '<input type="datetime-local" id="selat-' + st.key + '" value="' + epochToInput((state.settings || {})[st.key + '_select_at']) + '" style="width:auto">' +
+                '<button class="btn gold sm" data-act="confirmclaim" data-stage="' + st.key + '">Confirm</button>';
+            }
+          }
+        }
+      }
+      html += '</div>';
+
+      host.innerHTML = html;
+      wireStage(st, host);
+    }
+
+    function stageTableCard(t) {
+      var statusCls = t.status === 'live' ? 'live' : (t.status === 'complete' ? 'complete' : '');
+      var seats = t.seats || [];
+      var seated = seats.length;
+      var env = t.envelope && t.envelope.count
+        ? '<div class="sub">Bounties · ' + t.envelope.count + '</div>' : '';
+      var seatInfo = '<div class="sub">' + seated + '/' + (t.seatSize || seated) + ' seated' + (t.seatingMode === 'claim' ? ' · claim' : '') + '</div>';
+      var chips = seats.length ? '<div class="chips">' + seats.map(function (s) { return '<span class="chip">' + esc(nameOf(s.tornId)) + (s.claimed ? '' : '') + '</span>'; }).join('') + '</div>' : '';
+      // per-table time slot (TCT time only — the day comes from the stage schedule).
+      // Once the table is complete the time is locked in, so drop the field.
+      var tslot = t.status === 'complete' ? '' :
+        '<div style="margin-top:8px"><label class="fl" style="margin:0 0 4px">Table time (TCT)</label>' +
+        '<input type="time" data-tslot="' + esc(t.id) + '" value="' + esc(t.timeslot || '') + '"></div>';
+      return '<div class="tcard"><div class="th"><div class="tt">' + esc(t.label || t.id) + '</div><span class="sbadge ' + statusCls + '">' + esc(t.status || '') + '</span></div>' +
+        seatInfo + env + chips + tslot + '</div>';
+    }
+
+    function wireStage(st, host) {
+      host.querySelectorAll('[data-act]').forEach(function (b) {
+        var act = b.getAttribute('data-act');
+        b.onclick = function () {
+          if (act === 'create' || act === 'seat') createTables(st.key);
+          else if (act === 'fillavail') {
+            // availability seating matches players to each table's TCT hour, so every
+            // table needs a time before it can run
+            var missingT = tablesForStage(st.key).filter(function (t) { return !t.timeslot; });
+            if (missingT.length) { toast('Set a time on every table first — ' + missingT.length + ' still missing.', 'error'); return; }
+            showConfirm('Seat the eligible players into these tables using their availability? This replaces current seatings for ' + st.label + '.', function () {
+              write('/stage/fill-availability', { stage: st.key }, 'Seated from availability');
+            });
+          }
+          else if (act === 'confirmclaim') {
+            var missing = tablesForStage(st.key).filter(function (t) { return !t.timeslot; });
+            if (missing.length) { toast('Set a time on every table first — ' + missing.length + ' still missing.', 'error'); return; }
+            var sel = host.querySelector('#selat-' + st.key);
+            var selEpoch = sel ? inputToEpoch(sel.value) : '';
+            if (!selEpoch) { toast('Set the "selection opens" time first.', 'error'); return; }
+            showConfirm('Confirm ' + st.label + '? Players will be able to claim their seats from the selection-opens time.', function () {
+              var obj = {}; obj[st.key + '_select_at'] = selEpoch;
+              write('/settings', obj, st.label + ' confirmed');
+            });
+          }
+          else if (act === 'clear') {
+            showConfirm('Clear ALL tables, seats, placings and envelopes for ' + st.label + '? This cannot be undone.', function () {
+              write('/stage/clear', { stage: st.key }, st.label + ' cleared');
+            });
+          }
+        };
+      });
+      // final/money single-table time (stored in settings, applied when the table is seated)
+      var stime = host.querySelector('#stime-' + st.key);
+      if (stime) stime.onchange = function () {
+        var obj = {}; obj[st.key + '_time'] = stime.value;
+        write('/settings', obj, st.label + ' time saved');
+      };
+      // seating method selector (saved to settings; refresh so FCFS reveals its date)
+      var methodSel = host.querySelector('#method-' + st.key);
+      if (methodSel) methodSel.onchange = function () {
+        // sets the method AND re-modes this stage's tables to match (server refuses
+        // once the stage is live)
+        write('/stage/method', { stage: st.key, method: methodSel.value }, 'Seating method set to "' + methodSel.value + '"');
+      };
+      // per-table time slots
+      host.querySelectorAll('[data-tslot]').forEach(function (inp) {
+        inp.onchange = function () { write('/table/meta', { tableId: inp.getAttribute('data-tslot'), timeslot: inp.value }, 'Table time saved'); };
+      });
+    }
+
+    // Create the stage's tables in one step. Day1/Rebuy/Day2 make empty,
+    // time-slotted tables (availability or claim); Final/Money seat whoever
+    // advanced. The server builds the sealed envelopes for bounty stages.
+    function createTables(stage) {
+      var st = STAGES.find(function (x) { return x.key === stage; });
+      var existed = tablesForStage(stage).length > 0;
+      var mode = methodOf(stage) === 'fcfs' ? 'claim' : 'assigned';
+      var go = function () {
+        post('/stage/generate', { stage: stage }).then(function (res) {
+          if (!res.ok || res.data.error) { toast(res.data.error || 'Could not build tables', 'error'); return; }
+          var raw = res.data.plan || [];
+          if (!raw.length) { toast('Nothing to seat for this stage yet', 'error'); return; }
+          if (!st.claimable && !raw.some(function (t) { return (t.players || []).length; })) { toast('No players have advanced to ' + st.label + ' yet', 'error'); return; }
+          var plan = raw.map(function (t) {
+            return { tableId: t.tableId, label: t.label, size: t.size || (t.players || []).length, players: (t.players || []).map(function (p) { return { id: p.id }; }) };
+          });
+          write('/stage/commit', { stage: stage, plan: plan, mode: mode }, st.label + ' tables created');
+        }).catch(function (e) { toast('Could not build tables: ' + e.message, 'error'); });
+      };
+      if (existed) showConfirm('This rebuilds all ' + st.label + ' tables and clears their current seating. Continue?', go);
+      else go();
+    }
+
+    /* ------- rebuy ------- */
+    function renderRebuy() {
+      var players = state.players || [];
+      var eligible = players.filter(function (p) { return p.status === 'eliminated' && !Number(p.rebuyPaid); });
+      var paid = players.filter(function (p) { return Number(p.rebuyPaid); });
+      document.getElementById('rebuyCount').textContent = paid.length + ' paid';
+      var html = '';
+      html += '<div class="rcol"><h3>Eliminated — awaiting rebuy (' + eligible.length + ')</h3>';
+      if (!eligible.length) html += '<div class="placeholder">No eliminated players waiting.</div>';
+      else eligible.forEach(function (p) {
+        html += '<div class="rrow"><span>' + esc(p.name) + '</span><span class="sp"></span>' +
+          '<button class="btn gold sm" data-rebuy="' + p.tornId + '">Confirm paid</button></div>';
+      });
+      html += '</div>';
+      html += '<div class="rcol"><h3>Rebuy paid (' + paid.length + ')</h3>';
+      if (!paid.length) html += '<div class="placeholder">None confirmed yet.</div>';
+      else paid.forEach(function (p) {
+        html += '<div class="rrow"><span>' + esc(p.name) + '</span><span class="sp"></span><span class="paidtag">paid</span></div>';
+      });
+      html += '</div>';
+      var grid = document.getElementById('rebuyGrid');
+      grid.innerHTML = html;
+      grid.querySelectorAll('[data-rebuy]').forEach(function (b) {
+        b.onclick = function () {
+          var id = Number(b.getAttribute('data-rebuy'));
+          write('/rebuy/confirm', { tornId: id }, nameOf(id) + ' confirmed for rebuy');
+        };
+      });
+    }
+
+    /* ------- stewards ------- */
+    function renderStewards() {
+      var sw = state.stewards || [];
+      document.getElementById('stewardCount').textContent = sw.length + ' active';
+      var list = document.getElementById('stewardList');
+      if (!sw.length) { list.innerHTML = '<div class="placeholder">No stewards yet.</div>'; return; }
+      list.innerHTML = sw.map(function (s) {
+        return '<div class="li"><span class="nm">' + esc(s.name) + '</span>' +
+          '<span class="meta"><a href="https://www.torn.com/profiles.php?XID=' + s.tornId + '" target="_blank" rel="noopener">#' + s.tornId + '</a></span>' +
+          '<span class="sp"></span><button class="btn-x" data-id="' + s.tornId + '">&times;</button></div>';
+      }).join('');
+      list.querySelectorAll('.btn-x').forEach(function (b) {
+        b.onclick = function () {
+          var id = Number(b.getAttribute('data-id'));
+          showConfirm('Remove steward ' + nameOf(id) + '?', function () { write('/stewards/remove', { tornId: id }, 'Steward removed'); });
+        };
+      });
+    }
+    document.getElementById('addSteward').onclick = function () {
+      var name = document.getElementById('stName').value.trim();
+      var id = document.getElementById('stId').value.trim();
+      if (!name || !id) { toast('Name and Torn ID required', 'error'); return; }
+      write('/stewards/add', { name: name, tornId: Number(id) }, 'Steward added', function () {
+        document.getElementById('stName').value = ''; document.getElementById('stId').value = '';
+        document.getElementById('stName').focus();
+      });
+    };
+    document.getElementById('stName').addEventListener('keydown', function (e) { if (e.key === 'Enter') document.getElementById('stId').focus(); });
+    document.getElementById('stId').addEventListener('keydown', function (e) { if (e.key === 'Enter') document.getElementById('addSteward').click(); });
+
+    document.getElementById('resetKeep').onclick = function () {
+      showConfirm('Reset all results, tables and donations but KEEP the registered players? This cannot be undone.', function () {
+        write('/reset', { keepPlayers: true }, 'Event reset (players kept)');
+      });
+    };
+    document.getElementById('resetAll').onclick = function () {
+      showConfirm('Reset EVERYTHING including removing all players? This cannot be undone.', function () {
+        write('/reset', {}, 'Event fully reset');
+      });
+    };
+
+    /* ---------------- boot ---------------- */
+    function boot() {
+      showApp();
+      settingsBuilt = false;
+      refresh().catch(function (e) { toast('Could not load state: ' + e.message, 'error'); });
+    }
+
+    if (token && localStorage.getItem('mb_role') === 'admin') {
+      boot();
+    } else {
+      showLogin('');
+    }
+  </script>
+</body>
+
+</html>

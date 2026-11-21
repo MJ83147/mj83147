@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Mystery Bounty · Availability</title>
+  <style>
+    :root {
+      --bg: #12160f;
+      --card: #202a1e;
+      --card2: #26331f;
+      --line: #3a4a33;
+      --text: #e8eadf;
+      --dim: #9aa88f;
+      --gold: #e3b341;
+      --green: #7ccb6e;
+      --red: #e06c5c;
+      --chip: #2f4d33;
+      --greenbg: #1d3328;
+      --goldbg: #3a2f14;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: radial-gradient(ellipse at 50% -20%, #23331f 0%, var(--bg) 60%);
+      color: var(--text);
+      font: 15px/1.5 "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    a { color: inherit; text-decoration: none; }
+    * { scrollbar-width: thin; scrollbar-color: #3a4a33 transparent; }
+    ::-webkit-scrollbar { width: 9px; height: 9px; }
+    ::-webkit-scrollbar-thumb { background: #3a4a33; border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+
+    .wrap { max-width: 820px; margin: 0 auto; padding: 20px 20px 48px; }
+
+    /* nav */
+    .nav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .brand { font-size: 20px; font-weight: 800; letter-spacing: 1px; color: var(--gold); text-transform: uppercase; }
+    .brand .suit { color: var(--red); }
+    .nav .sp { flex: 1; }
+    .navlink {
+      padding: 7px 14px; border-radius: 999px; font-size: 14px; color: var(--dim);
+      border: 1px solid transparent; cursor: pointer; background: transparent;
+    }
+    .navlink:hover { color: var(--text); }
+    .navlink.btn { background: var(--chip); color: var(--text); border-color: var(--line); }
+
+    /* panel */
+    .panel { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--line); border-radius: 14px; margin-top: 16px; overflow: hidden; }
+    .panel > h2 { font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: var(--text); padding: 14px 18px; display: flex; align-items: center; gap: 10px; }
+    .panel .body { padding: 0 18px 18px; }
+
+    .intro { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+    .intro h1 { font-size: 20px; color: var(--gold); margin-bottom: 6px; }
+    .intro p { color: var(--dim); font-size: 14px; }
+    .intro p + p { margin-top: 8px; }
+
+    /* prominent stage line */
+    .stageline {
+      background: var(--goldbg); border: 1px solid var(--gold); border-radius: 12px;
+      padding: 14px 16px; margin-top: 16px; color: var(--gold);
+      font-size: 17px; font-weight: 700; line-height: 1.35;
+    }
+    .stageline .sub { display: block; color: var(--dim); font-size: 13px; font-weight: 400; margin-top: 4px; }
+
+    .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--dim); }
+
+    /* quick actions */
+    .qbtn {
+      border: 1px solid var(--line); background: #0f1410; color: var(--text);
+      padding: 7px 14px; border-radius: 999px; font-size: 13px; cursor: pointer;
+    }
+    .qbtn:hover { border-color: var(--green); }
+
+    /* slot grid */
+    .slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+    @media (max-width: 620px) { .slots { grid-template-columns: repeat(2, 1fr); } }
+    .slot {
+      border: 1px solid var(--line); background: #15200f; border-radius: 10px;
+      padding: 10px 8px; text-align: center; cursor: pointer; user-select: none;
+      transition: border-color .12s, background .12s;
+    }
+    .slot:hover { border-color: var(--green); }
+    .slot.on { background: var(--greenbg); border-color: var(--green); }
+    .slot .tct { font-size: 15px; font-weight: 700; }
+    .slot.on .tct { color: var(--green); }
+    .slot .loc { font-size: 11px; color: var(--dim); margin-top: 2px; }
+    .selcount { font-size: 13px; color: var(--dim); }
+    .selcount b { color: var(--gold); }
+
+    /* key input + submit */
+    .keyrow { margin-top: 16px; }
+    .inp {
+      width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line);
+      background: #0f1410; color: var(--text); font-size: 15px;
+    }
+    .inp:focus { outline: none; border-color: var(--green); }
+    .hint { font-size: 12px; color: var(--dim); margin-top: 6px; }
+    .submit {
+      margin-top: 14px; width: 100%; padding: 13px; border-radius: 10px; border: 1px solid var(--line);
+      background: var(--chip); color: var(--text); font-size: 15px; font-weight: 700; cursor: pointer;
+    }
+    .submit:hover { border-color: var(--gold); color: var(--gold); }
+    .submit:disabled { opacity: .5; cursor: default; }
+
+    .confirm {
+      margin-top: 14px; background: var(--greenbg); border: 1px solid var(--green);
+      border-radius: 10px; padding: 12px 14px; color: var(--green); font-size: 14px; display: none;
+    }
+    .confirm.show { display: block; }
+
+    /* toast */
+    .toasts { position: fixed; bottom: 18px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 300; pointer-events: none; }
+    .toast {
+      background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+      padding: 10px 16px; font-size: 14px; max-width: 90%; box-shadow: 0 6px 20px rgba(0,0,0,.4);
+    }
+    .toast.error { border-color: var(--red); color: var(--red); }
+    .toast.success { border-color: var(--green); color: var(--green); }
+
+    footer { margin-top: 36px; color: var(--dim); font-size: 12px; text-align: center; }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="nav">
+      <a class="brand" href="index.html">Mystery <span class="suit">&spades;</span> Bounty</a>
+      <span class="sp"></span>
+      <a class="navlink btn" href="index.html">Tournament</a>
+    </div>
+
+    <div class="intro">
+      <h1>When can you play?</h1>
+      <p>Tick every TCT hour you could sit at a table for this stage. The more you tick, the easier you are to seat.</p>
+      <p>Times are shown in <b>TCT</b> (Torn City Time, which is UTC) and in your own local time next to it.</p>
+    </div>
+
+    <div class="stageline" id="stageLine">Loading stage&hellip;</div>
+
+    <div class="panel">
+      <div class="body" style="padding-top:16px">
+        <div class="row" style="justify-content:space-between">
+          <div class="label" id="stageLabel">Pick your available hours</div>
+          <button class="qbtn" id="anytime">Anytime (select all)</button>
+        </div>
+
+        <div class="row" style="margin-top:14px; justify-content:space-between">
+          <div class="selcount"><b id="selN">0</b> slot(s) selected</div>
+          <button class="qbtn" id="clearAll">Clear</button>
+        </div>
+
+        <div class="slots" id="slots"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="body" style="padding-top:16px">
+        <div class="label" style="margin-bottom:6px">Confirm who you are</div>
+        <div class="keyrow">
+          <input class="inp" id="key" type="password" placeholder="Paste your Torn API key" autocomplete="off" spellcheck="false">
+          <div class="hint">Used once to confirm your Torn identity, then discarded. It is never stored. A Public API key is all you need.</div>
+        </div>
+        <button class="submit" id="submit">Submit availability</button>
+        <div class="confirm" id="confirm"></div>
+      </div>
+    </div>
+
+    <footer>Mystery Bounty · built on systoned.cc</footer>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script>
+    var API = '/mystery-bounty/api';
+
+    /* ---- persistent browser fingerprint ---- */
+    function fingerprint() {
+      var fp = localStorage.getItem('mb_fp');
+      if (!fp) {
+        fp = 'fp_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+        localStorage.setItem('mb_fp', fp);
+      }
+      return fp;
+    }
+
+    /* ---- shared TCT (UTC) -> local slot labelling ---- */
+    // Slot ids t0..t23. TCT label is the UTC hour "HH:00". The local label is
+    // that same instant rendered in the viewer's timezone.
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+    function tctLabel(h) { return pad2(h) + ':00'; }
+    function localLabel(h) {
+      var d = new Date(); d.setUTCHours(h, 0, 0, 0);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    function slots() {
+      var out = [];
+      for (var h = 0; h < 24; h++) out.push({ id: 't' + h, tct: tctLabel(h), loc: localLabel(h) });
+      return out;
+    }
+    var SLOTS = slots();
+
+    var selected = {};   // slotId -> true
+    var phase = 'day2';  // resolved from tournament_status on load
+
+    var PHASE_NAME = { day2: 'Day 2 stage', final: 'Final Table' };
+
+    /* ---- format an epoch-seconds instant in TCT (= UTC) ---- */
+    var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    function tctDateString(epochSec) {
+      var n = Number(epochSec);
+      if (!epochSec || isNaN(n) || n <= 0) return '';
+      var d = new Date(n * 1000);
+      return DAYS[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()] +
+        ', ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ' TCT';
+    }
+
+    function renderSlots() {
+      document.getElementById('slots').innerHTML = SLOTS.map(function (s) {
+        return '<div class="slot' + (selected[s.id] ? ' on' : '') + '" data-id="' + s.id + '">' +
+          '<div class="tct">' + s.tct + '</div><div class="loc">' + s.loc + ' local</div></div>';
+      }).join('');
+      document.getElementById('selN').textContent = Object.keys(selected).length;
+    }
+    document.getElementById('slots').addEventListener('click', function (e) {
+      var el = e.target.closest('.slot'); if (!el) return;
+      var id = el.getAttribute('data-id');
+      if (selected[id]) delete selected[id]; else selected[id] = true;
+      renderSlots();
+    });
+    document.getElementById('anytime').onclick = function () {
+      SLOTS.forEach(function (s) { selected[s.id] = true; }); renderSlots();
+    };
+    document.getElementById('clearAll').onclick = function () { selected = {}; renderSlots(); };
+
+    /* ---- resolve the current stage from tournament status ---- */
+    var STAGE_NAMES = { day1: 'Day 1', rebuy: 'the Rebuy stage', day2: 'Day 2', final: 'the Final Table' };
+    // The poll collects for the current stage being set up — the first stage that
+    // is not yet complete and is in use. It applies to BOTH seating methods (even
+    // first-come, so the admin can pick the most popular table times).
+    function derivePhase(d) {
+      var s = d.settings || {}, tables = d.tables || [];
+      var order = ['day1', 'rebuy', 'day2'];
+      for (var i = 0; i < order.length; i++) {
+        var k = order[i];
+        var kt = tables.filter(function (t) { return t.stage === k; });
+        var complete = kt.length > 0 && kt.every(function (t) { return t.status === 'complete'; });
+        if (complete) continue;
+        var inUse = !!s[k + '_at'] || kt.length > 0 || k === 'day1'; // skip stages not scheduled/used
+        if (!inUse) continue;
+        return k;
+      }
+      return 'closed';
+    }
+    function applyPhase(d) {
+      d = d || {}; var settings = d.settings || {};
+      var p = derivePhase(d);
+      var closed = (p === 'closed');
+      phase = closed ? 'day1' : p;
+      var name = STAGE_NAMES[phase] || 'the next stage';
+      var when = tctDateString(settings[phase + '_at']);
+      var el = document.getElementById('stageLine');
+      if (closed) {
+        if (el) el.innerHTML = 'Availability is currently closed.<span class="sub">Check back when the organisers open the next poll.</span>';
+      } else if (el) {
+        el.innerHTML = 'The ' + name.replace(/^the /, '') + ' will be held on ' + (when || 'a date to be confirmed') +
+          '<span class="sub">Tick every hour you could sit at a table for this stage.</span>';
+      }
+      var lbl = document.getElementById('stageLabel');
+      if (lbl) lbl.textContent = 'Your availability for ' + name;
+      document.querySelectorAll('.panel').forEach(function (pnl) { pnl.style.display = closed ? 'none' : ''; });
+    }
+
+    function loadState() {
+      fetch(API + '/state', { headers: { 'Accept': 'application/json' } })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { applyPhase(d || {}); })
+        .catch(function (e) {
+          applyPhase({});
+          toast('Could not load the tournament stage: ' + e.message, 'error');
+        });
+    }
+
+    /* ---- toast ---- */
+    function toast(msg, type) {
+      var host = document.getElementById('toasts');
+      var el = document.createElement('div');
+      el.className = 'toast ' + (type || '');
+      el.textContent = msg;
+      host.appendChild(el);
+      setTimeout(function () { el.style.opacity = '0'; el.style.transition = 'opacity .4s'; }, 3200);
+      setTimeout(function () { el.remove(); }, 3700);
+    }
+
+    /* ---- submit ---- */
+    document.getElementById('submit').onclick = function () {
+      var btn = this;
+      var key = document.getElementById('key').value.trim();
+      var slotIds = Object.keys(selected);
+      if (!key) { toast('Paste your Torn API key first.', 'error'); return; }
+      if (!slotIds.length) { toast('Select at least one time slot (or hit Anytime).', 'error'); return; }
+      btn.disabled = true; btn.textContent = 'Submitting...';
+      fetch(API + '/availability/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: key, phase: phase, slots: slotIds, fingerprint: fingerprint() })
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d.error) { toast(d.error, 'error'); return; }
+        var c = document.getElementById('confirm');
+        c.textContent = 'Saved ' + (d.saved || slotIds.length) + ' slot(s) for ' +
+          (STAGE_NAMES[phase] || 'this stage') + '. Thanks! You can resubmit any time to change it.';
+        c.classList.add('show');
+        toast('Availability saved.', 'success');
+        document.getElementById('key').value = '';
+      }).catch(function (e) {
+        toast('Request failed: ' + e.message, 'error');
+      }).then(function () {
+        btn.disabled = false; btn.textContent = 'Submit availability';
+      });
+    };
+
+    renderSlots();
+    loadState();
+  </script>
+</body>
+
+</html>

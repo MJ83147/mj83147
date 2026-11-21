@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Mystery Bounty Tournament</title>
+  <style>
+    :root {
+      --bg: #12160f;
+      --card: #202a1e;
+      --card2: #26331f;
+      --line: #3a4a33;
+      --text: #e8eadf;
+      --dim: #9aa88f;
+      --gold: #e3b341;
+      --green: #7ccb6e;
+      --red: #e06c5c;
+      --chip: #2f4d33;
+      --greenbg: #1d3328;
+      --goldbg: #3a2f14;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: radial-gradient(ellipse at 50% -20%, #23331f 0%, var(--bg) 60%);
+      color: var(--text);
+      font: 15px/1.5 "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      min-height: 100vh;
+    }
+    a { color: inherit; text-decoration: none; }
+    * { scrollbar-width: thin; scrollbar-color: #3a4a33 transparent; }
+    ::-webkit-scrollbar { width: 9px; height: 9px; }
+    ::-webkit-scrollbar-thumb { background: #3a4a33; border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+
+    .wrap { max-width: 1440px; margin: 0 auto; padding: 20px 32px 48px; }
+    @media (max-width: 700px) { .wrap { padding: 16px 16px 40px; } }
+
+    /* nav */
+    .nav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .brand { font-size: 20px; font-weight: 800; letter-spacing: 1px; color: var(--gold); text-transform: uppercase; }
+    .brand .suit { color: var(--red); }
+    .nav .sp { flex: 1; }
+    .navlink {
+      padding: 7px 14px; border-radius: 999px; font-size: 14px; color: var(--dim);
+      border: 1px solid transparent; cursor: pointer; background: transparent;
+    }
+    .navlink:hover { color: var(--text); }
+    .navlink.btn { background: var(--chip); color: var(--text); border-color: var(--line); }
+
+    /* prize strip */
+    .prizestrip {
+      display: grid; grid-template-columns: 1.1fr 2fr; gap: 14px; margin-bottom: 16px;
+    }
+    @media (max-width: 760px) { .prizestrip { grid-template-columns: 1fr; } }
+    .pricard {
+      background: linear-gradient(180deg, var(--card2), var(--card));
+      border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px;
+    }
+    .pool-label { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); }
+    .pool-amt { font-size: 34px; font-weight: 800; color: var(--gold); line-height: 1.15; }
+    .pool-sub { font-size: 13px; color: var(--dim); margin-top: 2px; }
+    .pool-link { font-size: 12px; color: var(--green); margin-top: 8px; cursor: pointer; }
+    .bountyrow { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font-size: 13px; }
+    .bountyrow b { color: var(--gold); }
+
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+    .stat { background: var(--card); padding: 12px 14px; }
+    .stat .l { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--dim); }
+    .stat .v { font-size: 22px; font-weight: 700; margin-top: 2px; }
+    .stat.clickable { cursor: pointer; }
+    .stat.clickable:hover .v { color: var(--gold); }
+
+    /* generic panel */
+    .panel { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--line); border-radius: 14px; margin-top: 16px; overflow: hidden; }
+    .panel > h2 { font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: var(--text); padding: 14px 18px; display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+    .panel > h2 .count { color: var(--dim); font-weight: 400; font-size: 12px; margin-left: auto; }
+    .panel > h2 .chev { transition: transform .2s; color: var(--dim); }
+    .panel.closed > h2 .chev { transform: rotate(-90deg); }
+    .panel .body { padding: 0 18px 18px; }
+    .panel.closed .body { display: none; }
+    /* emphasise the live/current stage; mute upcoming + completed ones */
+    .panel.is-live { border-color: var(--green); box-shadow: 0 0 0 1px rgba(124,203,110,.22), 0 8px 26px rgba(0,0,0,.25); }
+    .panel.is-upcoming { opacity: .6; filter: saturate(.5); }
+    .panel.is-done { opacity: .82; filter: saturate(.8); }
+    .panel .stagetag { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; }
+    .panel.is-live .stagetag { background: var(--greenbg); color: var(--green); }
+    .panel.is-upcoming .stagetag { background: var(--chip); color: var(--dim); }
+    .panel.is-done .stagetag { background: var(--goldbg); color: var(--gold); }
+
+    /* search */
+    .search { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: #0f1410; color: var(--text); font-size: 15px; }
+    .search:focus { outline: none; border-color: var(--green); }
+    .searchres { margin-top: 12px; }
+    .searchres:empty { margin-top: 0; }
+    .srcard { background: #15200f; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+    .srhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .srname { font-weight: 700; font-size: 17px; }
+    .srid { color: var(--dim); font-size: 13px; }
+    .pill { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+    .pill.active { background: var(--greenbg); color: var(--green); }
+    .pill.eliminated { background: #3a2424; color: var(--red); }
+    .pill.champion { background: var(--goldbg); color: var(--gold); }
+    .srgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+    @media (max-width: 620px) { .srgrid { grid-template-columns: 1fr; } }
+    .srblock .bl { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--dim); }
+    .srblock .bv { font-size: 14px; margin-top: 2px; }
+
+    /* tables */
+    .tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .tcard { background: #15200f; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+    .tcard .th { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .tcard .tt { font-weight: 700; font-size: 14px; }
+    .tcard .ts { font-size: 11px; color: var(--dim); }
+    .seatlist { display: flex; flex-direction: column; gap: 3px; }
+    .seatrow { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 2px 0; }
+    .seatrow .pl { width: 26px; color: var(--dim); font-size: 12px; }
+    .seatrow.p1 .pl { color: var(--gold); font-weight: 700; }
+    .seatrow.out { color: var(--dim); text-decoration: line-through; }
+    .tcard .replaybtn {
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      width: 100%; margin-top: 10px; border: 0; cursor: pointer;
+      background: linear-gradient(180deg, #f3ca53, #d89f2e);
+      color: #241d07; border-radius: 10px; padding: 9px 12px;
+      font-weight: 800; font-size: 14px; letter-spacing: .3px; font-family: inherit;
+      box-shadow: 0 2px 10px rgba(227,179,65,.22);
+      animation: replayPulse 2.2s ease-in-out infinite;
+    }
+    .tcard .replaybtn span { font-weight: 600; font-size: 11px; color: #5a470d; letter-spacing: .2px; }
+    .tcard .replaybtn:hover { filter: brightness(1.06); }
+    @keyframes replayPulse {
+      0%, 100% { box-shadow: 0 2px 10px rgba(227,179,65,.22); }
+      50% { box-shadow: 0 3px 20px rgba(227,179,65,.6); }
+    }
+    @media (prefers-reduced-motion: reduce) { .tcard .replaybtn { animation: none; } }
+
+    /* replay modal (iframe) */
+    .replaycard { background: var(--card); border: 1px solid var(--line); border-radius: 16px; width: 100%; max-width: 1040px; height: 88vh; position: relative; overflow: hidden; padding: 0; }
+    .replaycard .x { position: absolute; top: 10px; right: 12px; z-index: 2; cursor: pointer; color: var(--text); font-size: 20px; line-height: 1; background: rgba(0,0,0,.45); border: 1px solid var(--line); border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; }
+    .replaycard .x:hover { color: var(--gold); }
+    .replaycard iframe { width: 100%; height: 100%; border: 0; display: block; background: var(--bg); }
+    .stagebadge { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; padding: 3px 8px; border-radius: 999px; background: var(--chip); color: var(--dim); }
+    .stagebadge.live { color: var(--green); }
+    .stagebadge.complete { color: var(--gold); }
+    .placeholder { color: var(--dim); font-size: 13px; padding: 8px 0; }
+    .pdots { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0 2px; }
+    .pdot { width: 12px; height: 12px; border-radius: 50%; background: #2a3826; border: 1px solid var(--line); }
+    .pdot.adv { background: var(--chip); border-color: var(--green); }
+
+    /* bounty leaderboard */
+    .lb-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+    .lb-row:last-child { border-bottom: 0; }
+    .lb-row .rank { width: 20px; color: var(--dim); font-weight: 700; }
+    .lb-row .nm { flex: 1; }
+    .lb-row .ko { font-size: 12px; color: var(--dim); }
+    .lb-row .cash { color: var(--gold); font-weight: 700; }
+
+    /* payout board */
+    .payrow { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .payrow:last-child { border-bottom: 0; }
+    .payrow .pp { width: 42px; color: var(--dim); }
+    .payrow .pn { flex: 1; }
+    .payrow .pct { color: var(--dim); width: 54px; text-align: right; }
+    .payrow .amt { color: var(--gold); font-weight: 700; width: 92px; text-align: right; }
+
+    /* chips */
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .cchip { background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 13px; }
+    .cchip.out { background: transparent; color: var(--dim); }
+
+    /* modal */
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 200; }
+    .overlay.open { display: flex; }
+    .modal { background: var(--card); border: 1px solid var(--line); border-radius: 16px; max-width: 560px; width: 100%; max-height: 86vh; overflow: auto; padding: 22px 24px; }
+    .modal h3 { color: var(--gold); margin-bottom: 12px; }
+    .modal h4 { margin: 14px 0 4px; font-size: 14px; }
+    .modal p, .modal li { color: var(--dim); font-size: 14px; }
+    .modal ul { margin-left: 18px; }
+    .modal .x { float: right; cursor: pointer; color: var(--dim); font-size: 20px; line-height: 1; }
+
+    footer { margin-top: 36px; color: var(--dim); font-size: 12px; text-align: center; }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="nav">
+      <div class="brand">Mystery <span class="suit">&spades;</span> Bounty</div>
+      <span class="sp"></span>
+      <button class="navlink" id="navHow">How it works</button>
+      <button class="navlink" id="navRules">Rules</button>
+      <button class="navlink" id="navEnter">How to enter</button>
+      <a class="navlink btn" href="availability.html">Availability</a>
+    </div>
+
+    <!-- prize strip -->
+    <div class="prizestrip">
+      <div class="pricard">
+        <div class="pool-label">Main prize pool</div>
+        <div class="pool-amt" id="mainPool">$0</div>
+        <div class="pool-sub" id="mainSub">0 entries</div>
+        <div class="pool-link" id="payoutLink">View payout structure</div>
+        <div class="bountyrow"><span>Bounty pool (envelopes)</span><b id="bountyPool">$0</b></div>
+      </div>
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <!-- player search -->
+    <div class="panel" id="searchPanel">
+      <div class="body" style="padding:16px 18px">
+        <input class="search" id="search" placeholder="Search your name or Torn ID to see your status">
+        <div class="searchres" id="searchres"></div>
+      </div>
+    </div>
+
+    <!-- bounty leaderboard -->
+    <div class="panel" id="bountyPanel">
+      <h2 onclick="togglePanel('bountyPanel')">Bounty leaderboard <span class="count" id="bountyCount"></span><span class="chev">▾</span></h2>
+      <div class="body"><div id="bountyBoard"></div></div>
+    </div>
+
+    <!-- payout board (shown once the field funnels in) -->
+    <div class="panel closed" id="payoutPanel">
+      <h2 onclick="togglePanel('payoutPanel')">Payout board <span class="count" id="payoutCount"></span><span class="chev">▾</span></h2>
+      <div class="body"><div id="payoutBoard"></div></div>
+    </div>
+
+    <!-- stages -->
+    <div id="stages"></div>
+
+    <footer>Mystery Bounty · built on systoned.cc</footer>
+  </div>
+
+  <!-- modals -->
+  <div class="overlay" id="modal"><div class="modal"><span class="x" onclick="closeModal()">✕</span><div id="modalBody"></div></div></div>
+  <div class="overlay" id="replayModal"><div class="replaycard"><span class="x" onclick="closeReplay()">✕</span><iframe id="replayFrame" title="Bounty replay" allow="autoplay"></iframe></div></div>
+
+  <script>
+    var API = '/mystery-bounty/api';
+    var state = null;
+    var openState = {};  // remembers which stage panels the viewer has open/closed
+
+    function money(m) {
+      m = Number(m) || 0;
+      if (Math.abs(m) >= 1e9) return '$' + (m / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
+      if (Math.abs(m) >= 1e6) return '$' + Math.round(m / 1e6) + 'M';
+      if (Math.abs(m) >= 1e3) return '$' + Math.round(m / 1e3) + 'K';
+      return '$' + m;
+    }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+    function ordinal(n) { var s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+    var num = function (s, k, d) { var v = Number(s && s[k]); return isFinite(v) ? v : d; };
+
+    function load() {
+      fetch(API + '/state').then(function (r) { return r.json(); }).then(function (d) {
+        state = d; render();
+      }).catch(function (e) { console.error(e); });
+    }
+
+    function render() {
+      renderPrize(); renderStats(); renderBounty(); renderStages(); renderPayout();
+    }
+
+    function renderPrize() {
+      var p = state.pool;
+      document.getElementById('mainPool').textContent = money(p.mainTotal);
+      var bits = [p.entries + ' entr' + (p.entries === 1 ? 'y' : 'ies')];
+      if (p.rebuys) bits.push(p.rebuys + ' rebuy' + (p.rebuys === 1 ? '' : 's'));
+      if (p.donated) bits.push(money(p.donated) + ' donated');
+      document.getElementById('mainSub').textContent = bits.join(' · ');
+      document.getElementById('bountyPool').textContent = money(p.bountyTotal);
+    }
+
+    function renderStats() {
+      var s = state.stats;
+      var items = [
+        ['Registered', s.registered, 'registered'],
+        ['Active', s.active, 'active'],
+        ['Eliminated', s.eliminated, 'eliminated'],
+        ['Games', s.games, null],
+        ['Rebuys', s.rebuys, null],
+        ['Donors', s.donors, 'donors'],
+        ['Donated', money(s.donated), null],
+        ['Status', (state.settings.tournament_status || 'setup').toUpperCase(), null]
+      ];
+      document.getElementById('stats').innerHTML = items.map(function (it) {
+        return '<div class="stat' + (it[2] ? ' clickable' : '') + '"' + (it[2] ? ' onclick="showList(\'' + it[2] + '\')"' : '') + '>' +
+          '<div class="l">' + it[0] + '</div><div class="v">' + it[1] + '</div></div>';
+      }).join('');
+    }
+
+    function nameOf(id) { var p = (state.players || []).find(function (x) { return x.tornId === id; }); return p ? p.name : ('#' + id); }
+
+    function renderBounty() {
+      var rows = state.bounties || [];
+      // hide the whole panel until a bounty has actually been won
+      document.getElementById('bountyPanel').style.display = rows.length ? '' : 'none';
+      if (!rows.length) return;
+      document.getElementById('bountyCount').textContent = rows.length + ' winning';
+      var el = document.getElementById('bountyBoard');
+      el.innerHTML = rows.map(function (r, i) {
+        return '<div class="lb-row"><div class="rank">' + (i + 1) + '</div>' +
+          '<div class="nm">' + esc(r.name || nameOf(r.tornId)) + '<div class="ko">' + r.kos + ' KO' + (r.kos === 1 ? '' : 's') + '</div></div>' +
+          '<div class="cash">' + money(r.cash) + '</div></div>';
+      }).join('');
+    }
+
+    var STAGES = [
+      { key: 'day1', label: 'Day 1', sub: '6-max tables · one winner advances · no bounties' },
+      { key: 'rebuy', label: 'Rebuy', sub: 'Second chance · one winner advances · no bounties' },
+      { key: 'day2', label: 'Day 2', sub: 'Bounties live · top 3 per table reach the final' },
+      { key: 'final', label: 'Final Table', sub: 'Bounties live · plays to one winner' },
+      { key: 'money', label: 'Money Table', sub: 'Settles 10th–12th · no bounties' }
+    ];
+
+    function renderStages() {
+      var host = document.getElementById('stages');
+      var s = state.settings;
+      var byStage = {};
+      (state.tables || []).forEach(function (t) { (byStage[t.stage] = byStage[t.stage] || []).push(t); });
+      var moneyOn = s.money_table_enabled !== '0';
+      var shown = STAGES.filter(function (st) { return !(st.key === 'money' && !moneyOn); });
+
+      // The backend derives which stage is live: a stage goes live when its date
+      // arrives OR the previous stage's tables are all complete, and only one
+      // stage is ever current. We render straight off that, so a stage can't read
+      // live before it starts or stay live after it finishes.
+      var ss = state.stageState || {};
+      var current = state.currentStage;                  // 'setup' | <stage> | 'complete'
+      var firstKey = shown.length ? shown[0].key : 'day1';
+
+      host.innerHTML = shown.map(function (st) {
+        var tabs = (byStage[st.key] || []);              // already ordered by the API
+        var info = ss[st.key] || { started: false, complete: false, hasTables: false };
+        var isActive = st.key === current;
+        // live stage is highlighted; completed stages dim; the rest recede
+        var phase = info.complete ? 'done' : (isActive ? 'live' : 'upcoming');
+        var tag = info.complete ? 'complete'
+          : (isActive ? 'live now'
+            : (current === 'setup' && st.key === firstKey ? 'up next' : 'upcoming'));
+        // show real tables only once the stage has started; otherwise a preview/placeholder
+        var showTables = info.started && tabs.length;
+        var done = tabs.filter(function (t) { return t.status === 'complete'; }).length;
+        var count = showTables ? (done + '/' + tabs.length + ' tables') : (info.started ? 'in progress' : 'not started');
+        var inner = advancerBanner(st.key, st.label) +
+          (showTables ? '<div class="tables">' + tabs.map(tableCard).join('') + '</div>' : previewFor(st.key, s));
+        var pid = 'panel-' + st.key;
+        if (!(pid in openState)) openState[pid] = isActive;
+        return '<div class="panel is-' + phase + (openState[pid] ? '' : ' closed') + '" id="' + pid + '">' +
+          '<h2 onclick="togglePanel(\'' + pid + '\')">' + st.label +
+          '<span class="stagetag">' + tag + '</span>' +
+          '<span class="count">' + count + '</span><span class="chev">▾</span></h2>' +
+          '<div class="body">' + inner + '</div></div>';
+      }).join('');
+    }
+
+    // A preview grid for a stage that has no tables drawn yet, so the structure
+    // is visible from the start (e.g. the three Day 2 tables and the final table).
+    function previewFor(key, s) {
+      if (key === 'day2') {
+        var n = num(s, 'day2_table_count', 3), size = num(s, 'day2_table_max', 9), adv = num(s, 'day2_advance', 3);
+        var inbound = (state.players || []).filter(function (p) { return p.loc === 'day2'; }).length;
+        var head = inbound ? '<div class="placeholder" style="color:var(--green)">' + inbound + ' / ' + (n * size) + ' seats filled as Day 1 finishes</div>' : '';
+        var cards = '';
+        for (var i = 1; i <= n; i++) cards += emptyTableCard('Day 2 · Table ' + i, size, adv, 'bounties live · top ' + adv + ' advance');
+        return head + '<div class="tables">' + cards + '</div>';
+      }
+      if (key === 'final') {
+        return '<div class="tables">' + emptyTableCard('Final Table', num(s, 'final_table_size', 9), 1, 'bounties live · plays to one winner') + '</div>';
+      }
+      if (key === 'money') {
+        return '<div class="tables">' + emptyTableCard('Money Table', 3, 0, 'settles 10th–12th · no bounties') + '</div>';
+      }
+      if (key === 'day1') {
+        // don't imply a table count until the event is actually scheduled/started
+        var scheduled = s.tournament_status !== 'setup';
+        var reg = state.stats.registered, sz = num(s, 'day1_table_max', 6);
+        if (scheduled && reg > 0) {
+          var nt = Math.ceil(reg / sz), c = '';
+          for (var j = 1; j <= nt; j++) c += emptyTableCard('Day 1 · Table ' + j, sz, 1, 'one winner advances');
+          return '<div class="tables">' + c + '</div>';
+        }
+        return '<div class="placeholder">' + sz + '-max tables, drawn once the schedule is set.</div>';
+      }
+      if (key === 'rebuy') {
+        return '<div class="placeholder">Second-chance qualifiers, sized to fill the Day 2 seats left after Day 1.</div>';
+      }
+      return '<div class="placeholder"></div>';
+    }
+
+    function emptyTableCard(label, size, adv, note) {
+      var dots = '';
+      for (var i = 0; i < size; i++) dots += '<span class="pdot' + (i < adv ? ' adv' : '') + '"></span>';
+      return '<div class="tcard"><div class="th"><div><div class="tt">' + label + '</div>' +
+        '<div class="ts">' + note + '</div></div><span class="stagebadge">pending</span></div>' +
+        '<div class="pdots">' + dots + '</div>' +
+        '<div class="placeholder" style="padding:2px 0">' + size + ' seats · not seated yet</div></div>';
+    }
+
+    function tableCard(t) {
+      // derived by the backend: 'live' only while this table's stage is current,
+      // 'complete' once a result is filed, 'pending' before the stage goes live
+      var ds = t.displayStatus || t.status || '';
+      var statusCls = ds === 'live' ? 'live' : (ds === 'complete' ? 'complete' : '');
+      var seats = (t.seats || []);
+      var placeByPlayer = {};
+      (t.places || []).forEach(function (pl) { placeByPlayer[pl.tornId] = pl.place; });
+      var body;
+      if (t.places && t.places.length) {
+        body = '<div class="seatlist">' + t.places.map(function (pl) {
+          return '<div class="seatrow p' + pl.place + (pl.advancedTo ? '' : ' out') + '">' +
+            '<span class="pl">' + ordinal(pl.place) + '</span><span>' + esc(nameOf(pl.tornId)) + '</span></div>';
+        }).join('') + '</div>';
+      } else if (seats.length) {
+        body = '<div class="chips">' + seats.map(function (s) { return '<span class="cchip">' + esc(nameOf(s.tornId)) + '</span>'; }).join('') + '</div>';
+      } else {
+        // only say claims are open once the admin's selection time has actually arrived
+        var selAt = Number((state.settings || {})[t.stage + '_select_at']);
+        var claimOpen = t.seatingMode === 'claim' && selAt && (Date.now() / 1000) >= selAt;
+        body = '<div class="placeholder">' + (claimOpen ? 'Open — claim your seat' : 'Not seated yet') + '</div>';
+      }
+      var replay = (t.bountiesLive && t.status === 'complete')
+        ? '<button class="replaybtn" data-replay="' + esc(t.id) + '">▶ Watch the bounty replay<span>Reveal every sealed envelope &amp; who won what</span></button>' : '';
+      var env = t.envelope && t.envelope.count
+        ? '<div class="ts">Bounties · ' + t.envelope.count + '</div>' : '';
+      return '<div class="tcard"><div class="th"><div><div class="tt">' + esc(t.label || t.id) + '</div>' +
+        (t.timeslot ? '<div class="ts">' + esc(t.timeslot) + ' TCT</div>' : '') + env +
+        '</div><span class="stagebadge ' + statusCls + '">' + ds + '</span></div>' +
+        body + replay + '</div>';
+    }
+
+    // Players who advanced into a stage but have not yet taken a seat there. They
+    // should be able to see themselves listed under the next stage even before a
+    // table is drawn or claimed (e.g. Day 1 winners waiting for their Day 2 seat).
+    function advancerBanner(key, label) {
+      var seated = {};
+      (state.tables || []).forEach(function (t) {
+        if (t.stage === key) (t.seats || []).forEach(function (se) { seated[se.tornId] = 1; });
+      });
+      var waiting = (state.players || []).filter(function (p) {
+        return p.loc === key && p.status !== 'eliminated' && !seated[p.tornId];
+      });
+      if (!waiting.length) return '';
+      var chips = waiting.map(function (p) {
+        return '<span class="cchip" style="border-color:var(--green);color:var(--green)">' + esc(p.name) + '</span>';
+      }).join('');
+      return '<div style="margin:0 0 12px">' +
+        '<div class="ts" style="margin-bottom:6px;color:var(--green)">Advanced to ' + esc(label) + ' · waiting for a seat</div>' +
+        '<div class="chips">' + chips + '</div></div>';
+    }
+
+    function renderPayout() {
+      var pay; try { pay = JSON.parse(state.settings.payout_structure || '[]'); } catch (e) { pay = []; }
+      var fp = {}; (state.finalPlaces || []).forEach(function (r) { fp[r.place] = r; });
+      var active = (state.finalPlaces || []).length || ['final', 'money', 'complete'].includes(state.settings.tournament_status);
+      var panel = document.getElementById('payoutPanel');
+      if (!active) { panel.style.display = 'none'; return; }
+      panel.style.display = '';
+      document.getElementById('payoutCount').textContent = (state.finalPlaces || []).length + ' decided';
+      var total = state.pool.mainTotal;
+      document.getElementById('payoutBoard').innerHTML = pay.map(function (pct, i) {
+        var place = i + 1, r = fp[place];
+        return '<div class="payrow"><span class="pp">' + ordinal(place) + '</span>' +
+          '<span class="pn">' + (r ? esc(nameOf(r.tornId)) : '<span style="color:var(--dim)">—</span>') + '</span>' +
+          '<span class="pct">' + pct + '%</span>' +
+          '<span class="amt">' + money(r ? r.prize : total * pct / 100) + '</span></div>';
+      }).join('');
+    }
+
+    /* ---- search ---- */
+    var searchT;
+    document.getElementById('search').addEventListener('input', function () {
+      clearTimeout(searchT); var q = this.value.trim().toLowerCase();
+      searchT = setTimeout(function () { runSearch(q); }, 150);
+    });
+    function runSearch(q) {
+      var el = document.getElementById('searchres');
+      if (!q) { el.innerHTML = ''; return; }
+      var p = (state.players || []).find(function (x) {
+        return (x.name || '').toLowerCase().indexOf(q) >= 0 || String(x.tornId).indexOf(q) >= 0;
+      });
+      if (!p) { el.innerHTML = '<div class="placeholder">No registered player matches that search.</div>'; return; }
+      var info = playerInfo(p);
+      var cls = p.status === 'champion' ? 'champion' : (p.status === 'eliminated' ? 'eliminated' : 'active');
+      el.innerHTML = '<div class="srcard"><div class="srhead"><div>' +
+        '<div class="srname"><a href="https://www.torn.com/profiles.php?XID=' + p.tornId + '" target="_blank">' + esc(p.name) + '</a></div>' +
+        '<div class="srid">#' + p.tornId + '</div></div><span class="pill ' + cls + '">' + (p.status || 'active').toUpperCase() + '</span></div>' +
+        '<div class="srgrid">' +
+        '<div class="srblock"><div class="bl">Where you are</div><div class="bv">' + info.where + '</div></div>' +
+        '<div class="srblock"><div class="bl">Bounties won</div><div class="bv">' + info.bounty + '</div></div>' +
+        '<div class="srblock"><div class="bl">What\'s next</div><div class="bv">' + info.next + '</div></div>' +
+        '</div></div>';
+    }
+    function playerInfo(p) {
+      var b = (state.bounties || []).find(function (x) { return x.tornId === p.tornId; });
+      var bounty = b ? (money(b.cash) + ' · ' + b.kos + ' KO' + (b.kos === 1 ? '' : 's')) : '—';
+      var locName = { day1: 'Day 1', rebuy: 'Rebuy', day2: 'Day 2', final: 'the Final Table', money: 'the Money Table' };
+      var where, next;
+      if (state.settings.tournament_status === 'setup') { where = 'Registered'; next = 'Waiting for Day 1'; }
+      else if (p.status === 'champion') { where = 'Champion 🏆'; next = 'Winner!'; }
+      else if (p.status === 'eliminated') { where = 'Eliminated' + (p.stageOut ? ' at ' + (locName[p.stageOut] || p.stageOut) : ''); next = p.rebuyPaid ? '—' : 'Out'; }
+      else { where = 'Playing ' + (locName[p.loc] || 'Day 1'); next = 'Win your table to advance'; }
+      return { where: where, bounty: bounty, next: next };
+    }
+
+    /* ---- modals ---- */
+    function openModal(html) { document.getElementById('modalBody').innerHTML = html; document.getElementById('modal').classList.add('open'); }
+    function closeModal() { document.getElementById('modal').classList.remove('open'); }
+    document.getElementById('modal').addEventListener('click', function (e) { if (e.target === this) closeModal(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeModal(); closeReplay(); } });
+
+    /* ---- bounty replay (plays the table animation in a modal) ---- */
+    function openReplay(id) {
+      var f = document.getElementById('replayFrame');
+      f.src = 'bounty-animation.html?table=' + encodeURIComponent(id);
+      document.getElementById('replayModal').classList.add('open');
+    }
+    function closeReplay() {
+      var m = document.getElementById('replayModal');
+      if (!m.classList.contains('open')) return;
+      m.classList.remove('open');
+      document.getElementById('replayFrame').src = 'about:blank';  // stop playback
+    }
+    document.getElementById('replayModal').addEventListener('click', function (e) { if (e.target === this) closeReplay(); });
+    document.getElementById('stages').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-replay]') : null;
+      if (b) openReplay(b.getAttribute('data-replay'));
+    });
+
+    document.getElementById('navHow').onclick = function () {
+      var s = state.settings || {};
+      var buyin = money(num(s, 'entry_total', 50e6));
+      var rebuy = money(num(s, 'rebuy_total', 75e6));
+      var adv = num(s, 'day2_advance', 3);
+      var toMoney = num(s, 'day2_to_money', 2);
+      var drops = [];
+      for (var di = 1; di <= toMoney; di++) drops.push(ordinal(adv + di));
+      var dropSentence = toMoney > 0 ? (' ' + drops.join(' and ') + (toMoney === 1 ? ' goes' : ' go') + ' to the Money Table.') : '';
+      openModal('<h3>How a bounty tournament works</h3>' +
+        '<p>It is a knockout poker tournament with a twist. On top of the normal prize money, you win a cash <b>bounty</b> for every player you knock out once the bounty rounds begin.</p>' +
+        '<h4>Your buy-in splits two ways</h4>' +
+        '<p>When you pay the ' + buyin + ' buy-in, part of it builds the <b>main prize pool</b> (paid to the top finishers) and the rest goes into the <b>bounty pool</b>. The bounty pool is split into mystery bounty envelopes: random amounts of money you win when you knock someone out.</p>' +
+        '<h4>The stages</h4>' +
+        '<ul>' +
+        '<li><b>Day 1:</b> First place advances to Day 2. Everyone else is eligible for a rebuy. No bounties.</li>' +
+        '<li><b>Rebuy:</b> if you are knocked out on Day 1, you can join a rebuy table for ' + rebuy + ' for a chance to advance to Day 2. The winner advances.</li>' +
+        '<li><b>Day 2:</b> bounties are live. The top ' + adv + ' at each table advance to the Final Table, and you win a bounty prize for every player you knock out.' + dropSentence + '</li>' +
+        '<li><b>Final Table:</b> the top three from each Day 2 table, bounties live. Every Final Table player finishes in a paid place, 1st through 9th.</li>' +
+        '<li><b>Money Table:</b> no bounties. 1st, 2nd and 3rd here take 10th, 11th and 12th in the prize pool.</li>' +
+        '</ul>' +
+        '<h4>The mystery bounty</h4>' +
+        '<p>Once bounties are live, every player you knock out wins you a sealed envelope. Each envelope holds a hidden cash amount that you only see when it is opened, and some are bigger than others. The more players you knock out, the more envelopes you collect, on top of any prize-pool money you finish for.</p>' +
+        '<h4>Two ways to win money</h4>' +
+        '<p>1) Finish high enough to be paid from the main prize pool. 2) Win bounty envelopes by knocking players out. The envelope cash is yours to keep even if you do not finish in the paid places.</p>');
+    };
+    document.getElementById('navRules').onclick = function () {
+      var s = state.settings || {};
+      var adv = num(s, 'day2_advance', 3);
+      var toMoney = num(s, 'day2_to_money', 2);
+      var drops = [];
+      for (var di = 1; di <= toMoney; di++) drops.push(ordinal(adv + di));
+      var dropClause = toMoney > 0 ? (drops.join(' and ') + (toMoney === 1 ? ' drops' : ' drop') + ' to the Money Table; ') : '';
+      openModal('<h3>Rules</h3>' +
+        '<h4>Buy-in and rebuy</h4><p>Entry is ' + money(num(s, 'entry_total', 50e6)) + '. If you are knocked out on Day 1 you can rebuy once for ' + money(num(s, 'rebuy_total', 75e6)) + '. After that, you are out.</p>' +
+        '<h4>Advancing</h4>' +
+        '<ul>' +
+        '<li><b>Day 1:</b> ' + num(s, 'day1_table_min', 4) + '–' + num(s, 'day1_table_max', 6) + ' players per table. The table winner advances to Day 2; everyone else is out (or takes a rebuy).</li>' +
+        '<li><b>Rebuy:</b> small qualifier tables, winner-takes-the-seat, no bounties.</li>' +
+        '<li><b>Day 2:</b> bounties are live. The top ' + adv + ' at each table advance to the Final Table; ' + dropClause + 'the rest are out.</li>' +
+        '<li><b>Final Table:</b> bounties live, plays to one champion.</li>' +
+        '</ul>' +
+        '<h4>Bounties</h4><p>From Day 2 on, knocking a player out wins you a sealed mystery envelope. Envelope cash is yours to keep regardless of where you finish.</p>' +
+        '<h4>Prize money</h4><p>The main prize pool is paid to the top finishers (see the payout structure). Bounty envelopes are won separately, on top.</p>' +
+        '<h4>Conduct</h4><p>Turn up on time for your table and follow the stewards running it. If you miss your table you may lose your place.</p>');
+    };
+    document.getElementById('navEnter').onclick = function () {
+      var s = state.settings;
+      openModal('<h3>How to enter</h3>' +
+        '<p>Buy-in: <b>' + money(num(s, 'entry_total', 50e6)) + '</b>, sent to <b>' + esc(s.pay_to || 'the organiser') + '</b> with the message "Mystery Bounty".</p>' +
+        '<p>Once registered you will appear in the player list and can search your status here.</p>');
+    };
+    document.getElementById('payoutLink').onclick = function () {
+      var pay; try { pay = JSON.parse(state.settings.payout_structure || '[]'); } catch (e) { pay = []; }
+      var total = state.pool.mainTotal;
+      openModal('<h3>Payout structure</h3><p>' + money(total) + ' main pool, paid across the top ' + pay.length + '. Bounty envelopes are won separately on top.</p>' +
+        pay.map(function (pct, i) { return '<div class="payrow"><span class="pp">' + ordinal(i + 1) + '</span><span class="pn"></span><span class="pct">' + pct + '%</span><span class="amt">' + money(total * pct / 100) + '</span></div>'; }).join(''));
+    };
+
+    function showList(kind) {
+      var players = state.players || [];
+      var filt = kind === 'registered' ? players
+        : kind === 'active' ? players.filter(function (p) { return p.status !== 'eliminated'; })
+          : kind === 'eliminated' ? players.filter(function (p) { return p.status === 'eliminated'; })
+            : null;
+      if (kind === 'donors') {
+        var d = state.donations || [];
+        openModal('<h3>Donors</h3>' + (d.length ? d.map(function (x) { return '<div class="payrow"><span class="pn">' + esc(x.donorName) + '</span><span class="amt">' + money(x.amount) + '</span></div>'; }).join('') : '<p>No donations yet.</p>'));
+        return;
+      }
+      openModal('<h3>' + kind.charAt(0).toUpperCase() + kind.slice(1) + ' players (' + filt.length + ')</h3>' +
+        (filt.length ? '<div class="chips">' + filt.map(function (p) { return '<a class="cchip" href="https://www.torn.com/profiles.php?XID=' + p.tornId + '" target="_blank">' + esc(p.name) + '</a>'; }).join('') + '</div>' : '<p>None yet.</p>'));
+    }
+
+    function togglePanel(id) { var closed = document.getElementById(id).classList.toggle('closed'); openState[id] = !closed; }
+
+    load();
+    setInterval(load, 30000);
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bounty Tournament Planner</title>
+    <style>
+        :root {
+            --bg: #131519;
+            --panel: #1c1f26;
+            --line: #2c313b;
+            --text: #e4e7eb;
+            --muted: #9aa3ae;
+            --green: #4fb286;
+            --greenbg: #1d3328;
+            --red: #e07070;
+            --redbg: #3a2424;
+            --gold: #e0b45a;
+            --goldbg: #3a2f14;
+            --seat: #3b4250;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font: 15px/1.5 -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif
+        }
+
+        .wrap {
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 18px 16px 60px
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 0 0 14px
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 14px 16px;
+            margin-bottom: 14px
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px
+        }
+
+        label {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        input {
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 9px 10px;
+            font-size: 15px;
+            width: 100%;
+            color: var(--text);
+            background: #0f1114
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--green)
+        }
+
+        .full {
+            grid-column: 1/-1
+        }
+
+        details {
+            margin-top: 10px
+        }
+
+        summary {
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 13px;
+            user-select: none
+        }
+
+        details .grid {
+            margin-top: 10px
+        }
+
+        .warn {
+            background: var(--redbg);
+            color: var(--red);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            font-size: 13px;
+            display: none
+        }
+
+        .funnel {
+            display: flex;
+            align-items: stretch;
+            gap: 0;
+            overflow-x: auto;
+            padding-bottom: 4px
+        }
+
+        .step {
+            flex: 1;
+            min-width: 88px;
+            text-align: center;
+            padding: 8px 4px;
+            position: relative
+        }
+
+        .step .n {
+            font-size: 22px;
+            font-weight: 600;
+            line-height: 1.1
+        }
+
+        .step .l {
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px
+        }
+
+        .step+.step::before {
+            content: "›";
+            position: absolute;
+            left: -6px;
+            top: 12px;
+            color: #5a6270;
+            font-size: 20px
+        }
+
+        .stage {
+            margin-bottom: 14px
+        }
+
+        .stage h2 {
+            font-size: 16px;
+            margin: 0 0 2px;
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            flex-wrap: wrap
+        }
+
+        .stage h2 small {
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 400
+        }
+
+        .stage p {
+            margin: 0 0 10px;
+            color: var(--muted);
+            font-size: 14px
+        }
+
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center
+        }
+
+        .tbl {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #15181d;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 8px 12px
+        }
+
+        .tbl .seats {
+            display: flex;
+            gap: 3px
+        }
+
+        .seat {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            background: var(--seat)
+        }
+
+        .seat.on {
+            background: var(--green)
+        }
+
+        .tbl .t {
+            font-size: 13px;
+            white-space: nowrap
+        }
+
+        .tbl .t b {
+            font-weight: 600
+        }
+
+        .tbl .count {
+            font-size: 13px;
+            color: var(--muted);
+            white-space: nowrap
+        }
+
+        .pills {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px
+        }
+
+        .pill {
+            font-size: 13px;
+            padding: 4px 10px;
+            border-radius: 999px
+        }
+
+        .pill.g {
+            background: var(--greenbg);
+            color: var(--green)
+        }
+
+        .pill.r {
+            background: var(--redbg);
+            color: var(--red)
+        }
+
+        .pill.y {
+            background: var(--goldbg);
+            color: var(--gold)
+        }
+
+        table.pay {
+            border-collapse: collapse;
+            width: 100%
+        }
+
+        table.pay td,
+        table.pay th {
+            padding: 7px 4px;
+            border-bottom: 1px solid var(--line);
+            text-align: left;
+            font-size: 14px
+        }
+
+        table.pay th {
+            color: var(--muted);
+            font-weight: 500;
+            font-size: 12px
+        }
+
+        .r {
+            text-align: right !important
+        }
+
+        .totals {
+            display: flex;
+            gap: 18px;
+            flex-wrap: wrap;
+            font-size: 14px;
+            margin-top: 6px
+        }
+
+        .totals b {
+            font-weight: 600
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <h1>Bounty Tournament Planner</h1>
+
+        <div class="card">
+            <div class="grid">
+                <label>Sign-ups <input id="signups" type="number" min="2" value="100"></label>
+                <label>Estimated rebuys <input id="rebuys" type="number" min="0" value="82"></label>
+                <label>Entry fee (M) <input id="entryFee" type="number" min="0" value="50"></label>
+                <label>Rebuy fee (M) <input id="rebuyFee" type="number" min="0" value="75"></label>
+            </div>
+            <details>
+                <summary>More settings</summary>
+                <div class="grid">
+                    <label>Entry: bounty portion (M) <input id="entryBounty" type="number" min="0" value="20"></label>
+                    <label>Rebuy: bounty portion (M) <input id="rebuyBounty" type="number" min="0" value="25"></label>
+                    <label>Day 1 table size <input id="d1size" type="number" min="2" value="6"></label>
+                    <label>Rebuy table size <input id="rbsize" type="number" min="2" value="3"></label>
+                    <label>Day 2 max table size <input id="d2size" type="number" min="2" value="9"></label>
+                    <label>Final table size <input id="finalSize" type="number" min="2" value="9"></label>
+                    <label>Final table share of bounty pool (%) <input id="finalShare" type="number" min="0" max="100"
+                            value="40"></label>
+                    <label class="full">Payout % per place (comma separated, totals 100) <input id="payouts" type="text"
+                            value="30,20,14,10,8,6,5,4,3"></label>
+                </div>
+            </details>
+        </div>
+
+        <div id="warn" class="warn"></div>
+
+        <div class="card">
+            <div id="funnel" class="funnel"></div>
+            <div id="totals" class="totals"></div>
+        </div>
+
+        <div id="stages"></div>
+    </div>
+
+    <script>
+        const $ = id => document.getElementById(id);
+        const ids = ['signups', 'rebuys', 'entryFee', 'entryBounty', 'rebuyFee', 'rebuyBounty', 'd1size', 'rbsize', 'd2size', 'finalSize', 'finalShare', 'payouts'];
+        ids.forEach(id => $(id).addEventListener('input', render));
+
+        function money(m) {
+            if (!isFinite(m)) return '0';
+            if (Math.abs(m) >= 1000) return (m / 1000).toFixed(2).replace(/\.?0+$/, '') + 'B';
+            return Math.round(m) + 'M';
+        }
+        function splitTables(p, size) {
+            if (p <= 0) return [];
+            const t = Math.ceil(p / size), base = Math.floor(p / t), extra = p % t, out = [];
+            for (let i = 0; i < t; i++) out.push(i < extra ? base + 1 : base);
+            return out;
+        }
+        function shareSeats(tables, seats) {
+            const per = Math.floor(seats / tables.length);
+            const adv = tables.map(() => per);
+            let left = seats - per * tables.length;
+            for (let i = 0; i < tables.length && left > 0; i++) { adv[i]++; left--; }
+            return adv;
+        }
+        function tableGroups(tables, advs) {
+            const groups = new Map();
+            tables.forEach((s, i) => { const k = s + '/' + advs[i]; groups.set(k, (groups.get(k) || 0) + 1); });
+            let html = '<div class="row">';
+            for (const [key, count] of groups) {
+                const [s, a] = key.split('/').map(Number);
+                let seats = '';
+                for (let i = 0; i < s; i++) seats += `<div class="seat ${i < a ? 'on' : ''}"></div>`;
+                html += `<div class="tbl"><div class="count">${count} ×</div><div class="seats">${seats}</div><div class="t"><b>${s}</b> players, <b>${a}</b> through</div></div>`;
+            }
+            return html + '</div>';
+        }
+        function pills(list) { return '<div class="pills">' + list.map(([c, t]) => `<span class="pill ${c}">${t}</span>`).join('') + '</div>'; }
+        function ordinal(n) { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
+
+        function render() {
+            const v = {}; ids.forEach(id => v[id] = $(id).value);
+            const signups = Math.max(0, parseInt(v.signups) || 0);
+            const rebuysIn = Math.max(0, parseInt(v.rebuys) || 0);
+            const entryFee = +v.entryFee || 0, entryB = +v.entryBounty || 0;
+            const rebuyFee = +v.rebuyFee || 0, rebuyB = +v.rebuyBounty || 0;
+            const d1size = Math.max(2, parseInt(v.d1size) || 6);
+            const rbsize = Math.max(2, parseInt(v.rbsize) || 3);
+            const d2size = Math.max(2, parseInt(v.d2size) || 9);
+            const finalSize = Math.max(2, parseInt(v.finalSize) || 9);
+            const finalShare = Math.min(100, Math.max(0, +v.finalShare || 0));
+            const warns = [];
+            if (entryB > entryFee) warns.push('Entry bounty portion is larger than the entry fee.');
+            if (rebuyB > rebuyFee) warns.push('Rebuy bounty portion is larger than the rebuy fee.');
+
+            const d1Tables = splitTables(signups, d1size);
+            const d1Winners = d1Tables.length, d1Out = signups - d1Winners;
+            const rebuys = Math.min(rebuysIn, d1Out);
+            if (rebuysIn > d1Out) warns.push(`Only ${d1Out} players go out on Day 1, so rebuys are capped at ${d1Out}.`);
+            const rbTables = splitTables(rebuys, rbsize);
+            const rbWinners = rbTables.length;
+
+            const mainPool = signups * (entryFee - entryB) + rebuys * (rebuyFee - rebuyB);
+            const bountyPool = signups * entryB + rebuys * rebuyB;
+
+            let players = d1Winners + rbWinners;
+            const day2Start = players;
+            const rounds = [];
+            let guard = 0;
+            while (players > finalSize && guard++ < 10) {
+                const tables = splitTables(players, d2size);
+                const advs = tables.length <= finalSize ? shareSeats(tables, finalSize) : tables.map(() => 1);
+                const through = advs.reduce((a, b) => a + b, 0);
+                rounds.push({ players, tables, advs, through, out: players - through });
+                players = through;
+            }
+            const finalPlayers = players, finalOut = Math.max(0, finalPlayers - 1);
+            const preOut = rounds.reduce((a, r) => a + r.out, 0);
+            const finalEnvPool = finalOut > 0 ? bountyPool * finalShare / 100 : 0;
+            const preEnvPool = bountyPool - finalEnvPool;
+            const preAvg = preOut ? preEnvPool / preOut : 0;
+            const finalAvg = finalOut ? finalEnvPool / finalOut : 0;
+
+            const pct = v.payouts.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
+            const pctSum = pct.reduce((a, b) => a + b, 0);
+            if (Math.abs(pctSum - 100) > 0.01) warns.push(`Payout schedule totals ${pctSum.toFixed(1)}%, not 100%.`);
+            if (pct.length > finalPlayers) warns.push(`Payout schedule has ${pct.length} places but only ${finalPlayers} reach the final.`);
+
+            // Funnel
+            const steps = [[signups, 'sign-ups'], [d1Winners, 'Day 1 winners']];
+            if (rebuys) steps.push([rebuys, 'rebuy'], [rbWinners, 'rebuy winners']);
+            steps.push([day2Start, 'start Day 2'], [finalPlayers, 'final table'], [1, 'winner']);
+            $('funnel').innerHTML = steps.map(([n, l]) => `<div class="step"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+            $('totals').innerHTML = `<span>Main pool <b>${money(mainPool)}</b></span><span>Bounty pool <b>${money(bountyPool)}</b></span><span>Envelopes <b>${preOut + finalOut}</b></span>`;
+
+            let html = '';
+            html += `<div class="card stage"><h2>Day 1 <small>no bounties, one winner per table</small></h2>
+    <p>${signups} players, ${d1Tables.length} tables.</p>
+    ${tableGroups(d1Tables, d1Tables.map(() => 1))}
+    ${pills([['g', d1Winners + ' through'], ['r', d1Out + ' out']])}</div>`;
+
+            if (rebuys) {
+                html += `<div class="card stage"><h2>Rebuy stage <small>${money(rebuyFee)} each, no bounties, one winner per table</small></h2>
+      <p>${rebuys} rebuyers, ${rbTables.length} tables.</p>
+      ${tableGroups(rbTables, rbTables.map(() => 1))}
+      ${pills([['g', rbWinners + ' through'], ['r', (rebuys - rbWinners) + ' out']])}</div>`;
+            }
+
+            rounds.forEach((r, i) => {
+                const name = rounds.length === 1 ? 'Day 2' : `Day 2, round ${i + 1}`;
+                html += `<div class="card stage"><h2>${name} <small>bounties live, each table stops at its number</small></h2>
+      <p>${r.players} players, ${r.tables.length} tables.</p>
+      ${tableGroups(r.tables, r.advs)}
+      ${pills([['g', r.through + ' through'], ['r', r.out + ' out'], ['y', r.out + ' envelopes, avg ' + money(preAvg)]])}</div>`;
+            });
+
+            let finalSeats = '';
+            for (let i = 0; i < finalPlayers; i++) finalSeats += `<div class="seat ${i === 0 ? 'on' : ''}"></div>`;
+            html += `<div class="card stage"><h2>Final table <small>bounties live, fresh stacks, plays to a winner</small></h2>
+    <div class="row"><div class="tbl"><div class="seats">${finalSeats}</div><div class="t"><b>${finalPlayers}</b> players</div></div></div>
+    ${pills([['r', finalOut + ' out'], ['y', finalOut + ' envelopes, avg ' + money(finalAvg) + ' (' + finalShare + '% of bounty pool)']])}</div>`;
+
+            let rows = pct.map((p, i) => `<tr><td>${ordinal(i + 1)}</td><td class="r">${p}%</td><td class="r">${money(mainPool * p / 100)}</td></tr>`).join('');
+            html += `<div class="card stage"><h2>Payouts <small>from the ${money(mainPool)} main pool, envelopes on top</small></h2>
+    <table class="pay"><tr><th>Place</th><th class="r">Share</th><th class="r">Prize</th></tr>${rows}</table></div>`;
+
+            $('stages').innerHTML = html;
+            $('warn').style.display = warns.length ? 'block' : 'none';
+            $('warn').innerHTML = warns.join('<br>');
+        }
+        render();
+    </script>
+</body>
+
+</html>

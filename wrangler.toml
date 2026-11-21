@@ -1,6 +1,6 @@
 # Cloudflare Pages config for the systoned.cc site.
-# The site is plain static files at the repo root (no build step); the only
-# server code is the poker-hof API under functions/poker-hof/api/.
+# The site is plain static files at the repo root (no build step); the server
+# code lives under functions/poker-hof/api/ and functions/mystery-bounty/api/.
 name = "systoned"
 pages_build_output_dir = "."
 compatibility_date = "2025-10-01"
@@ -11,3 +11,10 @@ compatibility_date = "2025-10-01"
 binding = "DB"
 database_name = "poker-hof"
 database_id = "da677e8d-de33-44c7-a1bd-ab4363a836d7"
+
+# D1 database powering /mystery-bounty. Reuses the same SESSION_SECRET for
+# HMAC session tokens; admins are an allowlist seeded in the schema.
+[[d1_databases]]
+binding = "MB"
+database_name = "mystery-bounty"
+database_id = "15a63b6b-e6f9-4621-82a0-f455ab01c09c"

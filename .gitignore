@@ -5,3 +5,4 @@ shootout/appscript.gs
 # Cloudflare local state
 .wrangler/
 node_modules/
+.DS_Store

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Mystery Bounty — Seating Editor</title>
+  <style>
+    :root {
+      --bg: #12160f; --card: #202a1e; --card2: #26331f; --line: #3a4a33;
+      --text: #e8eadf; --dim: #9aa88f; --gold: #e3b341; --green: #7ccb6e;
+      --red: #e06c5c; --chip: #2f4d33; --greenbg: #1d3328; --goldbg: #3a2f14; --field: #0f1410;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: radial-gradient(ellipse at 50% -20%, #23331f 0%, var(--bg) 60%); color: var(--text); font: 15px/1.5 "Avenir Next", "Segoe UI", system-ui, sans-serif; min-height: 100vh; }
+    a { color: inherit; text-decoration: none; }
+    .wrap { max-width: 1400px; margin: 0 auto; padding: 18px 20px 60px; }
+    .nav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .brand { font-size: 19px; font-weight: 800; letter-spacing: 1px; color: var(--gold); text-transform: uppercase; }
+    .brand .suit { color: var(--red); }
+    .brand .adm { color: var(--dim); font-size: 12px; letter-spacing: 1px; font-weight: 600; }
+    .nav .sp { flex: 1; }
+    .btn { font-family: inherit; font-size: 14px; font-weight: 700; padding: 9px 16px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; white-space: nowrap; }
+    .btn.gold { background: var(--gold); color: #241d07; }
+    .btn.gold:hover { filter: brightness(1.05); }
+    .btn.ghost { background: var(--chip); color: var(--text); border-color: var(--line); }
+    .btn.ghost:hover { background: #395a3d; }
+    .btn.sm { padding: 6px 12px; font-size: 13px; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    h1 { font-size: 16px; letter-spacing: .5px; margin-bottom: 2px; }
+    .sub { color: var(--dim); font-size: 13px; margin-bottom: 14px; }
+
+    .advisory { background: var(--goldbg); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; font-size: 13px; }
+    .advisory .at { color: var(--gold); font-weight: 700; margin-bottom: 6px; }
+    .advisory .arow { color: var(--dim); margin: 2px 0; }
+    .advisory .arow b { color: var(--text); }
+
+    .board { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; align-items: start; }
+    .col { background: linear-gradient(180deg, var(--card2), var(--card)); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-height: 120px; }
+    .col.pool { background: #15200f; }
+    .col.over { border-color: var(--red); }
+    .col.under { border-color: var(--gold); }
+    .col.drop { border-color: var(--green); box-shadow: 0 0 0 1px rgba(124,203,110,.3); }
+    .colhead { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; gap: 6px; }
+    .colhead .ct { font-weight: 700; font-size: 14px; }
+    .colhead .ctime { color: var(--green); font-size: 12px; font-weight: 600; }
+    .colhead .ccount { color: var(--dim); font-size: 12px; }
+    .colhead .ccount.bad { color: var(--red); }
+    .pills { display: flex; flex-direction: column; gap: 5px; min-height: 30px; }
+    .pill {
+      display: flex; align-items: center; justify-content: space-between; gap: 6px;
+      background: var(--chip); border: 1px solid var(--line); border-radius: 8px;
+      padding: 6px 9px; font-size: 13px; cursor: grab; user-select: none;
+    }
+    .pill:active { cursor: grabbing; }
+    .pill.bad { border-color: var(--red); background: #2a1917; }
+    .pill.dragging { opacity: .4; }
+    .pill .pn { font-weight: 600; }
+    .pill .pt { color: var(--dim); font-size: 11px; }
+    .pill.bad .pt { color: var(--red); }
+    .empty { color: var(--dim); font-size: 12px; padding: 6px 0; }
+    .loginmsg { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 20px; color: var(--dim); }
+    .toasts { position: fixed; top: 14px; right: 14px; display: flex; flex-direction: column; gap: 8px; z-index: 50; }
+    .toast { background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 13px; max-width: 320px; }
+    .toast.err { border-color: #5a3330; color: var(--red); }
+    .toast.ok { border-color: var(--green); color: var(--green); }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="nav">
+      <a class="brand" href="admin.html">Mystery <span class="suit">&spades;</span> Bounty <span class="adm">// SEATING</span></a>
+      <span class="sp"></span>
+      <a class="btn ghost sm" href="admin.html">Back to admin</a>
+      <button class="btn ghost sm" id="btnReset">Reset to algorithm</button>
+      <button class="btn gold sm" id="btnCommit">Commit seating</button>
+    </div>
+    <h1 id="title">Seating editor</h1>
+    <div class="sub" id="subtitle">Drag players between tables. Each player shows the times they picked; a red pill is sitting at a time they did not pick.</div>
+    <div id="advisory"></div>
+    <div id="main"></div>
+  </div>
+  <div class="toasts" id="toasts"></div>
+
+  <script>
+    var API = '/mystery-bounty/api';
+    var token = localStorage.getItem('mb_token') || '';
+    var STAGE = new URLSearchParams(location.search).get('stage') || 'day2';
+    var STAGE_LABEL = { day1: 'Day 1', rebuy: 'Rebuy', day2: 'Day 2', final: 'Final', money: 'Money' }[STAGE] || STAGE;
+
+    // state: tables[{id,label,hour,size,players:[id...]}], players{id:{id,name,picks:[hours]}}, pool:[id...]
+    var tables = [], players = {}, pool = [];
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+    function toast(msg, kind) {
+      var el = document.createElement('div'); el.className = 'toast' + (kind ? ' ' + kind : '');
+      el.innerHTML = msg; document.getElementById('toasts').appendChild(el);
+      setTimeout(function () { el.style.transition = 'opacity .3s'; el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 300); }, 4200);
+    }
+    function tableHour(timeslot) { var m = /(\d{1,2}):/.exec(timeslot || ''); return m ? Number(m[1]) : null; }
+    function slotHour(sl) { var m = /t(\d+)/.exec(sl || ''); return m ? Number(m[1]) : null; }
+    function fmtHour(h) { return (h < 10 ? '0' + h : h) + ':00'; }
+    // nearest distance (hours, wrapping) from a table hour to a player's picks; null if no picks
+    function dist(playerId, hour) {
+      var p = players[playerId]; if (!p || hour == null || !p.picks.length) return null;
+      var best = 99; p.picks.forEach(function (h) { var d = Math.abs(h - hour); d = Math.min(d, 24 - d); best = Math.min(best, d); });
+      return best;
+    }
+
+    function load() {
+      fetch(API + '/stage/seating?stage=' + encodeURIComponent(STAGE), { headers: { 'Authorization': 'Bearer ' + token } })
+        .then(function (r) { return r.json().then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('HTTP ' + r.status)); return d; }); })
+        .then(function (d) { build(d); render(); })
+        .catch(function (e) {
+          document.getElementById('main').innerHTML = '<div class="loginmsg">Could not load seating: ' + esc(e.message) +
+            '. Make sure you are signed in as an admin on <a href="admin.html">the admin page</a>.</div>';
+        });
+    }
+
+    function build(d) {
+      players = {};
+      (d.unseated || []).forEach(function (p) { players[p.id] = { id: p.id, name: p.name || ('#' + p.id), picks: [] }; });
+      (d.seats || []).forEach(function (s) { players[s.tornId] = players[s.tornId] || { id: s.tornId, name: s.name || ('#' + s.tornId), picks: [] }; });
+      var av = d.availability || {};
+      Object.keys(players).forEach(function (id) {
+        var picks = (av[id] || []).map(slotHour).filter(function (h) { return h != null; });
+        players[id].picks = picks;
+      });
+      var byTable = {};
+      (d.seats || []).slice().sort(function (a, b) { return (a.seatNo || 0) - (b.seatNo || 0); })
+        .forEach(function (s) { (byTable[s.tableId] = byTable[s.tableId] || []).push(s.tornId); });
+      tables = (d.tables || []).map(function (t) {
+        return { id: t.id, label: t.label || t.id, hour: tableHour(t.timeslot), size: Number(t.size) || 9, timeslot: t.timeslot || '', players: (byTable[t.id] || []).slice() };
+      });
+      var seated = {}; tables.forEach(function (t) { t.players.forEach(function (id) { seated[id] = true; }); });
+      pool = (d.unseated || []).map(function (p) { return p.id; }).filter(function (id) { return !seated[id]; });
+    }
+
+    function pillHtml(id, hour) {
+      var p = players[id]; if (!p) return '';
+      var dd = dist(id, hour);
+      var bad = hour != null && dd != null && dd > 0;
+      var picksTxt = p.picks.length ? p.picks.slice().sort(function (a, b) { return a - b; }).map(fmtHour).join(', ') : 'any time';
+      return '<div class="pill' + (bad ? ' bad' : '') + '" draggable="true" data-id="' + id + '">' +
+        '<span class="pn">' + esc(p.name) + '</span>' +
+        '<span class="pt">' + (bad ? '↳ picked ' + esc(picksTxt) : esc(picksTxt)) + '</span></div>';
+    }
+
+    function render() {
+      document.getElementById('title').textContent = STAGE_LABEL + ' seating';
+      var h = '<div class="board">';
+      tables.forEach(function (t) {
+        var n = t.players.length, cls = n > t.size ? ' over' : (n < t.size ? ' under' : '');
+        h += '<div class="col' + cls + '" data-table="' + esc(t.id) + '">' +
+          '<div class="colhead"><div><div class="ct">' + esc(t.label) + '</div>' +
+          '<div class="ctime">' + (t.hour != null ? fmtHour(t.hour) + ' TCT' : 'no time') + '</div></div>' +
+          '<div class="ccount' + (n > t.size ? ' bad' : '') + '">' + n + '/' + t.size + '</div></div>' +
+          '<div class="pills">' + (n ? t.players.map(function (id) { return pillHtml(id, t.hour); }).join('') : '<div class="empty">empty</div>') + '</div></div>';
+      });
+      // pool
+      h += '<div class="col pool" data-table="__pool__">' +
+        '<div class="colhead"><div class="ct">Unseated</div><div class="ccount">' + pool.length + '</div></div>' +
+        '<div class="pills">' + (pool.length ? pool.map(function (id) { return pillHtml(id, null); }).join('') : '<div class="empty">none</div>') + '</div></div>';
+      h += '</div>';
+      document.getElementById('main').innerHTML = h;
+      wireDrag();
+      renderAdvisory();
+    }
+
+    function renderAdvisory() {
+      var bad = [];
+      tables.forEach(function (t) {
+        t.players.forEach(function (id) { var d = dist(id, t.hour); if (t.hour != null && d != null && d > 0) bad.push({ id: id, hour: t.hour, d: d }); });
+      });
+      var over = tables.filter(function (t) { return t.players.length > t.size; });
+      var el = document.getElementById('advisory');
+      if (!bad.length && !over.length && !pool.length) { el.innerHTML = ''; return; }
+      var html = '<div class="advisory">';
+      if (over.length) html += '<div class="at">' + over.length + ' table' + (over.length === 1 ? '' : 's') + ' over capacity</div>';
+      if (pool.length) html += '<div class="arow"><b>' + pool.length + '</b> player' + (pool.length === 1 ? '' : 's') + ' still unseated</div>';
+      if (bad.length) {
+        html += '<div class="at">' + bad.length + ' player' + (bad.length === 1 ? '' : 's') + ' seated away from a picked time</div>';
+        bad.sort(function (a, b) { return b.d - a.d; }).slice(0, 12).forEach(function (b) {
+          var p = players[b.id];
+          html += '<div class="arow"><b>' + esc(p.name) + '</b> at ' + fmtHour(b.hour) + ' — picked ' +
+            (p.picks.length ? esc(p.picks.slice().sort(function (x, y) { return x - y; }).map(fmtHour).join(', ')) : 'any') + ' (' + b.d + 'h off)</div>';
+        });
+      }
+      html += '</div>';
+      el.innerHTML = html;
+    }
+
+    var dragId = null;
+    function wireDrag() {
+      Array.prototype.forEach.call(document.querySelectorAll('.pill'), function (pill) {
+        pill.addEventListener('dragstart', function (e) { dragId = Number(this.getAttribute('data-id')); this.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+        pill.addEventListener('dragend', function () { this.classList.remove('dragging'); dragId = null; });
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('.col'), function (col) {
+        col.addEventListener('dragover', function (e) { e.preventDefault(); this.classList.add('drop'); });
+        col.addEventListener('dragleave', function () { this.classList.remove('drop'); });
+        col.addEventListener('drop', function (e) {
+          e.preventDefault(); this.classList.remove('drop');
+          if (dragId == null) return;
+          moveTo(dragId, this.getAttribute('data-table'));
+        });
+      });
+    }
+
+    function moveTo(id, destTable) {
+      // remove from wherever it is
+      pool = pool.filter(function (x) { return x !== id; });
+      tables.forEach(function (t) { t.players = t.players.filter(function (x) { return x !== id; }); });
+      if (destTable === '__pool__') { pool.push(id); }
+      else { var t = tables.find(function (x) { return x.id === destTable; }); if (t) t.players.push(id); }
+      render();
+    }
+
+    // Re-run the closest-slot balanced assignment over everyone (same logic as the server).
+    function resetToAlgorithm() {
+      var all = [];
+      tables.forEach(function (t) { all = all.concat(t.players); }); all = all.concat(pool);
+      all = all.filter(function (v, i, a) { return a.indexOf(v) === i; });
+      tables.forEach(function (t) { t.players = []; }); pool = [];
+      var seats = tables.map(function (t) { return t; });
+      // most-constrained first (fewest tables at an exactly-picked hour)
+      all.sort(function (a, b) {
+        var am = seats.filter(function (x) { return dist(a, x.hour) === 0; }).length;
+        var bm = seats.filter(function (x) { return dist(b, x.hour) === 0; }).length;
+        return am - bm;
+      });
+      all.forEach(function (id) {
+        var open = seats.filter(function (x) { return x.players.length < x.size; });
+        if (!open.length) { pool.push(id); return; }
+        open.sort(function (a, b) {
+          var da = dist(id, a.hour); da = da == null ? 99 : da;
+          var db = dist(id, b.hour); db = db == null ? 99 : db;
+          return da - db || (b.size - b.players.length) - (a.size - a.players.length);
+        });
+        open[0].players.push(id);
+      });
+      render();
+      toast('Re-seated by the availability algorithm. Review and commit.', 'ok');
+    }
+
+    function commit() {
+      var over = tables.filter(function (t) { return t.players.length > t.size; });
+      if (over.length && !window.confirm(over.length + ' table(s) are over capacity. Commit anyway?')) return;
+      if (pool.length && !window.confirm(pool.length + ' player(s) are still unseated. Commit anyway?')) return;
+      var assignments = tables.map(function (t) { return { tableId: t.id, tornIds: t.players.slice() }; });
+      var btn = document.getElementById('btnCommit'); btn.disabled = true; btn.textContent = 'Committing…';
+      fetch(API + '/stage/seat-manual', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ stage: STAGE, assignments: assignments })
+      }).then(function (r) { return r.json().then(function (d) { if (!r.ok || d.error) throw new Error(d.error || ('HTTP ' + r.status)); return d; }); })
+        .then(function () { toast('Seating committed.', 'ok'); btn.textContent = 'Committed ✓'; setTimeout(function () { btn.disabled = false; btn.textContent = 'Commit seating'; }, 1200); })
+        .catch(function (e) { btn.disabled = false; btn.textContent = 'Commit seating'; toast('Commit failed: ' + esc(e.message), 'err'); });
+    }
+
+    document.getElementById('btnReset').addEventListener('click', resetToAlgorithm);
+    document.getElementById('btnCommit').addEventListener('click', commit);
+
+    if (!token || localStorage.getItem('mb_role') !== 'admin') {
+      document.getElementById('main').innerHTML = '<div class="loginmsg">Sign in as an admin on <a href="admin.html">the admin page</a> first, then reopen this editor.</div>';
+    } else {
+      load();
+    }
+  </script>
+</body>
+
+</html>
