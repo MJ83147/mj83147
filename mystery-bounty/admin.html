@@ -117,6 +117,15 @@
     .pool .l { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--dim); }
     .pool .v { font-size: 20px; font-weight: 800; margin-top: 2px; color: var(--gold); }
     .pool.main .v { color: var(--text); }
+    .pool .s { font-size: 11px; color: var(--dim); margin-top: 2px; }
+    .pools.three { grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 680px) { .pools.three { grid-template-columns: 1fr; } }
+    .stagepools { margin-top: 10px; }
+    .pool .rows { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
+    .pool .rows div { display: flex; justify-content: space-between; gap: 8px; color: var(--dim); }
+    .pool .rows b { color: var(--text); font-weight: 600; }
+    .pool .rows .amt { color: var(--gold); font-weight: 700; }
+    .poolnote { font-size: 11px; color: var(--dim); margin-top: 6px; }
 
     /* settings grid */
     .sgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 4px; }
@@ -215,7 +224,9 @@
     <div class="blurb" id="eventLine"></div>
 
     <!-- POOLS readout strip -->
-    <div class="pools" id="pools"></div>
+    <div class="pools three" id="pools"></div>
+    <div class="pools three stagepools" id="stagePools"></div>
+    <div class="poolnote" id="poolNote"></div>
 
     <!-- ===== GROUP: SETUP ===== -->
     <div class="grouphead">Setup</div>
@@ -384,7 +395,7 @@
     }
 
     function refresh() {
-      return getState().then(function (d) { state = d; renderAll(); });
+      return getState().then(function (d) { state = d; poolState = d; renderAll(); });
     }
 
     /* ---------------- auth ---------------- */
@@ -437,18 +448,92 @@
       document.getElementById('eventLine').textContent = state.settings.event_name || 'Mystery Bounty';
     }
 
-    function renderPools() {
-      var p = state.pool || {};
-      var items = [
-        ['Main pool', money(p.mainTotal), 'main'],
-        ['Bounty pool', money(p.bountyTotal), ''],
-        ['Day 2 envelopes', money(p.day2EnvPool), ''],
-        ['Final envelopes', money(p.finalEnvPool), '']
-      ];
-      document.getElementById('pools').innerHTML = items.map(function (it) {
-        return '<div class="pool ' + it[2] + '"><div class="l">' + it[0] + '</div><div class="v">' + it[1] + '</div></div>';
-      }).join('');
+    // Prize pool breakdown. Updates on every refresh and on its own every 15 s
+    // (poolState), so it follows new players, rebuys and donations without
+    // re-rendering the rest of the page.
+    var poolState = null;
+    // Same table maths as the server (tableCount in the API).
+    function tableCountFor(n, min, max, desired) {
+      if (n <= 0) return 0;
+      min = Math.min(Math.max(1, min || 1), max);
+      var lo = Math.ceil(n / max), hi = Math.max(1, Math.floor(n / min));
+      var c = desired || lo;
+      c = Math.min(Math.max(c, lo), Math.max(lo, hi));
+      return Math.max(1, c);
     }
+    // n players over c tables as evenly as possible, e.g. 23 over 4 -> "6, 6, 6, 5"
+    function seatSplit(n, c) {
+      if (c <= 0) return '';
+      var base = Math.floor(n / c), extra = n % c, out = [];
+      for (var i = 0; i < c; i++) out.push(i < extra ? base + 1 : base);
+      return out.join(', ');
+    }
+    function renderPools() {
+      var d = poolState || state;
+      var p = d.pool || {}, s = d.settings || {}, tables = d.tables || [];
+      var total = (p.mainTotal || 0) + (p.bountyTotal || 0);
+      var mainPct = num(s, 'main_pct', 60), bountyPct = num(s, 'bounty_pct', 40), den = (mainPct + bountyPct) || 100;
+      var pctTxt = function (x, sum) { return Math.round(x / sum * 1000) / 10 + '%'; };
+      var top = [
+        ['Total prize pool', money(total), 'main', p.entries + ' players · ' + p.rebuys + ' rebuys · ' + money(p.donated) + ' donated'],
+        ['Main prize pool', money(p.mainTotal), 'main', pctTxt(mainPct, den) + ' of every buy-in, rebuy and donation'],
+        ['Bounty pool', money(p.bountyTotal), '', pctTxt(bountyPct, den) + ' of every buy-in, rebuy and donation']
+      ];
+      document.getElementById('pools').innerHTML = top.map(function (it) {
+        return '<div class="pool ' + it[2] + '"><div class="l">' + it[0] + '</div><div class="v">' + it[1] + '</div><div class="s">' + esc(it[3]) + '</div></div>';
+      }).join('');
+
+      // envelope share of each bounty stage (same defaults as the server)
+      var sh = (s.day1_share_pct == null && s.day2_share_pct == null) ? { day1: 10, day2: 55, final: 35 }
+        : { day1: Math.max(0, num(s, 'day1_share_pct', 10)), day2: Math.max(0, num(s, 'day2_share_pct', 55)), final: Math.max(0, num(s, 'final_share_pct', 35)) };
+      var shSum = (sh.day1 + sh.day2 + sh.final) || 100;
+      var byStage = function (st) { return tables.filter(function (t) { return t.stage === st; }); };
+      var sumEnv = function (ts) { return ts.reduce(function (a, t) { return a + (Number(t.envelopeTotal) || 0); }, 0); };
+      var d1T = byStage('day1'), rbT = byStage('rebuy'), d2T = byStage('day2'), fT = byStage('final');
+
+      // projected tables from the current player numbers, or the real tables once seated
+      var n = p.entries || 0;
+      var d1Count = d1T.length || tableCountFor(n, num(s, 'day1_table_min', 2), num(s, 'day1_table_max', 6));
+      var rbCount = rbT.length || tableCountFor(p.rebuys || 0, num(s, 'rebuy_table_min', 2), num(s, 'rebuy_table_max', 3));
+      var d2Players = d1Count + rbCount;  // one winner per Day 1 and Rebuy table
+      var d2Count = d2T.length || tableCountFor(d2Players, num(s, 'day2_table_min', 2), num(s, 'day2_table_max', 9), num(s, 'day2_table_count', 3));
+      var finalSeats = num(s, 'final_table_size', 9);
+
+      // money per stage, as the server assigns it when a stage is seated:
+      // Day 1 gets its share; Day 2 gets what is left after the Final share and
+      // what Day 1 got; the Final gets everything left after Day 1 and Day 2.
+      var d1Money = d1T.length ? sumEnv(d1T) : p.day1EnvPool;
+      var d2Money = d2T.length ? sumEnv(d2T) : Math.max(0, p.bountyTotal - p.finalEnvPool - (d1T.length ? sumEnv(d1T) : p.day1EnvPool));
+      var fMoney = fT.length ? sumEnv(fT) : Math.max(0, p.bountyTotal - d1Money - d2Money);
+
+      function card(label, pct, money_, seated, count, players, perTable, extra) {
+        var rows = [
+          ['Share of bounty pool', '<b>' + pctTxt(pct, shSum) + '</b>'],
+          [seated ? 'Tables (seated)' : 'Tables (projected)', '<b>' + count + '</b>'],
+          ['Players per table', '<b>' + (players || '–') + '</b>'],
+          ['Envelopes per table', '<span class="amt">' + (count ? money(perTable) : '–') + '</span>']
+        ].concat(extra || []);
+        return '<div class="pool"><div class="l">' + label + '</div><div class="v">' + money(money_) + '</div><div class="rows">' +
+          rows.map(function (r) { return '<div><span>' + r[0] + '</span>' + r[1] + '</div>'; }).join('') + '</div></div>';
+      }
+      var seatedPlayers = function (ts) { return ts.map(function (t) { return (t.seats || []).length || t.seatSize; }).join(', '); };
+      var html = card('Day 1 envelopes', sh.day1, d1Money, !!d1T.length, d1Count,
+        d1T.length ? seatedPlayers(d1T) : seatSplit(n, d1Count),
+        d1T.length ? (Number(d1T[0].envelopeTotal) || 0) : (d1Count ? Math.floor(d1Money / d1Count) : 0));
+      html += card('Day 2 envelopes', sh.day2, d2Money, !!d2T.length, d2Count,
+        d2T.length ? seatedPlayers(d2T) : seatSplit(d2Players, d2Count),
+        d2T.length ? (Number(d2T[0].envelopeTotal) || 0) : (d2Count ? Math.floor(d2Money / d2Count) : 0),
+        d2T.length ? [] : [['Players reaching Day 2', '<b>' + d2Players + '</b>']]);
+      html += card('Final envelopes', sh.final, fMoney, !!fT.length, 1,
+        fT.length ? seatedPlayers(fT) : 'up to ' + finalSeats, fMoney);
+      document.getElementById('stagePools').innerHTML = html;
+      document.getElementById('poolNote').textContent = 'Projected tables use the ' + n + ' registered players and ' + (p.rebuys || 0) +
+        ' paid rebuys with the table settings; Day 2 assumes one winner from each Day 1 and Rebuy table. Once a stage is seated it shows its real tables and its envelope money is fixed; money added later goes to the stages after it. Updates every 15 seconds.';
+    }
+    setInterval(function () {
+      if (document.hidden || !state || document.getElementById('app').classList.contains('hidden')) return;
+      getState().then(function (d) { if (d && d.pool) { poolState = d; renderPools(); } }).catch(function () { });
+    }, 15000);
 
     var STAGE_TIMES = [['day1', 'Day 1'], ['rebuy', 'Rebuy'], ['day2', 'Day 2'], ['final', 'Final Table'], ['money', 'Money Table']];
     // settings store epoch seconds in TCT (=UTC). Stage days are a DATE only (the
@@ -562,7 +647,7 @@
     /* ------- settings ------- */
     // {key, label, type, group, wide}  type: num | money | text | toggle | payout
     // Grouped into labelled sections so the panel isn't one overwhelming block.
-    var SETTINGS_GROUPS = ['Event', 'Buy-ins & pools', 'Day 1 tables', 'Rebuy tables', 'Day 2 tables', 'Final & money table', 'Payouts'];
+    var SETTINGS_GROUPS = ['Event', 'Buy-ins & pools', 'Bounty envelope split', 'Day 1 tables', 'Rebuy tables', 'Day 2 tables', 'Final & money table', 'Payouts'];
     var SETTINGS_FIELDS = [
       { key: 'event_name', label: 'Event name', type: 'text', group: 'Event', wide: true },
       { key: 'pay_to', label: 'Buy-ins paid to', type: 'text', group: 'Event' },
@@ -570,6 +655,9 @@
       { key: 'rebuy_total', label: 'Rebuy ($)', type: 'money', group: 'Buy-ins & pools' },
       { key: 'main_pct', label: 'Main pot (%)', type: 'num', group: 'Buy-ins & pools' },
       { key: 'bounty_pct', label: 'Bounty (%)', type: 'num', group: 'Buy-ins & pools' },
+      { key: 'day1_share_pct', label: 'Day 1 envelopes (% of bounty pool)', type: 'num', group: 'Bounty envelope split', def: '10' },
+      { key: 'day2_share_pct', label: 'Day 2 envelopes (% of bounty pool)', type: 'num', group: 'Bounty envelope split', def: '55' },
+      { key: 'final_share_pct', label: 'Final envelopes (% of bounty pool)', type: 'num', group: 'Bounty envelope split', def: '35' },
       { key: 'day1_table_min', label: 'Day 1 min / table', type: 'num', group: 'Day 1 tables' },
       { key: 'day1_table_max', label: 'Day 1 max / table', type: 'num', group: 'Day 1 tables' },
       { key: 'rebuy_table_min', label: 'Rebuy min / table', type: 'num', group: 'Rebuy tables' },
@@ -580,13 +668,15 @@
       { key: 'day2_advance', label: 'Day 2 advance / table', type: 'num', group: 'Day 2 tables' },
       { key: 'day2_to_money', label: 'Day 2 → money table / table', type: 'num', group: 'Day 2 tables' },
       { key: 'final_table_size', label: 'Final table seats', type: 'num', group: 'Final & money table' },
-      { key: 'final_share_pct', label: 'Final bounty share (%)', type: 'num', group: 'Final & money table' },
       { key: 'money_table_enabled', label: 'Money table enabled', type: 'toggle', group: 'Final & money table' },
       { key: 'payout_structure', label: 'Payout: % for 1st, 2nd, 3rd… (comma separated)', type: 'payout', group: 'Payouts', wide: true }
     ];
     function settingFieldHtml(f, s) {
       var key = f.key, label = f.label, type = f.type;
-      var v = s[key] != null ? s[key] : '';
+      var v = s[key] != null ? s[key] : (f.def != null ? f.def : '');
+      // before the 3-way envelope split is first saved, show its defaults (an old
+      // final_share_pct belonged to the earlier Day 2 / Final split)
+      if (/_share_pct$/.test(key) && s.day1_share_pct == null && s.day2_share_pct == null) v = f.def;
       var cls = 'sfield' + (f.wide ? ' wide' : '');
       if (type === 'toggle') {
         var checked = v === '1' ? ' checked' : '';
@@ -643,6 +733,13 @@
       });
       var keys = Object.keys(changed);
       if (!keys.length) { toast('No changes to save', 'error'); return; }
+      // the three envelope shares must add up to 100 (the Rebuy has no bounties)
+      var shareKeys = ['day1_share_pct', 'day2_share_pct', 'final_share_pct'];
+      var shareSum = shareKeys.reduce(function (a, k) {
+        var el = document.querySelector('#settingsGrid [data-key="' + k + '"]');
+        return a + (Number(el && el.value) || 0);
+      }, 0);
+      if (Math.abs(shareSum - 100) > 0.001) { toast('The Day 1, Day 2 and Final envelope shares must add up to 100 (now ' + shareSum + ').', 'error'); return; }
       post('/settings', changed).then(function (res) {
         if (!res.ok || res.data.error) { toast(res.data.error || 'Save failed', 'error'); return; }
         toast('Saved ' + keys.length + ' setting' + (keys.length === 1 ? '' : 's'), 'success');
@@ -653,7 +750,7 @@
 
     /* ------- stages ------- */
     var STAGES = [
-      { key: 'day1', label: 'Day 1', sub: 'All players. One winner per table advances. No bounties.', claimable: true },
+      { key: 'day1', label: 'Day 1', sub: 'All players. Bounties live. One winner per table advances.', claimable: true },
       { key: 'rebuy', label: 'Rebuy', sub: 'Paid rebuys only. One winner per table advances. No bounties.', claimable: true },
       { key: 'day2', label: 'Day 2', sub: 'Winners of Day 1 + Rebuy. Bounties live. Top N advance to the final.', claimable: true },
       { key: 'final', label: 'Final Table', sub: 'Day 2 finalists. Bounties live. Plays to one winner.', claimable: false },

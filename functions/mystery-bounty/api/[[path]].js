@@ -36,6 +36,7 @@ export async function onRequest(context) {
     if (route === '/auth' && method === 'POST') return auth(request, env);
 
     // public writes
+    if (route === '/availability/mine' && (method === 'GET' || method === 'POST')) return myAvailability(request, env, url);
     if (route === '/availability/submit' && method === 'POST') return submitAvailability(request, env);
     if (route === '/seat/claim' && method === 'POST') return claimSeat(request, env);
 
@@ -153,16 +154,41 @@ async function computePool(env, s) {
   const rebuyMain = rebuyTotal - rebuyBounty;
   const mainFromEntries = entries * entryMain;
   const mainFromRebuys = rebuys * rebuyMain;
-  const bountyTotal = entries * entryBounty + rebuys * rebuyBounty;
-  const finalSharePct = num(s, 'final_share_pct', 40);
-  const finalEnvPool = Math.round(bountyTotal * finalSharePct / 100);
-  const day2EnvPool = bountyTotal - finalEnvPool;
+  // donations are split between main and bounty the same way as a buy-in
+  const donatedBounty = Math.round(donated * bountyPct / denom);
+  const donatedMain = donated - donatedBounty;
+  const bountyTotal = entries * entryBounty + rebuys * rebuyBounty + donatedBounty;
+  // the bounty pool is split between the three bounty stages (Day 1, Day 2,
+  // Final) by the configured shares (a ratio, like main/bounty). The Rebuy and
+  // Money tables have no bounties. Day 2 takes the rounding remainder.
+  const sh = bountyShares(s);
+  const day1EnvPool = Math.round(bountyTotal * sh.day1 / sh.sum);
+  const finalEnvPool = Math.round(bountyTotal * sh.final / sh.sum);
+  const day2EnvPool = bountyTotal - day1EnvPool - finalEnvPool;
   return {
-    entries, rebuys, donated,
+    entries, rebuys, donated, donatedMain, donatedBounty,
     mainFromEntries, mainFromRebuys,
-    mainTotal: mainFromEntries + mainFromRebuys + donated,
-    bountyTotal, finalEnvPool, day2EnvPool
+    mainTotal: mainFromEntries + mainFromRebuys + donatedMain,
+    bountyTotal, day1EnvPool, day2EnvPool, finalEnvPool
   };
+}
+// Envelope split between the bounty stages, from settings (defaults 10/55/35).
+// A database from before Day 1 had bounties only has final_share_pct (the old
+// Day 2 / Final split); until the new split is saved, the defaults apply.
+function bountyShares(s) {
+  if (s.day1_share_pct == null && s.day2_share_pct == null) return { day1: 10, day2: 55, final: 35, sum: 100 };
+  const day1 = Math.max(0, num(s, 'day1_share_pct', 10));
+  const day2 = Math.max(0, num(s, 'day2_share_pct', 55));
+  const final = Math.max(0, num(s, 'final_share_pct', 35));
+  return { day1, day2, final, sum: (day1 + day2 + final) || 100 };
+}
+// Stages whose tables play for bounty envelopes.
+function isBountyStage(stage) { return stage === 'day1' || stage === 'day2' || stage === 'final'; }
+// Total already given to the envelope pools of these stages' tables.
+async function assignedEnvelopes(env, stages) {
+  const ph = stages.map((_, i) => '?' + (i + 1)).join(',');
+  const r = await env.MB.prepare(`SELECT COALESCE(SUM(envelope_total),0) t FROM tables WHERE stage IN (${ph})`).bind(...stages).first();
+  return Number(r.t) || 0;
 }
 
 /* ============================ public: /state ============================ */
@@ -327,9 +353,18 @@ async function getTable(env, url) {
     `SELECT place, torn_id AS tornId FROM placings WHERE table_id = ?1 ORDER BY place`).bind(id).all()).results;
   // reveal amounts only once the table is complete
   const complete = t.status === 'complete';
-  const knockouts = (await env.MB.prepare(
+  const rows = (await env.MB.prepare(
     `SELECT seq, eliminated_id AS out, eliminator_id AS by, ${complete ? 'amount' : '0 AS amount'}
      FROM knockouts WHERE table_id = ?1 ORDER BY seq`).bind(id).all()).results;
+  // one event per busted player; a split knockout (equal hands) has several
+  // rows for the same victim, merged here into `shares` (by + amount each)
+  const knockouts = [], byOut = {};
+  rows.forEach(k => {
+    let ev = byOut[k.out];
+    if (!ev) { ev = byOut[k.out] = { seq: k.seq, out: k.out, by: k.by, amount: 0, shares: [] }; knockouts.push(ev); }
+    ev.amount += Number(k.amount) || 0;
+    ev.shares.push({ by: k.by, amount: Number(k.amount) || 0 });
+  });
   return json({ table: { ...t, bountiesLive: !!t.bountiesLive }, seats, places, knockouts, complete });
 }
 
@@ -383,7 +418,7 @@ const EDITABLE = new Set([
   'event_name', 'roster_locked', 'entry_total', 'rebuy_total', 'main_pct', 'bounty_pct',
   'day1_table_min', 'day1_table_max', 'rebuy_table_min', 'rebuy_table_max',
   'day2_table_min', 'day2_table_max', 'day2_table_count', 'day2_advance', 'day2_to_money', 'final_table_size',
-  'final_share_pct', 'money_table_enabled', 'payout_structure', 'pay_to',
+  'day1_share_pct', 'day2_share_pct', 'final_share_pct', 'money_table_enabled', 'payout_structure', 'pay_to',
   'signup_at', 'day1_at', 'rebuy_at', 'day2_at', 'final_at', 'money_at', 'complete_at',
   'day1_method', 'rebuy_method', 'day2_method',
   'day1_select_at', 'rebuy_select_at', 'day2_select_at',
@@ -396,6 +431,14 @@ async function saveSettings(request, env) {
   const body = await request.json().catch(() => ({}));
   const entries = Object.entries(body || {}).filter(([k]) => EDITABLE.has(k));
   if (!entries.length) return json({ error: 'nothing to save' }, 400);
+  // the Day 1 / Day 2 / Final envelope shares must add up to 100
+  if (entries.some(([k]) => /^(day1|day2|final)_share_pct$/.test(k))) {
+    const cur = await readSettings(env);
+    entries.forEach(([k, val]) => { cur[k] = val; });
+    const sh = bountyShares(cur);
+    if ([sh.day1, sh.day2, sh.final].some(x => !isFinite(x)) || Math.abs(sh.day1 + sh.day2 + sh.final - 100) > 0.001)
+      return json({ error: 'The Day 1, Day 2 and Final envelope shares must add up to 100.' }, 400);
+  }
   const stmt = env.MB.prepare(
     `INSERT INTO settings (key, value, updated_at) VALUES (?1, ?2, ?3)
      ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3`);
@@ -527,7 +570,7 @@ async function stageCommit(request, env) {
   }
   const plan = Array.isArray(body.plan) ? body.plan : [];
   const mode = body.mode === 'claim' ? 'claim' : 'assigned';
-  const bountiesLive = (stage === 'day2' || stage === 'final') ? 1 : 0;
+  const bountiesLive = isBountyStage(stage) ? 1 : 0;
   const s = await readSettings(env);
   const stmts = [];
   plan.forEach((t, ti) => {
@@ -554,7 +597,7 @@ async function stageCommit(request, env) {
   });
   if (stmts.length) await env.MB.batch(stmts);
 
-  // Day 2 / final tables get their sealed envelope lists built to equal totals.
+  // Day 1 / Day 2 / final tables get their envelope pools set to equal totals.
   if (bountiesLive) await buildEnvelopesForStage(env, stage, plan, s);
   return json({ ok: true, tables: plan.length });
 }
@@ -677,20 +720,27 @@ async function rebuyConfirm(request, env) {
 // Record each bounty table's TOTAL bounty pool. The individual sealed envelopes
 // are NOT created up front: they are generated when the table is finished, one
 // per actual knockout, by randomly splitting this total. That way there are
-// never any leftover unopened envelopes. Each day2 table gets an equal slice of
-// day2EnvPool; the final table gets finalEnvPool.
+// never any leftover unopened envelopes. Each Day 1 table gets an equal slice of
+// day1EnvPool. Rebuys and donations can still grow the bounty pool after Day 1
+// is seated, so later stages are worked out from what is not yet given out:
+// Day 2 shares (pool - final share - what Day 1 got) equally, and the final
+// table gets everything Day 1 and Day 2 did not. That way the whole bounty
+// pool is always paid out, and with no late money it is exactly the set split.
 async function buildEnvelopesForStage(env, stage, plan, s) {
   const pool = await computePool(env, s);
   const stmts = [];
-  if (stage === 'day2') {
-    const perTable = plan.length ? Math.round(pool.day2EnvPool / plan.length) : 0;
+  if (stage === 'day1' || stage === 'day2') {
+    const stagePool = stage === 'day1' ? pool.day1EnvPool
+      : Math.max(0, pool.bountyTotal - pool.finalEnvPool - await assignedEnvelopes(env, ['day1']));
+    const perTable = plan.length ? Math.floor(stagePool / plan.length) : 0;
     plan.forEach(t => {
       stmts.push(env.MB.prepare(`UPDATE tables SET envelope_total = ?2 WHERE id = ?1`).bind(t.tableId, perTable));
       stmts.push(env.MB.prepare(`DELETE FROM envelopes WHERE table_id = ?1`).bind(t.tableId));
     });
   } else if (stage === 'final') {
     const t = plan[0]; if (!t) return;
-    stmts.push(env.MB.prepare(`UPDATE tables SET envelope_total = ?2 WHERE id = ?1`).bind(t.tableId, pool.finalEnvPool));
+    const finalPool = Math.max(0, pool.bountyTotal - await assignedEnvelopes(env, ['day1', 'day2']));
+    stmts.push(env.MB.prepare(`UPDATE tables SET envelope_total = ?2 WHERE id = ?1`).bind(t.tableId, finalPool));
     stmts.push(env.MB.prepare(`DELETE FROM envelopes WHERE table_id = ?1`).bind(t.tableId));
   }
   if (stmts.length) await env.MB.batch(stmts);
@@ -711,6 +761,18 @@ async function envelopesGenerate(request, env) {
     stmts.push(env.MB.prepare(`INSERT INTO envelopes (table_id, seq, amount) VALUES (?1,?2,?3)`).bind(t.id, i + 1, amt)));
   await env.MB.batch(stmts);
   return json({ ok: true, count: amounts.length });
+}
+
+// Split one envelope equally between `n` players in whole dollars. Any
+// leftover dollars (amount not divisible by n) go one each to the first takers.
+function splitEqual(amount, n) {
+  amount = Math.max(0, Math.round(Number(amount) || 0));
+  if (n <= 1) return [amount];
+  const base = Math.floor(amount / n);
+  let rem = amount - base * n;
+  const out = [];
+  for (let i = 0; i < n; i++) { out.push(base + (rem > 0 ? 1 : 0)); if (rem > 0) rem--; }
+  return out;
 }
 
 // Split `total` into `count` varied envelopes that sum EXACTLY to total.
@@ -897,10 +959,23 @@ async function finishTable(request, env) {
   // `by` is a tornId for a knockout, or null for the winner OR a "did not play"
   // no-show (both are non-knockouts; their place still comes from `position`)
   const norm = (Array.isArray(body.entries) ? body.entries : [])
-    .map(e => { const by = Number(e.by); return { id: Number(e.tornId), by: (Number.isFinite(by) && by > 0) ? by : null, position: Number(e.position) || 0 }; })
+    .map(e => {
+      const by = Number(e.by);
+      const realBy = (Number.isFinite(by) && by > 0) ? by : null;
+      // `splitWith`: other players who knocked this player out with an equal hand.
+      // The envelope is then split equally between `by` and each of them.
+      const raw = Array.isArray(e.splitWith) ? e.splitWith : (e.splitWith != null && e.splitWith !== '' ? [e.splitWith] : []);
+      const split = realBy ? [...new Set(raw.map(Number).filter(x => Number.isFinite(x) && x > 0 && x !== realBy))] : [];
+      return { id: Number(e.tornId), by: realBy, split, position: Number(e.position) || 0 };
+    })
     .filter(e => e.id && seatOrder[e.id] != null);
   if (!norm.length) return json({ error: 'entries required' }, 400);
-  for (const e of norm) if (e.by && e.by === e.id) return json({ error: 'a player cannot knock themselves out' }, 400);
+  for (const e of norm) {
+    if (e.by && e.by === e.id) return json({ error: 'a player cannot knock themselves out' }, 400);
+    if (e.split.indexOf(e.id) >= 0) return json({ error: 'a player cannot split their own knockout' }, 400);
+    if (e.by && seatOrder[e.by] == null) return json({ error: 'the eliminator must be seated at this table' }, 400);
+    for (const x of e.split) if (seatOrder[x] == null) return json({ error: 'split players must be seated at this table' }, 400);
+  }
   // finishing order: by position, ties broken by seat order (duplicate positions
   // are allowed on input and just resolve to adjacent places)
   norm.sort((a, b) => (a.position - b.position) || (seatOrder[a.id] - seatOrder[b.id]));
@@ -916,13 +991,22 @@ async function finishTable(request, env) {
     env.MB.prepare(`DELETE FROM knockouts WHERE table_id = ?1`).bind(t.id),
     env.MB.prepare(`DELETE FROM envelopes WHERE table_id = ?1`).bind(t.id)
   ];
+  // A split knockout (equal hands) writes one knockout row per eliminator, each
+  // with an equal share of the same envelope. Knockout seq is its own running
+  // count; the shared envelope_id ties the rows of one split together.
+  let koSeq = 0;
   busts.forEach((e, i) => {
     const seq = i + 1, amt = amounts[i] || 0;
     stmts.push(env.MB.prepare(`INSERT INTO envelopes (table_id, seq, amount, opened) VALUES (?1,?2,?3,1)`).bind(t.id, seq, amt));
-    stmts.push(env.MB.prepare(
-      `INSERT INTO knockouts (table_id, seq, eliminated_id, eliminator_id, envelope_id, amount, recorded_at, reported_by)
-       VALUES (?1,?2,?3,?4,(SELECT id FROM envelopes WHERE table_id = ?1 AND seq = ?2),?5,?6,?7)`)
-      .bind(t.id, seq, e.id, e.by, amt, now(), v.id));
+    const takers = [e.by].concat(e.split);
+    const shares = splitEqual(amt, takers.length);
+    takers.forEach((by, j) => {
+      koSeq++;
+      stmts.push(env.MB.prepare(
+        `INSERT INTO knockouts (table_id, seq, eliminated_id, eliminator_id, envelope_id, amount, recorded_at, reported_by)
+         VALUES (?1,?2,?3,?4,(SELECT id FROM envelopes WHERE table_id = ?1 AND seq = ?8),?5,?6,?7)`)
+        .bind(t.id, koSeq, e.id, by, shares[j], now(), v.id, seq));
+    });
   });
   const advance = num(s, 'day2_advance', 3);
   const toMoney = num(s, 'day2_to_money', 2);  // places below the advance cutoff that drop to the money table
@@ -1099,7 +1183,47 @@ async function submitAvailability(request, env) {
     `INSERT OR IGNORE INTO availability (torn_id, phase, slot_id, fingerprint, submitted_at) VALUES (?1,?2,?3,?4,?5)`
   ).bind(who.id, phase, sl, fp, now())));
   await env.MB.batch(stmts);
-  return json({ ok: true, saved: slots.length });
+  // Return what is now stored plus a session token, so the page can show the
+  // player's saved hours on later visits without asking for the key again.
+  const mine = await readMyAvailability(env, who.id, phase);
+  const role = await roleOf(env, who.id);
+  const token = await signToken(env, who.id, role);
+  return json({ ok: true, saved: mine.slots.length, id: who.id, name: who.name, role, token, ...mine });
+}
+
+// The hours one player has saved for a phase, and when they last saved them.
+async function readMyAvailability(env, id, phase) {
+  const rows = (await env.MB.prepare(
+    `SELECT slot_id AS slotId, submitted_at AS at FROM availability WHERE torn_id = ?1 AND phase = ?2`
+  ).bind(id, phase).all()).results;
+  const slots = rows.map(r => r.slotId)
+    .sort((a, b) => Number(String(a).slice(1)) - Number(String(b).slice(1)));
+  const submittedAt = rows.reduce((m, r) => Math.max(m, Number(r.at) || 0), 0) || null;
+  return { phase, slots, submittedAt };
+}
+
+// A player reads back their own saved availability. Identity comes from a
+// session token (GET, Bearer) or from a Torn key (POST, used once, not stored).
+// A player can only ever read their own rows.
+async function myAvailability(request, env, url) {
+  let id, name = null, extra = {}, phaseIn;
+  if (request.method === 'POST') {
+    const body = await request.json().catch(() => ({}));
+    const who = await identify(body.key);
+    if (who.error) return json({ error: who.error }, 400);
+    id = who.id; name = who.name; phaseIn = body.phase;
+    const role = await roleOf(env, id);
+    extra = { role, token: await signToken(env, id, role) };
+  } else {
+    const v = await requireRole(request, env, url, 'player');
+    if (!v) return json({ error: 'Session expired. Paste your Torn API key again.' }, 401);
+    id = v.id; phaseIn = url.searchParams.get('phase');
+  }
+  const reg = await env.MB.prepare(`SELECT name FROM players WHERE torn_id = ?1`).bind(id).first();
+  if (!reg) return json({ error: 'You are not registered for this tournament.' }, 403);
+  const phase = STAGE_KEYS.includes(phaseIn) ? phaseIn : 'day1';
+  const mine = await readMyAvailability(env, id, phase);
+  return json({ ok: true, id, name: name || reg.name, ...extra, ...mine });
 }
 
 // First-come-first-served seat claim on a 'claim' table.

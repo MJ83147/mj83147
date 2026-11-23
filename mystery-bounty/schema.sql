@@ -32,7 +32,9 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
   ('day2_advance',      '3'),          -- top N per Day 2 table advance to the final
   ('day2_to_money',     '2'),          -- next N per Day 2 table drop to the money table (e.g. 2 = 4th & 5th)
   ('final_table_size',  '9'),
-  ('final_share_pct',   '40'),         -- share of the bounty pool reserved for the final table
+  ('day1_share_pct',    '10'),         -- share of the bounty pool for Day 1 envelopes
+  ('day2_share_pct',    '55'),         -- share of the bounty pool for Day 2 envelopes
+  ('final_share_pct',   '35'),         -- share of the bounty pool for the final table envelopes
   ('money_table_enabled','1'),
   ('payout_structure',  '[30,20,14,10,8,6,5,4,3]'),  -- % of main pool per place
   ('avail_phase',       'day1'),       -- which stage the availability poll is collecting for (day1|rebuy|day2|final|closed)
@@ -61,7 +63,7 @@ CREATE TABLE IF NOT EXISTS players (
   created_at  INTEGER NOT NULL
 );
 
--- ---------- donations (grow the main pool) ----------
+-- ---------- donations (split main/bounty like a buy-in) ----------
 CREATE TABLE IF NOT EXISTS donations (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   donor_name TEXT NOT NULL,
@@ -78,7 +80,7 @@ CREATE TABLE IF NOT EXISTS tables (
   status        TEXT NOT NULL DEFAULT 'queued',  -- queued | live | complete
   seat_size     INTEGER,
   seating_mode  TEXT NOT NULL DEFAULT 'assigned',-- assigned | claim (first-come-first-served)
-  bounties_live INTEGER NOT NULL DEFAULT 0,      -- 0 for day1/rebuy, 1 for day2/final
+  bounties_live INTEGER NOT NULL DEFAULT 0,      -- 1 for day1/day2/final, 0 for rebuy/money
   timeslot      TEXT,                            -- TCT time string
   steward_id    INTEGER,                         -- assigned steward torn_id
   envelope_total INTEGER NOT NULL DEFAULT 0,     -- max total of this table's envelope list (day2/final)
