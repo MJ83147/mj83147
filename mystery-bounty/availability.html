@@ -114,6 +114,19 @@
     }
     .confirm.show { display: block; }
 
+    /* saved availability */
+    .saved-msg { font-size: 15px; color: var(--text); }
+    .saved-msg b { color: var(--gold); }
+    .saved-sub { font-size: 12px; color: var(--dim); margin-top: 6px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .chip { background: var(--greenbg); border: 1px solid var(--green); color: var(--green); border-radius: 999px; padding: 4px 10px; font-size: 13px; font-weight: 700; }
+    .chip span { color: var(--dim); font-weight: 400; margin-left: 4px; }
+    .unsaved { margin-top: 10px; font-size: 13px; color: var(--gold); display: none; }
+    .unsaved.show { display: block; }
+    .slot .tag { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--gold); margin-top: 2px; visibility: hidden; }
+    .slot.saved .tag { visibility: visible; }
+    .submit.alt { background: transparent; margin-top: 10px; font-weight: 400; }
+
     /* toast */
     .toasts { position: fixed; bottom: 18px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 8px; z-index: 300; pointer-events: none; }
     .toast {
@@ -145,6 +158,18 @@
 
     <div class="panel">
       <div class="body" style="padding-top:16px">
+        <div class="row" style="justify-content:space-between; margin-bottom:8px">
+          <div class="label" id="savedLabel">Your saved availability</div>
+          <button class="qbtn" id="forget" style="display:none">Not you? Forget me</button>
+        </div>
+        <div class="saved-msg" id="savedMsg">Loading&hellip;</div>
+        <div class="chips" id="savedChips"></div>
+        <div class="saved-sub" id="savedSub"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="body" style="padding-top:16px">
         <div class="row" style="justify-content:space-between">
           <div class="label" id="stageLabel">Pick your available hours</div>
           <button class="qbtn" id="anytime">Anytime (select all)</button>
@@ -156,6 +181,7 @@
         </div>
 
         <div class="slots" id="slots"></div>
+        <div class="unsaved" id="unsaved">You have changes that are not saved yet. Paste your key below and press Submit availability to save them.</div>
       </div>
     </div>
 
@@ -167,6 +193,7 @@
           <div class="hint">Used once to confirm your Torn identity, then discarded. It is never stored. A Public API key is all you need.</div>
         </div>
         <button class="submit" id="submit">Submit availability</button>
+        <button class="submit alt" id="showMine">Show my saved availability</button>
         <div class="confirm" id="confirm"></div>
       </div>
     </div>
@@ -206,7 +233,10 @@
     var SLOTS = slots();
 
     var selected = {};   // slotId -> true
+    var mine = null;     // the player's saved availability from the server, once known
+    var savedSet = {};   // slotId -> true for the saved hours
     var phase = 'day2';  // resolved from tournament_status on load
+    var phaseClosed = false;
 
     var PHASE_NAME = { day2: 'Day 2 stage', final: 'Final Table' };
 
@@ -221,12 +251,24 @@
         ', ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes()) + ' TCT';
     }
 
+    // Stage days are saved as a date only (midnight TCT), so show the date with no time.
+    function tctDayString(epochSec) {
+      var n = Number(epochSec);
+      if (!epochSec || isNaN(n) || n <= 0) return '';
+      var d = new Date(n * 1000);
+      return DAYS[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()];
+    }
+
     function renderSlots() {
       document.getElementById('slots').innerHTML = SLOTS.map(function (s) {
-        return '<div class="slot' + (selected[s.id] ? ' on' : '') + '" data-id="' + s.id + '">' +
-          '<div class="tct">' + s.tct + '</div><div class="loc">' + s.loc + ' local</div></div>';
+        return '<div class="slot' + (selected[s.id] ? ' on' : '') + (savedSet[s.id] ? ' saved' : '') + '" data-id="' + s.id + '">' +
+          '<div class="tct">' + s.tct + '</div><div class="loc">' + s.loc + ' local</div><div class="tag">saved</div></div>';
       }).join('');
       document.getElementById('selN').textContent = Object.keys(selected).length;
+      // tell the player when the grid differs from what is saved
+      var differs = false;
+      if (mine) SLOTS.forEach(function (s) { if (!!selected[s.id] !== !!savedSet[s.id]) differs = true; });
+      document.getElementById('unsaved').classList.toggle('show', differs);
     }
     document.getElementById('slots').addEventListener('click', function (e) {
       var el = e.target.closest('.slot'); if (!el) return;
@@ -262,9 +304,10 @@
       d = d || {}; var settings = d.settings || {};
       var p = derivePhase(d);
       var closed = (p === 'closed');
+      phaseClosed = closed;
       phase = closed ? 'day1' : p;
       var name = STAGE_NAMES[phase] || 'the next stage';
-      var when = tctDateString(settings[phase + '_at']);
+      var when = tctDayString(settings[phase + '_at']);
       var el = document.getElementById('stageLine');
       if (closed) {
         if (el) el.innerHTML = 'Availability is currently closed.<span class="sub">Check back when the organisers open the next poll.</span>';
@@ -280,12 +323,100 @@
     function loadState() {
       fetch(API + '/state', { headers: { 'Accept': 'application/json' } })
         .then(function (r) { return r.json(); })
-        .then(function (d) { applyPhase(d || {}); })
+        .then(function (d) { applyPhase(d || {}); loadMine(); })
         .catch(function (e) {
           applyPhase({});
+          renderMine();
           toast('Could not load the tournament stage: ' + e.message, 'error');
         });
     }
+
+    /* ---- the player's saved availability ---- */
+    function esc(t) { var d = document.createElement('div'); d.textContent = String(t == null ? '' : t); return d.innerHTML; }
+    function slotById(id) { for (var i = 0; i < SLOTS.length; i++) if (SLOTS[i].id === id) return SLOTS[i]; return null; }
+
+    // Show what the server has saved. `mine` is null when we do not know who the
+    // viewer is yet (no session on this browser).
+    function renderMine() {
+      var msg = document.getElementById('savedMsg'), chips = document.getElementById('savedChips'),
+        sub = document.getElementById('savedSub'), forget = document.getElementById('forget'),
+        showBtn = document.getElementById('showMine');
+      var name = STAGE_NAMES[phase] || 'this stage';
+      chips.innerHTML = ''; sub.textContent = '';
+      forget.style.display = mine ? '' : 'none';
+      showBtn.textContent = mine ? 'Refresh my saved availability' : 'Show my saved availability';
+      if (!mine) {
+        msg.textContent = 'To see the hours you have saved, paste your Torn API key below and press "Show my saved availability".';
+        return;
+      }
+      var known = mine.slots.map(slotById).filter(Boolean);
+      if (!known.length) {
+        msg.innerHTML = '<b>' + esc(mine.name) + '</b>, you have not saved any hours for ' + esc(name) + ' yet.';
+        return;
+      }
+      msg.innerHTML = '<b>' + esc(mine.name) + '</b>, you have <b>' + known.length + '</b> hour(s) saved for ' + esc(name) +
+        (known.length === SLOTS.length ? ' (anytime)' : '') + ':';
+      chips.innerHTML = known.map(function (s) {
+        return '<div class="chip">' + s.tct + ' TCT<span>' + s.loc + ' local</span></div>';
+      }).join('');
+      if (mine.submittedAt) {
+        var d = new Date(mine.submittedAt * 1000);
+        sub.textContent = 'Last saved ' + tctDateString(mine.submittedAt) + ' (' + d.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) + ' your time). ' +
+          'These hours are ticked in the grid below. Change the ticks and submit again to replace them.';
+      }
+    }
+
+    // Take a server answer, remember it, and tick the saved hours in the grid.
+    function applyMine(d) {
+      mine = { name: d.name || 'Player', slots: d.slots || [], submittedAt: d.submittedAt || null };
+      savedSet = {}; selected = {};
+      mine.slots.forEach(function (id) { if (slotById(id)) { savedSet[id] = true; selected[id] = true; } });
+      if (d.token) {
+        localStorage.setItem('mb_token', d.token);
+        localStorage.setItem('mb_role', d.role || 'player');
+        localStorage.setItem('mb_name', d.name || '');
+        localStorage.setItem('mb_id', String(d.id || ''));
+      }
+      renderMine(); renderSlots();
+    }
+
+    // On page load: if this browser has a session, read the saved hours with it.
+    function loadMine() {
+      var token = localStorage.getItem('mb_token');
+      if (phaseClosed || !token) { renderMine(); return; }
+      fetch(API + '/availability/mine?phase=' + encodeURIComponent(phase), {
+        headers: { 'Accept': 'application/json', 'Authorization': 'Bearer ' + token }
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d.error) { renderMine(); return; }  // expired session or not registered: fall back to the key
+        applyMine(d);
+      }).catch(function () { renderMine(); });
+    }
+
+    document.getElementById('showMine').onclick = function () {
+      var btn = this, label = btn.textContent;
+      var key = document.getElementById('key').value.trim();
+      if (!key) { toast('Paste your Torn API key first.', 'error'); return; }
+      btn.disabled = true; btn.textContent = 'Loading...';
+      fetch(API + '/availability/mine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: key, phase: phase })
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d.error) { toast(d.error, 'error'); return; }
+        applyMine(d);
+        document.getElementById('key').value = '';
+        document.getElementById('savedLabel').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        toast(d.slots.length ? 'Loaded your saved availability.' : 'You have nothing saved for this stage yet.', 'success');
+      }).catch(function (e) {
+        toast('Request failed: ' + e.message, 'error');
+      }).then(function () { btn.disabled = false; if (btn.textContent === 'Loading...') btn.textContent = label; });
+    };
+
+    document.getElementById('forget').onclick = function () {
+      ['mb_token', 'mb_role', 'mb_name', 'mb_id'].forEach(function (k) { localStorage.removeItem(k); });
+      mine = null; savedSet = {}; selected = {};
+      renderMine(); renderSlots();
+    };
 
     /* ---- toast ---- */
     function toast(msg, type) {
@@ -316,6 +447,7 @@
         c.textContent = 'Saved ' + (d.saved || slotIds.length) + ' slot(s) for ' +
           (STAGE_NAMES[phase] || 'this stage') + '. Thanks! You can resubmit any time to change it.';
         c.classList.add('show');
+        if (d.slots) applyMine(d);
         toast('Availability saved.', 'success');
         document.getElementById('key').value = '';
       }).catch(function (e) {

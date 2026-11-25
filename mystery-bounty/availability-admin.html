@@ -269,8 +269,8 @@
     function tctDate(ep) {
       if (!ep) return '';
       var d = new Date(Number(ep) * 1000); if (!isFinite(d.getTime())) return '';
-      return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }) +
-        ', ' + pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes());
+      // stage days are saved as a date only (midnight TCT), so show no time
+      return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
     }
     document.getElementById('refresh').onclick = function () { loadAll(); };
 
@@ -312,7 +312,7 @@
         var when = tctDate(set[phase + '_at']);
         document.getElementById('stageLine').textContent = closed
           ? 'Availability poll is closed'
-          : 'Availability for ' + STAGE_NAMES[phase] + ' · ' + (when ? 'held ' + when + ' TCT' : 'date to be confirmed');
+          : 'Availability for ' + STAGE_NAMES[phase] + ' · ' + (when ? 'held ' + when : 'date to be confirmed');
         renderOutstanding();
         loadAvailability();
       }).catch(function (e) { toast('Could not load: ' + e.message, 'error'); });

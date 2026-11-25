@@ -223,6 +223,8 @@
       z-index: 1;
     }
     .envelope.open .env-amt { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    /* longer labels such as $169M or $25.5M (split shares) need smaller text to fit */
+    .env-amt.long { font-size: 12px; }
 
     /* floating "+$X" that flies to the leaderboard feel */
     .floataward {
@@ -309,6 +311,7 @@
       .felt-center .pot-label, .felt-center .pot-sub { font-size: 10px; }
       .envelope { width: 46px; height: 32px; }
       .env-amt { font-size: 12px; }
+      .env-amt.long { font-size: 11px; letter-spacing: -.5px; }
       .floataward { font-size: 13px; }
     }
   </style>
@@ -412,6 +415,7 @@
     // player names come from the roster and are rendered via innerHTML, so escape
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
     function money(m) {
+      m = Math.round((m || 0) * 10) / 10;  // split shares can be half-millions; keep float sums tidy
       if (!m) return '$0';
       if (m >= 1000) return '$' + (m / 1000).toFixed(2).replace(/\.?0+$/, '') + 'B';
       return '$' + m + 'M';
@@ -548,12 +552,20 @@
       // 1) X out the busted player
       seatEls[ev.out].classList.add('out');
 
+      // A split knockout (two players with equal hands) has several shares of one
+      // envelope; each sharer gets their own envelope showing their equal share.
+      var shares = (ev.shares && ev.shares.length) ? ev.shares : [{ by: ev.by, amount: ev.amount }];
+      shares.forEach(function (sh) { if (seatEls[sh.by]) applyShare(sh.by, sh.amount); });
+    }
+
+    function applyShare(by, amount) {
+      var ev = { by: by, amount: amount };
       // 2) envelope appears at the seat of the player who busted them, then opens
       //    slowly. Envelopes stay put and spread in a row so none covers another.
       var env = document.createElement('div');
       env.className = 'envelope show';
       env.innerHTML =
-        '<div class="env-body"><span class="env-amt">' + money(ev.amount) + '</span></div>' +
+        '<div class="env-body"><span class="env-amt' + (money(ev.amount).length > 4 ? ' long' : '') + '">' + money(ev.amount) + '</span></div>' +
         '<div class="env-flap"></div>';
       feltWrap.appendChild(env);
       if (!envList[ev.by]) envList[ev.by] = [];
@@ -597,7 +609,7 @@
         PLACES.forEach(function (pl) {
           var el = seatEls[pl.tornId]; if (!el) return;
           if (IS_FINAL && pl.place === 1) el.classList.add('winner');
-          else if (pl.advancedTo === 'final') el.classList.add('advance');
+          else if (pl.advancedTo === 'final' || pl.advancedTo === 'day2') el.classList.add('advance');
         });
       } else {
         // demo/placeholder fallback: survivors (winner first) then reverse bust order
@@ -649,7 +661,10 @@
         .then(function (r) { return r.json(); })
         .then(function (d) {
           if (d.error || !d.table) { notice('Table not found.'); return; }
-          document.getElementById('tableName').textContent = d.table.label || d.table.id;
+          // the label already names the stage ("Day 1 · Table 2", "Final Table")
+          var tn = document.querySelector('.table-meta .tname'), tsp = document.createElement('span');
+          tsp.id = 'tableName'; tsp.textContent = d.table.label || d.table.id;
+          tn.textContent = ''; tn.appendChild(tsp);
           PLAYERS = (d.seats || []).map(function (s) { return { id: s.tornId, name: s.name || ('#' + s.tornId) }; });
           if (!PLAYERS.length) { notice('No players seated at this table yet.'); return; }
           if (!d.complete) {
@@ -660,10 +675,15 @@
             return;
           }
           // amounts come back in dollars; the animation works in millions
-          EVENTS = (d.knockouts || []).map(function (k) { return { out: k.out, by: k.by, amount: Math.round((k.amount || 0) / 1e6) }; });
+          // (one decimal, so an equal split of an odd number of millions still shows right)
+          var toM = function (a) { return Math.round((a || 0) / 1e5) / 10; };
+          EVENTS = (d.knockouts || []).map(function (k) {
+            return { out: k.out, by: k.by, amount: toM(k.amount),
+              shares: (k.shares || []).map(function (sh) { return { by: sh.by, amount: toM(sh.amount) }; }) };
+          });
           PLACES = d.places || [];
           IS_FINAL = d.table.stage === 'final';
-          var adv = PLACES.filter(function (p) { return p.advancedTo === 'final'; }).length;
+          var adv = PLACES.filter(function (p) { return p.advancedTo === 'final' || p.advancedTo === 'day2'; }).length;
           ADVANCE_COUNT = adv || (IS_FINAL ? 1 : 3);
           boot();
         })

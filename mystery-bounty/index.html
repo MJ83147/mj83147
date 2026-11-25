@@ -63,8 +63,8 @@
     .pool-amt { font-size: 34px; font-weight: 800; color: var(--gold); line-height: 1.15; }
     .pool-sub { font-size: 13px; color: var(--dim); margin-top: 2px; }
     .pool-link { font-size: 12px; color: var(--green); margin-top: 8px; cursor: pointer; }
-    .bountyrow { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; font-size: 13px; }
-    .bountyrow b { color: var(--gold); }
+    .bountyrow { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .bounty-amt { font-size: 30px; }
 
     .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
     @media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
@@ -203,7 +203,10 @@
         <div class="pool-amt" id="mainPool">$0</div>
         <div class="pool-sub" id="mainSub">0 entries</div>
         <div class="pool-link" id="payoutLink">View payout structure</div>
-        <div class="bountyrow"><span>Bounty pool (envelopes)</span><b id="bountyPool">$0</b></div>
+        <div class="bountyrow">
+          <div class="pool-label">Bounty pool (envelopes)</div>
+          <div class="pool-amt bounty-amt" id="bountyPool">$0</div>
+        </div>
       </div>
       <div class="stats" id="stats"></div>
     </div>
@@ -309,7 +312,7 @@
     }
 
     var STAGES = [
-      { key: 'day1', label: 'Day 1', sub: '6-max tables · one winner advances · no bounties' },
+      { key: 'day1', label: 'Day 1', sub: '6-max tables · bounties live · one winner advances' },
       { key: 'rebuy', label: 'Rebuy', sub: 'Second chance · one winner advances · no bounties' },
       { key: 'day2', label: 'Day 2', sub: 'Bounties live · top 3 per table reach the final' },
       { key: 'final', label: 'Final Table', sub: 'Bounties live · plays to one winner' },
@@ -330,7 +333,14 @@
       // live before it starts or stay live after it finishes.
       var ss = state.stageState || {};
       var current = state.currentStage;                  // 'setup' | <stage> | 'complete'
-      var firstKey = shown.length ? shown[0].key : 'day1';
+      // The panel that starts open: the live stage, or when no stage is live,
+      // the next one to be played (the first that is not complete).
+      var target = null;
+      if (shown.some(function (st) { return st.key === current; })) target = current;
+      else if (current !== 'complete') {
+        var nxt = shown.filter(function (st) { return !(ss[st.key] && ss[st.key].complete); })[0];
+        target = nxt ? nxt.key : null;
+      }
 
       host.innerHTML = shown.map(function (st) {
         var tabs = (byStage[st.key] || []);              // already ordered by the API
@@ -340,7 +350,7 @@
         var phase = info.complete ? 'done' : (isActive ? 'live' : 'upcoming');
         var tag = info.complete ? 'complete'
           : (isActive ? 'live now'
-            : (current === 'setup' && st.key === firstKey ? 'up next' : 'upcoming'));
+            : (st.key === target ? 'up next' : 'upcoming'));
         // show real tables only once the stage has started; otherwise a preview/placeholder
         var showTables = info.started && tabs.length;
         var done = tabs.filter(function (t) { return t.status === 'complete'; }).length;
@@ -348,8 +358,9 @@
         var inner = advancerBanner(st.key, st.label) +
           (showTables ? '<div class="tables">' + tabs.map(tableCard).join('') + '</div>' : previewFor(st.key, s));
         var pid = 'panel-' + st.key;
-        if (!(pid in openState)) openState[pid] = isActive;
-        return '<div class="panel is-' + phase + (openState[pid] ? '' : ' closed') + '" id="' + pid + '">' +
+        // the live or next stage starts open; a panel the viewer opened or closed keeps their choice
+        var isOpen = (pid in openState) ? openState[pid] : st.key === target;
+        return '<div class="panel is-' + phase + (isOpen ? '' : ' closed') + '" id="' + pid + '">' +
           '<h2 onclick="togglePanel(\'' + pid + '\')">' + st.label +
           '<span class="stagetag">' + tag + '</span>' +
           '<span class="count">' + count + '</span><span class="chev">▾</span></h2>' +
@@ -380,7 +391,7 @@
         var reg = state.stats.registered, sz = num(s, 'day1_table_max', 6);
         if (scheduled && reg > 0) {
           var nt = Math.ceil(reg / sz), c = '';
-          for (var j = 1; j <= nt; j++) c += emptyTableCard('Day 1 · Table ' + j, sz, 1, 'one winner advances');
+          for (var j = 1; j <= nt; j++) c += emptyTableCard('Day 1 · Table ' + j, sz, 1, 'bounties live · one winner advances');
           return '<div class="tables">' + c + '</div>';
         }
         return '<div class="placeholder">' + sz + '-max tables, drawn once the schedule is set.</div>';
@@ -530,6 +541,13 @@
       if (b) openReplay(b.getAttribute('data-replay'));
     });
 
+    // "10% on Day 1, 55% on Day 2 and 35% at the Final Table", from the settings
+    function envelopeSplit(s) {
+      var d1 = num(s, 'day1_share_pct', 10), d2 = num(s, 'day2_share_pct', 55), fn = num(s, 'final_share_pct', 35);
+      var sum = (d1 + d2 + fn) || 100;
+      var pc = function (x) { return (Math.round(x * 1000 / sum) / 10) + '%'; };
+      return pc(d1) + ' on Day 1, ' + pc(d2) + ' on Day 2 and ' + pc(fn) + ' at the Final Table';
+    }
     document.getElementById('navHow').onclick = function () {
       var s = state.settings || {};
       var buyin = money(num(s, 'entry_total', 50e6));
@@ -540,19 +558,19 @@
       for (var di = 1; di <= toMoney; di++) drops.push(ordinal(adv + di));
       var dropSentence = toMoney > 0 ? (' ' + drops.join(' and ') + (toMoney === 1 ? ' goes' : ' go') + ' to the Money Table.') : '';
       openModal('<h3>How a bounty tournament works</h3>' +
-        '<p>It is a knockout poker tournament with a twist. On top of the normal prize money, you win a cash <b>bounty</b> for every player you knock out once the bounty rounds begin.</p>' +
+        '<p>It is a knockout poker tournament with a twist. On top of the normal prize money, you win a cash <b>bounty</b> for every player you knock out on Day 1, Day 2 and the Final Table.</p>' +
         '<h4>Your buy-in splits two ways</h4>' +
-        '<p>When you pay the ' + buyin + ' buy-in, part of it builds the <b>main prize pool</b> (paid to the top finishers) and the rest goes into the <b>bounty pool</b>. The bounty pool is split into mystery bounty envelopes: random amounts of money you win when you knock someone out.</p>' +
+        '<p>When you pay the ' + buyin + ' buy-in, part of it builds the <b>main prize pool</b> (paid to the top finishers) and the rest goes into the <b>bounty pool</b>. The bounty pool is split into mystery bounty envelopes: random amounts of money you win when you knock someone out. The envelopes are shared out ' + envelopeSplit(s) + '. The Rebuy and Money tables have no bounties.</p>' +
         '<h4>The stages</h4>' +
         '<ul>' +
-        '<li><b>Day 1:</b> First place advances to Day 2. Everyone else is eligible for a rebuy. No bounties.</li>' +
-        '<li><b>Rebuy:</b> if you are knocked out on Day 1, you can join a rebuy table for ' + rebuy + ' for a chance to advance to Day 2. The winner advances.</li>' +
+        '<li><b>Day 1:</b> bounties are live, so you win an envelope for every player you knock out. First place advances to Day 2. Everyone else is eligible for a rebuy.</li>' +
+        '<li><b>Rebuy:</b> if you are knocked out on Day 1, you can join a rebuy table for ' + rebuy + ' for a chance to advance to Day 2. The winner advances. No bounties.</li>' +
         '<li><b>Day 2:</b> bounties are live. The top ' + adv + ' at each table advance to the Final Table, and you win a bounty prize for every player you knock out.' + dropSentence + '</li>' +
         '<li><b>Final Table:</b> the top three from each Day 2 table, bounties live. Every Final Table player finishes in a paid place, 1st through 9th.</li>' +
         '<li><b>Money Table:</b> no bounties. 1st, 2nd and 3rd here take 10th, 11th and 12th in the prize pool.</li>' +
         '</ul>' +
         '<h4>The mystery bounty</h4>' +
-        '<p>Once bounties are live, every player you knock out wins you a sealed envelope. Each envelope holds a hidden cash amount that you only see when it is opened, and some are bigger than others. The more players you knock out, the more envelopes you collect, on top of any prize-pool money you finish for.</p>' +
+        '<p>On Day 1, Day 2 and the Final Table, every player you knock out wins you a sealed envelope. Each envelope holds a hidden cash amount that you only see when it is opened, and some are bigger than others. The more players you knock out, the more envelopes you collect, on top of any prize-pool money you finish for.</p>' +
         '<h4>Two ways to win money</h4>' +
         '<p>1) Finish high enough to be paid from the main prize pool. 2) Win bounty envelopes by knocking players out. The envelope cash is yours to keep even if you do not finish in the paid places.</p>');
     };
@@ -567,12 +585,12 @@
         '<h4>Buy-in and rebuy</h4><p>Entry is ' + money(num(s, 'entry_total', 50e6)) + '. If you are knocked out on Day 1 you can rebuy once for ' + money(num(s, 'rebuy_total', 75e6)) + '. After that, you are out.</p>' +
         '<h4>Advancing</h4>' +
         '<ul>' +
-        '<li><b>Day 1:</b> ' + num(s, 'day1_table_min', 4) + '–' + num(s, 'day1_table_max', 6) + ' players per table. The table winner advances to Day 2; everyone else is out (or takes a rebuy).</li>' +
+        '<li><b>Day 1:</b> ' + num(s, 'day1_table_min', 4) + '–' + num(s, 'day1_table_max', 6) + ' players per table. Bounties live. The table winner advances to Day 2; everyone else is out (or takes a rebuy).</li>' +
         '<li><b>Rebuy:</b> small qualifier tables, winner-takes-the-seat, no bounties.</li>' +
         '<li><b>Day 2:</b> bounties are live. The top ' + adv + ' at each table advance to the Final Table; ' + dropClause + 'the rest are out.</li>' +
         '<li><b>Final Table:</b> bounties live, plays to one champion.</li>' +
         '</ul>' +
-        '<h4>Bounties</h4><p>From Day 2 on, knocking a player out wins you a sealed mystery envelope. Envelope cash is yours to keep regardless of where you finish.</p>' +
+        '<h4>Bounties</h4><p>On Day 1, Day 2 and the Final Table, knocking a player out wins you a sealed mystery envelope. The bounty pool is shared out ' + envelopeSplit(s) + '; the Rebuy and Money tables have no bounties. Envelope cash is yours to keep regardless of where you finish. If two players knock out the same player with equal hands, they split that envelope equally.</p>' +
         '<h4>Prize money</h4><p>The main prize pool is paid to the top finishers (see the payout structure). Bounty envelopes are won separately, on top.</p>' +
         '<h4>Conduct</h4><p>Turn up on time for your table and follow the stewards running it. If you miss your table you may lose your place.</p>');
     };
